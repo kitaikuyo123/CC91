@@ -1,0 +1,6 @@
+{
+  "version": "1.0.0",
+  "organization": "System Refactoring",
+  "date": "April 2026",
+  "abstract": "A structured methodology for conducting convergent iterations on codebases. Enforces design-before-implementation workflow, prioritizes deletion over addition, and ensures all changes serve the minimal viable system. Designed for AI agents to systematically reduce complexity while preserving core functionality."
+}

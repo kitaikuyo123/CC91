@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "organization": "Team Observability",
+  "date": "April 2026",
+  "abstract": "Agent Team 可观测性系统：记录对话、人工干预、版本快照、协作追踪。支持事件记录、干预点管理、快照控制。",
+  "capabilities": [
+    "conversation_logging",
+    "intervention_points",
+    "version_snapshots",
+    "collaboration_tracking"
+  ]
+}

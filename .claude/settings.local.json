@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p .claude/skills)",
+      "Bash(mv .agents/skills/vercel-react-best-practices .claude/skills/)",
+      "Bash(cat ~/.claude/tasks/fullstack-dev/*.json)",
+      "Bash(ls ~/.claude/tasks/fullstack-dev/*.json)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
