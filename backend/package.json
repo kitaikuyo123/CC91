@@ -1,7 +1,7 @@
 {
-  "name": "ccat-backend",
+  "name": "cc91-backend",
   "version": "1.0.0",
-  "description": "CCat Backend API",
+  "description": "CC91 Backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
