@@ -9,7 +9,14 @@
       "Bash(bash scripts/vcs.sh status)",
       "Bash(bash scripts/vcs.sh snapshot \"登录功能完成\")",
       "Bash(bash scripts/vcs.sh history)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(java -version)",
+      "Bash(mvn -version)",
+      "Bash(mvn clean:*)",
+      "Bash(npm -v)",
+      "Bash(npm create:*)",
+      "Bash(npm run:*)",
+      "Bash(mvn test:*)"
     ]
   }
 }
