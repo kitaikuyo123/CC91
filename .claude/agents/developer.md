@@ -67,30 +67,28 @@ tools:
 
 ```
 CC91/
-├── backend/                    # Spring Boot 后端
-│   ├── src/main/java/
-│   │   └── com/cc91/
-│   │       ├── controller/     # REST 控制器
-│   │       ├── service/        # 业务逻辑层
-│   │       ├── repository/     # 数据访问层
-│   │       ├── entity/         # JPA 实体
-│   │       ├── dto/            # 数据传输对象
-│   │       ├── security/       # 安全配置
-│   │       └── config/         # 配置类
+├── backend/                    # 后端
+│   ├── src/main/java/com/cc91/
+│   │   ├── controller/         # REST 控制器
+│   │   ├── service/            # 业务逻辑层
+│   │   ├── repository/         # 数据访问层
+│   │   ├── entity/             # JPA 实体
+│   │   ├── dto/                # 数据传输对象
+│   │   ├── security/           # 安全配置
+│   │   └── config/             # 配置类
 │   ├── src/main/resources/
 │   │   ├── application.yml     # 应用配置
 │   │   └── db/migration/       # 数据库迁移脚本
-│   ├── src/test/java/          # 单元测试
+│   ├── src/test/java/          # 测试
 │   └── pom.xml                 # Maven 配置
-├── frontend/                   # React 前端
-│   ├── src/
-│   │   ├── components/         # React 组件
-│   │   ├── pages/              # 页面组件
-│   │   ├── hooks/              # 自定义 Hooks
-│   │   ├── api/                # API 调用
-│   │   ├── context/            # Context 状态
-│   │   └── utils/              # 工具函数
-│   ├── index.html
-│   └── package.json
-└── scripts/                    # 工具脚本
+└── frontend/                   # 前端
+    ├── src/
+    │   ├── components/         # React 组件
+    │   ├── pages/              # 页面组件
+    │   ├── hooks/              # 自定义 Hooks
+    │   ├── api/                # API 调用
+    │   ├── context/            # Context 状态
+    │   └── utils/              # 工具函数
+    ├── index.html
+    └── package.json
 ```
