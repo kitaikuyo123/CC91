@@ -1,6 +1,24 @@
 # CC91
 
-一个正在开发中的论坛系统，**当前阶段已实现用户登录功能**，后续将陆续添加注册、发帖、评论等核心论坛功能。
+一个正在开发中的论坛系统，采用现代化技术栈构建。
+
+## 技术栈
+
+### 后端
+- **框架**: Spring Boot 3.x
+- **安全**: Spring Security (JWT 认证)
+- **数据库**: MySQL 8.0+
+- **ORM**: Spring Data JPA / Hibernate
+- **测试**: JUnit 5, MockMvc, Mockito
+- **构建**: Maven
+
+### 前端
+- **框架**: React 18+
+- **路由**: React Router 6+
+- **HTTP**: Axios
+- **状态**: Context API / React Query
+- **测试**: React Testing Library, Vitest
+- **构建**: Vite
 
 ## 功能特性
 
@@ -26,61 +44,85 @@
 
 ```
 CC91/
-├── backend/             # Express.js API 服务器
-│   ├── server.js        # 主程序文件
-│   ├── tests/           # API 测试
-│   └── package.json     # 后端依赖
-├── frontend/            # 静态 HTML/CSS/JS 客户端
-│   ├── index.html       # 登录/注册表单
-│   ├── app.js           # 前端逻辑
-│   └── style.css        # 样式文件
-├── scripts/             # 工具脚本
-└── logs/                # 应用日志
+├── backend/                    # Spring Boot 后端
+│   ├── src/main/java/
+│   │   └── com/cc91/
+│   │       ├── controller/     # REST 控制器
+│   │       ├── service/        # 业务逻辑层
+│   │       ├── repository/     # 数据访问层
+│   │       ├── entity/         # JPA 实体
+│   │       ├── dto/            # 数据传输对象
+│   │       ├── security/       # 安全配置
+│   │       └── config/         # 配置类
+│   ├── src/main/resources/
+│   │   ├── application.yml     # 应用配置
+│   │   └── db/migration/       # 数据库迁移脚本
+│   ├── src/test/java/          # 单元测试
+│   └── pom.xml                 # Maven 配置
+├── frontend/                   # React 前端
+│   ├── src/
+│   │   ├── components/         # React 组件
+│   │   ├── pages/              # 页面组件
+│   │   ├── hooks/              # 自定义 Hooks
+│   │   ├── api/                # API 调用
+│   │   ├── context/            # Context 状态
+│   │   └── utils/              # 工具函数
+│   ├── index.html
+│   └── package.json
+└── scripts/                    # 工具脚本
 ```
 
 ## 环境要求
 
-- Node.js >= 14.x
-- npm >= 6.x
+- **后端**: JDK 17+, Maven 3.6+, MySQL 8.0+
+- **前端**: Node.js 18+, npm 9+
 
 ## 安装
 
-1. 克隆仓库：
+### 1. 克隆仓库
 ```bash
 git clone <repository-url>
 cd LargeScale
 ```
 
-2. 安装后端依赖：
+### 2. 数据库设置
 ```bash
-cd backend
-npm install
+# 创建数据库
+mysql -u root -p
+CREATE DATABASE cc91_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'cc91_user'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON cc91_db.* TO 'cc91_user'@'localhost';
+FLUSH PRIVILEGES;
 ```
 
-## 使用方法
-
-### 开发环境
-
-启动后端服务器：
+### 3. 后端设置
 ```bash
 cd backend
-npm start
+# 配置数据库连接
+cp src/main/resources/application.yml.example src/main/resources/application.yml
+# 编辑 application.yml 设置数据库连接信息
+
+# 安装依赖并启动
+mvn clean install
+mvn spring-boot:run
 ```
 
-服务器将运行在 `http://localhost:3000`
+服务器将运行在 `http://localhost:8080`
 
-### 打开前端页面
-
+### 4. 前端设置
 ```bash
 cd frontend
-npx serve -p 8080
+npm install
+npm run dev
 ```
 
-### API 接口
+前端将运行在 `http://localhost:5173`
 
-#### 登录
+## API 接口
+
+### 登录
 ```
-POST /api/login
+POST /api/auth/login
 Content-Type: application/json
 
 {
@@ -89,9 +131,9 @@ Content-Type: application/json
 }
 ```
 
-#### 注册（发送验证码）
+### 注册（发送验证码）
 ```
-POST /api/register
+POST /api/auth/register
 Content-Type: application/json
 
 {
@@ -101,9 +143,9 @@ Content-Type: application/json
 }
 ```
 
-#### 验证邮箱
+### 验证邮箱
 ```
-POST /api/verify-email
+POST /api/auth/verify-email
 Content-Type: application/json
 
 {
@@ -114,20 +156,27 @@ Content-Type: application/json
 
 ## 测试
 
-运行测试套件：
+### 后端测试
 ```bash
 cd backend
+mvn test
+```
+
+### 前端测试
+```bash
+cd frontend
 npm test
 ```
 
-监听模式运行测试：
+### 覆盖率报告
 ```bash
-npm run test:watch
-```
+# 后端
+cd backend
+mvn jacoco:report
 
-生成测试覆盖率报告：
-```bash
-npm run test:coverage
+# 前端
+cd frontend
+npm run coverage
 ```
 
 ## 默认测试账号
@@ -141,26 +190,13 @@ npm run test:coverage
 
 **重要提示：** 这是一个演示项目。生产环境部署前请务必：
 
-1. 修改 `server.js` 中的 `JWT_SECRET`
-2. 使用真实的数据库（PostgreSQL、MongoDB 等）
-3. 使用 Redis 存储会话/验证码
-4. 实现真实的邮件发送功能（SMTP）
-5. 启用 HTTPS/TLS
-6. 使用环境变量存储敏感数据
-7. 实现刷新令牌轮换机制
-8. 添加更全面的输入验证
-
-## 技术栈
-
-- **后端**
-  - Express.js - Web 框架
-  - bcrypt - 密码哈希
-  - jsonwebtoken - JWT 认证
-  - Jest - 测试框架
-
-- **前端**
-  - 原生 JavaScript
-  - CSS3
+1. 修改 JWT_SECRET 密钥
+2. 使用环境变量存储敏感数据
+3. 配置 HTTPS/TLS
+4. 实现刷新令牌轮换机制
+5. 添加更全面的输入验证
+6. 配置防火墙和速率限制
+7. 定期更新依赖包
 
 ## 开源协议
 
