@@ -5,6 +5,14 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Maven build output
+target/
+
+# Java
+*.class
+*.jar
+*.war
+
 # Logs
 *.log
 npm-debug.log*
