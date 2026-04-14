@@ -1,6 +1,8 @@
 package com.cc91.config;
 
 import com.cc91.dto.ApiResponse;
+import com.cc91.exception.ResourceNotFoundException;
+import com.cc91.exception.UnauthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,26 @@ public class GlobalExceptionHandler {
         logger.warn("Validation failed: {}", errors);
         return ResponseEntity.badRequest()
                 .body(new ApiResponse<>("输入验证失败", errors));
+    }
+
+    /**
+     * 处理资源不存在异常（404）
+     */
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<String>> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        logger.warn("Resource not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiResponse<>(ex.getMessage()));
+    }
+
+    /**
+     * 处理无权限操作异常（403）
+     */
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiResponse<String>> handleUnauthorizedException(UnauthorizedException ex) {
+        logger.warn("Unauthorized access: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>(ex.getMessage()));
     }
 
     /**
