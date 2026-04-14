@@ -44,5 +44,5 @@ git commit -m "feat: 功能描述"
 ## 技术栈
 
 - 后端: Spring Boot 3.2 + Maven + MySQL + Flyway
-- 前端: React 18 + Vite + TypeScript + react-router-dom + axios
+- 前端: React 19 + Vite + TypeScript + react-router-dom + axios
 - 测试: JUnit 5 + MockMvc (后端), Vitest + RTL (前端)
