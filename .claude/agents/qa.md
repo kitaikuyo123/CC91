@@ -63,6 +63,48 @@ tools:
 3. 安全相关路径                 ← 暴力破解锁定、Token 过期
 4. 前端核心交互                 ← 登录表单提交、错误提示显示
 5. 前端边缘情况                 ← loading 状态、网络错误
+6. 集成测试（Flyway + 真实数据）← 每个功能必须有
+7. 前端跳转断言                 ← 每个涉及 navigate 的测试必须验证目标路径
+```
+
+## 必须完成的测试类型
+
+### 集成测试（Flyway + 数据库）
+
+每个功能模块必须编写至少一个集成测试，验证 Flyway 迁移后的种子数据与业务逻辑一致。
+
+**规则**：
+- 使用 H2 内存数据库 + Flyway 迁移（`spring.flyway.enabled=true`），测试真实 SQL 和种子数据
+- 必须验证种子数据的业务正确性（如：测试账号密码能否登录、初始数据是否符合预期）
+- 测试配置放在 `src/test/resources/application-test.yml`，使用 H2 的 MySQL 兼容模式
+
+**示例**：
+```java
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles("test")
+class AuthIntegrationTest {
+    // 验证 V1 种子数据：admin/admin123 能成功登录
+    @Test void seedUserCanLogin() { ... }
+}
+```
+
+### 前端跳转断言
+
+所有涉及 `navigate()` 调用的测试必须断言跳转目标路径，不能只验证"调用了 navigate"。
+
+**规则**：
+- 必须使用 `expect(navigate).toHaveBeenCalledWith('/expected/path')` 断言完整路径
+- 路径中的动态参数（如 `/profile/${username}`）也必须验证
+- 测试文件中的 `navigate` 必须被 mock：`vi.mock('react-router-dom', ... )`
+
+**示例**：
+```tsx
+// ✅ 正确：断言完整跳转路径
+expect(mockNavigate).toHaveBeenCalledWith('/profile/admin');
+
+// ❌ 错误：只验证 navigate 被调用
+expect(mockNavigate).toHaveBeenCalled();
 ```
 
 ## 编写测试前的检查清单
@@ -88,6 +130,8 @@ tools:
 - 不写重复测试
 - 不修改被测代码来让测试通过
 - 不只报告"测试用例已就绪"——必须运行
+- 不跳过集成测试——每个功能模块至少一个
+- 不跳过前端跳转断言——涉及 navigate 的测试必须验证目标路径
 
 ## 完成报告格式
 

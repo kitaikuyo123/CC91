@@ -1,9 +1,5 @@
 # Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
 # Maven build output
 target/
@@ -27,11 +23,9 @@ pids/
 *.seed
 *.pid.lock
 
-# Coverage directory used by tools like istanbul
+# Coverage
 coverage/
 *.lcov
-
-# nyc test coverage
 .nyc_output
 
 # Environment variables
@@ -47,7 +41,6 @@ coverage/
 *.swp
 *.swo
 *~
-.DS_Store
 
 # OS
 .DS_Store
@@ -64,68 +57,29 @@ dist/
 build/
 *.tgz
 
-# Optional npm cache directory
+# Cache
 .npm
-
-# Optional eslint cache
 .eslintcache
-
-# Optional stylelint cache
 .stylelintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache
 .cache/
 .parcel-cache/
 
-# Next.js build output
-.next/
-out/
+# REPL history
+.node_repl_history
 
-# Nuxt.js build / generate output
-.nuxt/
-
-# Gatsby files
-.cache/
-
-# vuepress build output
-.vuepress/dist/
-
-# Serverless directories
-.serverless/
-
-# FuseBox cache
-.fusebox/
-
-# DynamoDB Local files
-.dynamodb/
-
-# TernJS port file
-.tern-port
-
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
-
-# yarn v2
+# Yarn integrity
+.yarn-integrity
 .yarn/cache
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# VSCode test
+.vscode-test
+
+# Agent skills (third-party)
+.agents/
 
 # Temporary files
 tmp/

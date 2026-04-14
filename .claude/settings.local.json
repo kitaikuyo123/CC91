@@ -19,7 +19,27 @@
       "Bash(mvn test:*)",
       "Bash(npx vitest:*)",
       "Bash(find target/surefire-reports -name \"AuthServiceTest.txt\" -exec cat {} \\\\;)",
-      "Bash(grep -h \"testcase\" TEST-*.xml)"
+      "Bash(grep -h \"testcase\" TEST-*.xml)",
+      "Bash(npx skills:*)",
+      "Bash(cp -r ~/.agents/skills/java-springboot .claude/skills/)",
+      "Bash(cp -r ~/.agents/skills/typescript-react-reviewer .claude/skills/)",
+      "Bash(cp -r ~/.agents/skills/springboot-patterns .claude/skills/)",
+      "Bash(mvn compile:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "Bash(python:*)",
+      "Bash(mysql:*)",
+      "Bash(git config:*)",
+      "Bash(git:*)",
+      "Bash(curl -I https://github.com)",
+      "Bash(chmod u+w report.md)",
+      "Bash(npm list:*)",
+      "Bash(pip show:*)",
+      "Bash(pip --version)",
+      "Bash(pip install:*)",
+      "Bash(\"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\" --headless --disable-gpu --no-sandbox --print-to-pdf=\"D:\\\\aToys\\\\LargeScale\\\\report.pdf\" --print-to-pdf-no-header \"D:\\\\aToys\\\\LargeScale\\\\report.html\")",
+      "Read(//c/Users/18421/.claude/**)",
+      "Read(//c/Users/18421/**)"
     ]
   }
 }

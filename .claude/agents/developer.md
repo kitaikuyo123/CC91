@@ -4,6 +4,9 @@ description: 全栈开发专家，负责前端和后端的所有代码实现
 type: general-purpose
 skills:
   - vercel-react-best-practices
+  - java-springboot
+  - springboot-patterns
+  - typescript-react-reviewer
 tools:
   - Read
   - Glob
