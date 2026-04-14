@@ -95,13 +95,19 @@ GRANT ALL PRIVILEGES ON cc91_db.* TO 'cc91_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-### 3. 后端设置
+### 3. 环境变量配置
+```bash
+# 复制环境变量模板
+cp .env.example .env
+
+# 编辑 .env 文件，设置以下变量：
+# - DB_PASSWORD: 数据库密码
+# - JWT_SECRET: JWT 密钥（生产环境必须修改）
+```
+
+### 4. 后端设置
 ```bash
 cd backend
-# 配置数据库连接
-cp src/main/resources/application.yml.example src/main/resources/application.yml
-# 编辑 application.yml 设置数据库连接信息
-
 # 安装依赖并启动
 mvn clean install
 mvn spring-boot:run
@@ -109,7 +115,7 @@ mvn spring-boot:run
 
 服务器将运行在 `http://localhost:8080`
 
-### 4. 前端设置
+### 5. 前端设置
 ```bash
 cd frontend
 npm install
@@ -190,13 +196,14 @@ npm run coverage
 
 **重要提示：** 这是一个演示项目。生产环境部署前请务必：
 
-1. 修改 JWT_SECRET 密钥
-2. 使用环境变量存储敏感数据
-3. 配置 HTTPS/TLS
-4. 实现刷新令牌轮换机制
-5. 添加更全面的输入验证
-6. 配置防火墙和速率限制
-7. 定期更新依赖包
+1. 修改 `.env` 文件中的 JWT_SECRET 密钥（至少 256 位）
+2. 修改 `.env` 文件中的 DB_PASSWORD 数据库密码
+3. **切勿将 `.env` 文件提交到版本控制系统**
+4. 配置 HTTPS/TLS
+5. 实现刷新令牌轮换机制
+6. 添加更全面的输入验证
+7. 配置防火墙和速率限制
+8. 定期更新依赖包
 
 ## 开源协议
 

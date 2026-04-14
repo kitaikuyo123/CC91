@@ -39,7 +39,17 @@
       "Bash(pip install:*)",
       "Bash(\"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\" --headless --disable-gpu --no-sandbox --print-to-pdf=\"D:\\\\aToys\\\\LargeScale\\\\report.pdf\" --print-to-pdf-no-header \"D:\\\\aToys\\\\LargeScale\\\\report.html\")",
       "Read(//c/Users/18421/.claude/**)",
-      "Read(//c/Users/18421/**)"
+      "Read(//c/Users/18421/**)",
+      "Bash(mysql --version)",
+      "Bash(npm audit:*)",
+      "Bash(mysqlsh --version)",
+      "Bash(mysqlsh:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Skill(update-config)",
+      "Bash(grep \"\\\\.env$\")",
+      "Bash(timeout 30 mvn spring-boot:run)"
     ]
   }
 }
