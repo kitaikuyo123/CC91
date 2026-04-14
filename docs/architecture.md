@@ -5,7 +5,7 @@
 | 层 | 选型 |
 |----|------|
 | 后端 | Spring Boot 3.2 + Maven + MySQL 8 + Flyway + Spring Security (JWT) |
-| 前端 | React 18 + Vite + TypeScript + react-router-dom + axios + @tanstack/react-query |
+| 前端 | React 19 + Vite + TypeScript + react-router-dom + axios + @tanstack/react-query |
 | 测试 | JUnit 5 + MockMvc (后端), Vitest + RTL (前端) |
 
 ## 核心模块与优先级
