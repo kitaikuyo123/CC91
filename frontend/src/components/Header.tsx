@@ -17,8 +17,10 @@ export default function Header({ isLoggedIn = false }: HeaderProps) {
           </Link>
           <nav className="nav">
             <Link to="/" className="nav-link">首页</Link>
+            <Link to="/posts" className="nav-link">帖子</Link>
             {isLoggedIn ? (
               <>
+                <Link to="/posts/new" className="nav-link">发帖</Link>
                 <Link to="/dashboard" className="nav-link">个人中心</Link>
                 <button
                   onClick={() => {

@@ -8,6 +8,10 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import ProfileEditPage from './pages/ProfileEditPage';
+import PostListPage from './pages/PostListPage';
+import PostDetailPage from './pages/PostDetailPage';
+import CreatePostPage from './pages/CreatePostPage';
+import EditPostPage from './pages/EditPostPage';
 
 function App() {
   return (
@@ -32,6 +36,26 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* 帖子相关路由 */}
+            <Route path="posts" element={<PostListPage />} />
+            <Route path="posts/:id" element={<PostDetailPage />} />
+            <Route
+              path="posts/new"
+              element={
+                <ProtectedRoute>
+                  <CreatePostPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="posts/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <EditPostPage />
                 </ProtectedRoute>
               }
             />

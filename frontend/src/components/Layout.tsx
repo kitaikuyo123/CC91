@@ -1,19 +1,20 @@
 import { type ReactNode } from 'react';
+import { useAuth } from '../context/AuthContext';
 import Header from './Header';
 import Footer from './Footer';
 
 interface LayoutProps {
   children: ReactNode;
-  isLoggedIn?: boolean;
 }
 
 /**
  * 主布局组件 - 包含头部、内容区、底部
  */
-export default function Layout({ children, isLoggedIn = false }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
+  const { isAuthenticated } = useAuth();
   return (
     <div className="app">
-      <Header isLoggedIn={isLoggedIn} />
+      <Header isLoggedIn={isAuthenticated} />
       <main className="main">
         {children}
       </main>

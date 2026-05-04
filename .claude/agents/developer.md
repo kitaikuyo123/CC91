@@ -66,6 +66,16 @@ tools:
 - 代码清晰，不过度设计
 - 使用中文沟通
 
+## 完成前自查清单（每次提交前必须逐项确认）
+
+完成后在报告中逐项声明，每项附一个具体例子：
+
+- [ ] **springboot-patterns**：Controller/Service/Repository 分层是否正确？Controller 是否只做参数校验和转发？
+- [ ] **java-springboot**：异常处理是否使用 GlobalExceptionHandler？是否有遗漏的边界条件？
+- [ ] **typescript-react-reviewer**：React 组件是否避免了反模式（如内联组件定义、派生 state 用 effect）？
+- [ ] **vercel-react-best-practices**：是否有不必要的重渲染？useEffect 依赖是否正确？memo 使用是否合理？
+- [ ] **安全性**：用户输入是否验证？SQL 注入 / XSS 风险是否排除？
+
 ## 项目结构
 
 ```
