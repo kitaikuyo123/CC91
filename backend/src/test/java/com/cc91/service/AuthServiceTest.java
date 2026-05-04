@@ -5,10 +5,13 @@ import com.cc91.dto.LoginResponse;
 import com.cc91.dto.RegisterRequest;
 import com.cc91.dto.RegisterResponse;
 import com.cc91.dto.VerifyEmailRequest;
+import com.cc91.dto.RefreshTokenRequest;
 import com.cc91.entity.User;
 import com.cc91.entity.VerificationCode;
+import com.cc91.entity.RefreshToken;
 import com.cc91.repository.UserRepository;
 import com.cc91.repository.VerificationCodeRepository;
+import com.cc91.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,10 +42,14 @@ class AuthServiceTest {
     private VerificationCodeRepository verificationCodeRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanDatabase() {
+        refreshTokenRepository.deleteAll();
         verificationCodeRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -302,5 +309,295 @@ class AuthServiceTest {
         assertTrue(updatedUser.getIsLocked());
         assertNotNull(updatedUser.getLockUntil());
         assertTrue(updatedUser.getLockUntil().isAfter(LocalDateTime.now()));
+    }
+
+    // ==================== refreshToken 方法测试 ====================
+
+    @Test
+    @Transactional
+    void refreshToken_ValidToken_ReturnsNewTokens() {
+        // Arrange: 创建用户和刷新令牌
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        RefreshToken refreshToken = authService.createRefreshToken(user.getId());
+
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken(refreshToken.getToken());
+
+        // Act
+        com.cc91.dto.RefreshTokenResponse response = authService.refreshToken(request);
+
+        // Assert
+        assertNotNull(response);
+        assertNotNull(response.getAccessToken());
+        assertNotNull(response.getRefreshToken());
+        assertNotEquals(refreshToken.getToken(), response.getRefreshToken()); // 新的 refresh token
+
+        // Assert: 旧 token 被撤销
+        RefreshToken oldToken = refreshTokenRepository.findByToken(refreshToken.getToken()).orElse(null);
+        assertNotNull(oldToken);
+        assertTrue(oldToken.getRevoked());
+    }
+
+    @Test
+    @Transactional
+    void refreshToken_InvalidToken_ThrowsException() {
+        // Arrange
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken("invalid-token");
+
+        // Act & Assert
+        Exception exception = assertThrows(RuntimeException.class, () -> authService.refreshToken(request));
+        assertEquals("刷新令牌无效", exception.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void refreshToken_ExpiredToken_ThrowsException() {
+        // Arrange: 创建过期的刷新令牌
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        RefreshToken expiredToken = new RefreshToken(
+                user.getId(),
+                "expired-token",
+                LocalDateTime.now().minusMinutes(1) // 过期
+        );
+        refreshTokenRepository.save(expiredToken);
+
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken("expired-token");
+
+        // Act & Assert
+        Exception exception = assertThrows(RuntimeException.class, () -> authService.refreshToken(request));
+        assertEquals("刷新令牌已过期或已撤销", exception.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void refreshToken_RevokedToken_ThrowsException() {
+        // Arrange: 创建已撤销的刷新令牌
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        RefreshToken revokedToken = new RefreshToken(
+                user.getId(),
+                "revoked-token",
+                LocalDateTime.now().plusDays(7)
+        );
+        revokedToken.setRevoked(true);
+        refreshTokenRepository.save(revokedToken);
+
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken("revoked-token");
+
+        // Act & Assert
+        Exception exception = assertThrows(RuntimeException.class, () -> authService.refreshToken(request));
+        assertEquals("刷新令牌已过期或已撤销", exception.getMessage());
+    }
+
+    // ==================== logout 方法测试 ====================
+
+    @Test
+    @Transactional
+    void logout_ValidToken_MarksAsRevoked() {
+        // Arrange
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        RefreshToken refreshToken = authService.createRefreshToken(user.getId());
+
+        // Act
+        authService.logout(refreshToken.getToken());
+
+        // Assert
+        RefreshToken token = refreshTokenRepository.findByToken(refreshToken.getToken()).orElse(null);
+        assertNotNull(token);
+        assertTrue(token.getRevoked());
+    }
+
+    @Test
+    @Transactional
+    void logout_InvalidToken_ThrowsException() {
+        // Act & Assert
+        Exception exception = assertThrows(RuntimeException.class, () -> authService.logout("invalid-token"));
+        assertEquals("刷新令牌无效", exception.getMessage());
+    }
+
+    // ==================== revokeAllUserTokens 方法测试 ====================
+
+    @Test
+    @Transactional
+    void revokeAllUserTokens_RevokesAllValidTokens() {
+        // Arrange
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        RefreshToken token1 = authService.createRefreshToken(user.getId());
+        RefreshToken token2 = authService.createRefreshToken(user.getId());
+
+        // Act
+        authService.revokeAllUserTokens(user.getId());
+
+        // Assert
+        RefreshToken updatedToken1 = refreshTokenRepository.findById(token1.getId()).orElse(null);
+        RefreshToken updatedToken2 = refreshTokenRepository.findById(token2.getId()).orElse(null);
+
+        assertNotNull(updatedToken1);
+        assertNotNull(updatedToken2);
+        assertTrue(updatedToken1.getRevoked());
+        assertTrue(updatedToken2.getRevoked());
+    }
+
+    // ==================== forgotPassword 方法测试 ====================
+
+    @Test
+    @Transactional
+    void forgotPassword_ExistingEmail_CreatesVerificationCode() {
+        // Arrange
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        // Act
+        authService.forgotPassword("test@example.com");
+
+        // Assert: 验证码已创建
+        VerificationCode code = verificationCodeRepository
+                .findFirstByEmailAndTypeOrderByCreatedAtDesc("test@example.com", "PASSWORD_RESET")
+                .orElse(null);
+        assertNotNull(code);
+        assertFalse(code.getUsed());
+        assertEquals("PASSWORD_RESET", code.getType());
+    }
+
+    @Test
+    @Transactional
+    void forgotPassword_NonExistingEmail_DoesNotThrowException() {
+        // Act & Assert: 为了安全，不应抛出异常（防止邮箱枚举）
+        assertDoesNotThrow(() -> authService.forgotPassword("nonexistent@example.com"));
+    }
+
+    // ==================== resetPassword 方法测试 ====================
+
+    @Test
+    @Transactional
+    void resetPassword_ValidCode_ResetsPasswordAndUnlocksAccount() {
+        // Arrange
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        user.setIsLocked(true);
+        user.setFailedLoginAttempts(5);
+        userRepository.save(user);
+
+        VerificationCode code = new VerificationCode(
+                "test@example.com",
+                "123456",
+                "PASSWORD_RESET",
+                LocalDateTime.now().plusMinutes(10)
+        );
+        verificationCodeRepository.save(code);
+
+        // Act
+        authService.resetPassword("test@example.com", "123456", "newpassword123");
+
+        // Assert: 密码已更新
+        User updatedUser = userRepository.findByUsername("testuser").orElse(null);
+        assertNotNull(updatedUser);
+        assertTrue(passwordEncoder.matches("newpassword123", updatedUser.getPasswordHash()));
+
+        // Assert: 账户已解锁
+        assertFalse(updatedUser.getIsLocked());
+        assertEquals(0, updatedUser.getFailedLoginAttempts());
+
+        // Assert: 验证码已使用
+        VerificationCode updatedCode = verificationCodeRepository.findByEmailAndCode("test@example.com", "123456").orElse(null);
+        assertNotNull(updatedCode);
+        assertTrue(updatedCode.getUsed());
+    }
+
+    @Test
+    @Transactional
+    void resetPassword_InvalidCode_ThrowsException() {
+        // Arrange
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        // Act & Assert
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> authService.resetPassword("test@example.com", "invalid", "newpassword123"));
+        assertEquals("验证码不存在", exception.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void resetPassword_ExpiredCode_ThrowsException() {
+        // Arrange
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        VerificationCode expiredCode = new VerificationCode(
+                "test@example.com",
+                "123456",
+                "PASSWORD_RESET",
+                LocalDateTime.now().minusMinutes(1) // 过期
+        );
+        verificationCodeRepository.save(expiredCode);
+
+        // Act & Assert
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> authService.resetPassword("test@example.com", "123456", "newpassword123"));
+        assertEquals("验证码已过期", exception.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void resetPassword_WrongType_ThrowsException() {
+        // Arrange
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        VerificationCode wrongTypeCode = new VerificationCode(
+                "test@example.com",
+                "123456",
+                "REGISTER", // 错误的类型
+                LocalDateTime.now().plusMinutes(10)
+        );
+        verificationCodeRepository.save(wrongTypeCode);
+
+        // Act & Assert
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> authService.resetPassword("test@example.com", "123456", "newpassword123"));
+        assertEquals("验证码类型错误", exception.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void resetPassword_AfterReset_AllRefreshTokensRevoked() {
+        // Arrange
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        RefreshToken token1 = authService.createRefreshToken(user.getId());
+        RefreshToken token2 = authService.createRefreshToken(user.getId());
+
+        VerificationCode code = new VerificationCode(
+                "test@example.com",
+                "123456",
+                "PASSWORD_RESET",
+                LocalDateTime.now().plusMinutes(10)
+        );
+        verificationCodeRepository.save(code);
+
+        // Act
+        authService.resetPassword("test@example.com", "123456", "newpassword123");
+
+        // Assert: 所有刷新令牌被撤销
+        RefreshToken updatedToken1 = refreshTokenRepository.findById(token1.getId()).orElse(null);
+        RefreshToken updatedToken2 = refreshTokenRepository.findById(token2.getId()).orElse(null);
+
+        assertNotNull(updatedToken1);
+        assertNotNull(updatedToken2);
+        assertTrue(updatedToken1.getRevoked());
+        assertTrue(updatedToken2.getRevoked());
     }
 }

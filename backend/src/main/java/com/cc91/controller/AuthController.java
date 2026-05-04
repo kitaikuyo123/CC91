@@ -88,4 +88,68 @@ public class AuthController {
     public ResponseEntity<ApiResponse<String>> health() {
         return ResponseEntity.ok(ApiResponse.success("OK", "Auth API is running"));
     }
+
+    /**
+     * 刷新令牌
+     * POST /api/auth/refresh
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        try {
+            RefreshTokenResponse response = authService.refreshToken(request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(e.getMessage()));
+        }
+    }
+
+    /**
+     * 登出（撤销刷新令牌）
+     * POST /api/auth/logout
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        try {
+            authService.logout(request.getRefreshToken());
+            return ResponseEntity.ok(ApiResponse.success("登出成功"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.success(e.getMessage()));
+        }
+    }
+
+    /**
+     * 请求密码重置 - 发送验证码
+     * POST /api/auth/forgot-password
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+        authService.forgotPassword(request.getEmail());
+        // 为了安全，总是返回成功（防止邮箱枚举）
+        return ResponseEntity.ok(ApiResponse.success("如果该邮箱已注册，验证码已发送"));
+    }
+
+    /**
+     * 验证码 + 重置密码
+     * POST /api/auth/reset-password
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+        try {
+            authService.resetPassword(request.getEmail(), request.getCode(), request.getNewPassword());
+            return ResponseEntity.ok(ApiResponse.success("密码重置成功，请使用新密码登录"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.success(e.getMessage()));
+        }
+    }
 }

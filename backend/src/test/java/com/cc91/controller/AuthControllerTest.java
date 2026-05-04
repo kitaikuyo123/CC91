@@ -39,9 +39,17 @@ class AuthControllerTest {
     @Autowired
     private com.cc91.repository.UserRepository userRepository;
 
+    @Autowired
+    private com.cc91.repository.RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private com.cc91.repository.VerificationCodeRepository verificationCodeRepository;
+
     @BeforeEach
     @Transactional
     void cleanDatabase() {
+        verificationCodeRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -212,5 +220,194 @@ class AuthControllerTest {
         mockMvc.perform(get("/api/auth/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("OK"));
+    }
+
+    // ==================== refresh 接口测试 ====================
+
+    @Test
+    @Transactional
+    void refresh_ValidToken_Returns200() throws Exception {
+        // Arrange: 创建用户和刷新令牌
+        com.cc91.entity.User user = new com.cc91.entity.User(
+                "testuser",
+                "test@example.com",
+                passwordEncoder.encode("password123")
+        );
+        userRepository.save(user);
+
+        // 手动创建刷新令牌
+        com.cc91.entity.RefreshToken refreshToken = new com.cc91.entity.RefreshToken(
+                user.getId(),
+                java.util.UUID.randomUUID().toString(),
+                java.time.LocalDateTime.now().plusDays(7)
+        );
+        refreshTokenRepository.save(refreshToken);
+
+        String requestBody = String.format("{\"refreshToken\": \"%s\"}", refreshToken.getToken());
+
+        // Act & Assert
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists())
+                .andExpect(jsonPath("$.expiresIn").exists());
+    }
+
+    @Test
+    @Transactional
+    void refresh_InvalidToken_Returns401() throws Exception {
+        // Arrange
+        String requestBody = "{\"refreshToken\": \"invalid-token\"}";
+
+        // Act & Assert
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("刷新令牌无效"));
+    }
+
+    // ==================== logout 接口测试 ====================
+
+    @Test
+    @Transactional
+    void logout_ValidToken_Returns200() throws Exception {
+        // Arrange: 创建用户和刷新令牌
+        com.cc91.entity.User user = new com.cc91.entity.User(
+                "testuser",
+                "test@example.com",
+                passwordEncoder.encode("password123")
+        );
+        userRepository.save(user);
+
+        com.cc91.entity.RefreshToken refreshToken = new com.cc91.entity.RefreshToken(
+                user.getId(),
+                java.util.UUID.randomUUID().toString(),
+                java.time.LocalDateTime.now().plusDays(7)
+        );
+        refreshTokenRepository.save(refreshToken);
+
+        String requestBody = String.format("{\"refreshToken\": \"%s\"}", refreshToken.getToken());
+
+        // Act & Assert
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("登出成功"));
+    }
+
+    // ==================== forgot-password 接口测试 ====================
+
+    @Test
+    @Transactional
+    void forgotPassword_ExistingEmail_Returns200() throws Exception {
+        // Arrange: 创建用户
+        com.cc91.entity.User user = new com.cc91.entity.User(
+                "testuser",
+                "test@example.com",
+                passwordEncoder.encode("password123")
+        );
+        userRepository.save(user);
+
+        String requestBody = "{\"email\": \"test@example.com\"}";
+
+        // Act & Assert
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("如果该邮箱已注册，验证码已发送"));
+    }
+
+    @Test
+    void forgotPassword_NonExistingEmail_Returns200() throws Exception {
+        // 为了安全，即使邮箱不存在也返回成功
+        String requestBody = "{\"email\": \"nonexistent@example.com\"}";
+
+        // Act & Assert
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("如果该邮箱已注册，验证码已发送"));
+    }
+
+    // ==================== reset-password 接口测试 ====================
+
+    @Test
+    @Transactional
+    void resetPassword_ValidCode_Returns200() throws Exception {
+        // Arrange: 创建用户和验证码
+        com.cc91.entity.User user = new com.cc91.entity.User(
+                "testuser",
+                "test@example.com",
+                passwordEncoder.encode("password123")
+        );
+        userRepository.save(user);
+
+        com.cc91.entity.VerificationCode code = new com.cc91.entity.VerificationCode(
+                "test@example.com",
+                "123456",
+                "PASSWORD_RESET",
+                java.time.LocalDateTime.now().plusMinutes(10)
+        );
+        verificationCodeRepository.save(code);
+
+        String requestBody = """
+            {
+                "email": "test@example.com",
+                "code": "123456",
+                "newPassword": "newpassword123"
+            }
+            """;
+
+        // Act & Assert
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("密码重置成功，请使用新密码登录"));
+    }
+
+    @Test
+    @Transactional
+    void resetPassword_InvalidCode_Returns400() throws Exception {
+        // Arrange
+        String requestBody = """
+            {
+                "email": "test@example.com",
+                "code": "invalid",
+                "newPassword": "newpassword123"
+            }
+            """;
+
+        // Act & Assert
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("验证码不存在"));
+    }
+
+    @Test
+    @Transactional
+    void resetPassword_ShortPassword_Returns400() throws Exception {
+        // Arrange: 密码太短
+        String requestBody = """
+            {
+                "email": "test@example.com",
+                "code": "123456",
+                "newPassword": "12345"
+            }
+            """;
+
+        // Act & Assert: @Valid 注解会拦截
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
     }
 }
