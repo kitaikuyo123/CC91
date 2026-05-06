@@ -99,7 +99,7 @@ class CategoryControllerTest {
     // ==================== POST /api/categories ====================
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     void createCategory_ValidRequest_Returns200() throws Exception {
         // Arrange
         String requestBody = """
@@ -124,7 +124,7 @@ class CategoryControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     @Transactional
     void createCategory_DuplicateName_Returns400() throws Exception {
         // Arrange
@@ -150,7 +150,7 @@ class CategoryControllerTest {
     // ==================== PUT /api/categories/{id} ====================
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     @Transactional
     void updateCategory_ValidRequest_Returns200() throws Exception {
         // Arrange
@@ -177,7 +177,7 @@ class CategoryControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     void updateCategory_NotFound_Returns404() throws Exception {
         String requestBody = """
             {
@@ -194,7 +194,7 @@ class CategoryControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     @Transactional
     void updateCategory_DuplicateName_Returns400() throws Exception {
         // Arrange
@@ -220,7 +220,7 @@ class CategoryControllerTest {
     // ==================== DELETE /api/categories/{id} ====================
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     @Transactional
     void deleteCategory_Existing_Returns200() throws Exception {
         // Arrange
@@ -234,7 +234,7 @@ class CategoryControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     void deleteCategory_NotFound_Returns404() throws Exception {
         mockMvc.perform(delete("/api/categories/999"))
                 .andExpect(status().isNotFound())

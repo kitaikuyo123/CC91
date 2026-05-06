@@ -75,9 +75,9 @@ class AdminContentControllerTest {
         // Act & Assert
         mockMvc.perform(get("/api/admin/posts?status=PUBLISHED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].title").value("Title1"));
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].title").value("Title1"));
     }
 
     @Test

@@ -10,7 +10,7 @@ spring:
   # Database Configuration
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/cc91_db?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
-    username: root
+    username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
@@ -22,11 +22,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none  # 使用 Flyway 管理数据库版本
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
-        format_sql: true
+        format_sql: false
     open-in-view: false
 
   # Flyway Configuration
@@ -50,13 +50,13 @@ cors:
   allow-credentials: true
   max-age: 3600
 
-# Logging Configuration
+# Logging Configuration (production defaults)
 logging:
   level:
-    com.cc91: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    com.cc91: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
