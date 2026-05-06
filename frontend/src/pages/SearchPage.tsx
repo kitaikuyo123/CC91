@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { searchPosts, type Post } from '../api/post';
 import { queryKeys } from '../lib/queryKeys';
 import { useDebounce } from '../hooks';
+import { formatDate } from '../utils/formatDate';
 
 /**
  * 搜索页面组件
@@ -57,27 +58,29 @@ export default function SearchPage() {
       <div className="card">
         <h1 style={{ marginBottom: '1.5rem' }}>搜索帖子</h1>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        <form onSubmit={handleSubmit} role="search" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          <label htmlFor="search-input" className="visually-hidden">搜索关键词</label>
           <input
+            id="search-input"
             type="text"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="输入关键词搜索标题或内容..."
-            style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px' }}
+            style={{ flex: 1, padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }}
           />
-          <button type="submit" className="btn btn-primary" disabled={isLoading}>
-            {isLoading ? <span className="spinner"></span> : '搜索'}
+          <button type="submit" className="btn btn-primary" disabled={isLoading} aria-busy={isLoading}>
+            {isLoading ? <span className="spinner" aria-hidden="true"></span> : '搜索'}
           </button>
         </form>
 
         {searched && (
           <>
-            <div style={{ marginBottom: '1rem', color: '#666' }}>
+            <div style={{ marginBottom: '1rem', color: 'var(--color-text-muted)' }}>
               找到 {searchResults?.totalElements || 0} 条结果
             </div>
 
             {results.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
+              <div className="empty-state">
                 {isLoading ? '搜索中...' : '没有找到匹配的帖子'}
               </div>
             ) : (
@@ -87,51 +90,54 @@ export default function SearchPage() {
                     <div
                       key={post.id}
                       className="card post-item"
-                      onClick={() => window.open(`/posts/${post.id}`, '_blank')}
-                      style={{ cursor: 'pointer', marginBottom: '1rem', padding: '1rem' }}
+                      role="link"
+                      tabIndex={0}
+                      onClick={() => navigate(`/posts/${post.id}`)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/posts/${post.id}`); } }}
+                      aria-label={`帖子: ${post.title}`}
+                      style={{ marginBottom: '1rem', padding: '1rem' }}
                     >
-                      <h3 style={{ marginBottom: '0.5rem', color: '#3498db' }}>{post.title}</h3>
-                      <p style={{ color: '#666', fontSize: '0.9rem' }}>
-                        {post.content.substring(0, 150)}...
+                      <h3 style={{ marginBottom: '0.5rem', color: 'var(--color-primary)' }}>{post.title}</h3>
+                      <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+                        {post.content ? `${post.content.substring(0, 150)}...` : ''}
                       </p>
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#999' }}>
+                      <div className="post-meta" style={{ marginTop: '0.5rem' }}>
                         <span>作者: {post.authorUsername}</span>
                         {post.categoryName && (
-                          <span style={{ marginLeft: '1rem' }}>版块: {post.categoryName}</span>
+                          <span>版块: {post.categoryName}</span>
                         )}
-                        <span style={{ marginLeft: '1rem' }}>
-                          {new Date(post.createdAt).toLocaleString()}
+                        <span>
+                          <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time>
                         </span>
-                        <span style={{ marginLeft: '1rem' }}>
-                          浏览: {post.viewCount}
-                        </span>
+                        <span>浏览: {post.viewCount}</span>
+                        <span>评论: {post.commentCount}</span>
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {totalPages > 1 && (
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+                  <nav className="pagination" aria-label="搜索结果分页">
                     <button
                       className="btn"
                       onClick={() => handlePageChange(page - 1)}
                       disabled={page === 0}
-                      style={{ marginRight: '0.5rem' }}
+                      aria-label="上一页"
                     >
                       上一页
                     </button>
-                    <span style={{ padding: '0.5rem 1rem' }}>
+                    <span className="pagination-info">
                       第 {page + 1} / {totalPages} 页
                     </span>
                     <button
                       className="btn"
                       onClick={() => handlePageChange(page + 1)}
                       disabled={page >= totalPages - 1}
-                      style={{ marginLeft: '0.5rem' }}
+                      aria-label="下一页"
                     >
                       下一页
                     </button>
-                  </div>
+                  </nav>
                 )}
               </>
             )}

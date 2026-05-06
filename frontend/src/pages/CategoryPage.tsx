@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getCategoryById } from '../api/category';
 import { getPostsByCategory, type Post } from '../api/post';
 import { queryKeys } from '../lib/queryKeys';
+import { formatDate } from '../utils/formatDate';
 
 /**
  * 版块页面组件
@@ -41,13 +42,20 @@ export default function CategoryPage() {
   };
 
   if (loading) {
-    return <div className="container" style={{ marginTop: '2rem' }}>加载中...</div>;
+    return (
+      <div className="loading-container">
+        <div className="spinner spinner-lg"></div>
+        <span>加载中...</span>
+      </div>
+    );
   }
 
   if (error || !category) {
-    return <div className="container" style={{ marginTop: '2rem' }}>
-      <div className="error-message">{(error as any)?.response?.data?.message || '加载失败'}</div>
-    </div>;
+    return (
+      <div className="container" style={{ marginTop: '2rem' }}>
+        <div className="error-message" role="alert">{(error as any)?.response?.data?.message || '加载失败'}</div>
+      </div>
+    );
   }
 
   return (
@@ -55,14 +63,12 @@ export default function CategoryPage() {
       <div style={{ marginBottom: '1.5rem' }}>
         <h1>{category.name}</h1>
         {category.description && (
-          <p style={{ color: '#666' }}>{category.description}</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>{category.description}</p>
         )}
       </div>
 
       {posts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
-          暂无帖子
-        </div>
+        <div className="empty-state">暂无帖子</div>
       ) : (
         <>
           <div className="post-list">
@@ -70,48 +76,50 @@ export default function CategoryPage() {
               <div
                 key={post.id}
                 className="card post-item"
-                onClick={() => window.open(`/posts/${post.id}`, '_blank')}
-                style={{ cursor: 'pointer', marginBottom: '1rem' }}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/posts/${post.id}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/posts/${post.id}`); } }}
+                aria-label={`帖子: ${post.title}`}
               >
                 <h3 style={{ marginBottom: '0.5rem' }}>{post.title}</h3>
-                <p style={{ color: '#666', fontSize: '0.9rem' }}>
-                  {post.content.substring(0, 150)}...
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+                  {post.content ? `${post.content.substring(0, 150)}...` : ''}
                 </p>
-                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#999' }}>
+                <div className="post-meta" style={{ marginTop: '0.5rem' }}>
                   <span>作者: {post.authorUsername}</span>
-                  <span style={{ marginLeft: '1rem' }}>
-                    {new Date(post.createdAt).toLocaleString()}
+                  <span>
+                    <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time>
                   </span>
-                  <span style={{ marginLeft: '1rem' }}>
-                    浏览: {post.viewCount}
-                  </span>
+                  <span>浏览: {post.viewCount}</span>
+                  <span>评论: {post.commentCount}</span>
                 </div>
               </div>
             ))}
           </div>
 
           {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+            <nav className="pagination" aria-label="版块帖子分页">
               <button
                 className="btn"
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page === 0}
-                style={{ marginRight: '0.5rem' }}
+                aria-label="上一页"
               >
                 上一页
               </button>
-              <span style={{ padding: '0.5rem 1rem' }}>
+              <span className="pagination-info">
                 第 {page + 1} / {totalPages} 页
               </span>
               <button
                 className="btn"
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page >= totalPages - 1}
-                style={{ marginLeft: '0.5rem' }}
+                aria-label="下一页"
               >
                 下一页
               </button>
-            </div>
+            </nav>
           )}
         </>
       )}

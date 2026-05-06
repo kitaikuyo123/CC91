@@ -1,6 +1,7 @@
 package com.cc91.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -17,6 +18,7 @@ public class CreatePostRequest {
 
     private Long categoryId;
 
+    @Pattern(regexp = "^(PUBLISHED|DRAFT)$", message = "状态必须是 PUBLISHED 或 DRAFT")
     private String status;
 
     public CreatePostRequest() {}

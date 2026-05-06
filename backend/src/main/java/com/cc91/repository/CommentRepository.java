@@ -26,4 +26,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * 根据父评论ID查询回复
      */
     List<Comment> findByParentIdOrderByCreatedAtAsc(Long parentId);
+
+    /**
+     * 统计帖子的所有评论数（包括子评论）
+     */
+    long countByPostId(Long postId);
+
+    /**
+     * 统计帖子的已发布评论数（包括子评论）
+     */
+    long countByPostIdAndStatus(Long postId, String status);
 }

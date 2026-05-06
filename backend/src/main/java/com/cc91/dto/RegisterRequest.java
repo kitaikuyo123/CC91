@@ -18,7 +18,7 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "密码不能为空")
-    @Size(min = 6, message = "密码长度至少为6个字符")
+    @Size(min = 6, max = 128, message = "密码长度必须在6-128个字符之间")
     private String password;
 
     // Getters and Setters

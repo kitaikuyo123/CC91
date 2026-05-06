@@ -4,6 +4,9 @@ import com.cc91.dto.*;
 import com.cc91.entity.User;
 import com.cc91.entity.VerificationCode;
 import com.cc91.entity.RefreshToken;
+import com.cc91.exception.BadRequestException;
+import com.cc91.exception.ResourceNotFoundException;
+import com.cc91.exception.UnauthorizedException;
 import com.cc91.repository.UserRepository;
 import com.cc91.repository.VerificationCodeRepository;
 import com.cc91.repository.RefreshTokenRepository;
@@ -18,9 +21,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 /**
@@ -70,12 +73,12 @@ public class AuthService {
     public RegisterResponse register(RegisterRequest request) {
         // 检查用户名是否存在
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("用户名已被使用");
+            throw new BadRequestException("用户名已被使用");
         }
 
         // 检查邮箱是否存在
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("邮箱已被注册");
+            throw new BadRequestException("邮箱已被注册");
         }
 
         // 创建用户，设置 isLocked = true（未验证邮箱不能登录）
@@ -116,17 +119,17 @@ public class AuthService {
     @Transactional
     public void verifyEmail(VerifyEmailRequest request) {
         VerificationCode verificationCode = verificationCodeRepository
-                .findByEmailAndCode(request.getEmail(), request.getCode())
-                .orElseThrow(() -> new RuntimeException("验证码不存在"));
+                .findByEmailAndCodeAndType(request.getEmail(), request.getCode(), "REGISTER")
+                .orElseThrow(() -> new BadRequestException("验证码不存在"));
 
         // 检查验证码是否已使用
         if (verificationCode.getUsed()) {
-            throw new RuntimeException("验证码已使用");
+            throw new BadRequestException("验证码已使用");
         }
 
         // 检查验证码是否过期
         if (verificationCode.isExpired()) {
-            throw new RuntimeException("验证码已过期");
+            throw new BadRequestException("验证码已过期");
         }
 
         // 标记验证码为已使用
@@ -135,7 +138,7 @@ public class AuthService {
 
         // 查找对应邮箱的 User，解锁账户
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
         user.setIsLocked(false);
         userRepository.save(user);
 
@@ -148,7 +151,7 @@ public class AuthService {
     @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("用户名或密码错误"));
+                .orElseThrow(() -> new UnauthorizedException("用户名或密码错误"));
 
         // 检查账户是否锁定
         if (user.isAccountLocked()) {
@@ -156,7 +159,7 @@ public class AuthService {
                     LocalDateTime.now(),
                     user.getLockUntil()
             ).toMinutes();
-            throw new RuntimeException("账户已锁定，请 " + remainingMinutes + " 分钟后重试");
+            throw new UnauthorizedException("账户已锁定，请 " + remainingMinutes + " 分钟后重试");
         }
 
         try {
@@ -200,7 +203,7 @@ public class AuthService {
             }
 
             logger.warn("登录失败: {} (失败次数: {})", user.getUsername(), attempts);
-            throw new RuntimeException("用户名或密码错误");
+            throw new UnauthorizedException("用户名或密码错误");
         }
     }
 
@@ -208,8 +211,8 @@ public class AuthService {
      * 生成 6 位数字验证码
      */
     private String generateVerificationCode() {
-        Random random = new Random();
-        int code = 100000 + random.nextInt(900000);
+        SecureRandom secureRandom = new SecureRandom();
+        int code = 100000 + secureRandom.nextInt(900000);
         return String.valueOf(code);
     }
 
@@ -232,16 +235,16 @@ public class AuthService {
     @Transactional
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(request.getRefreshToken())
-                .orElseThrow(() -> new RuntimeException("刷新令牌无效"));
+                .orElseThrow(() -> new UnauthorizedException("刷新令牌无效"));
 
         // 验证令牌是否有效
         if (!refreshToken.isValid()) {
-            throw new RuntimeException("刷新令牌已过期或已撤销");
+            throw new UnauthorizedException("刷新令牌已过期或已撤销");
         }
 
         // 获取用户信息
         User user = userRepository.findById(refreshToken.getUserId())
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
 
         // 撤销旧的刷新令牌（令牌轮换）
         refreshToken.setRevoked(true);
@@ -263,7 +266,7 @@ public class AuthService {
     @Transactional
     public void logout(String refreshToken) {
         RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("刷新令牌无效"));
+                .orElseThrow(() -> new UnauthorizedException("刷新令牌无效"));
 
         token.setRevoked(true);
         refreshTokenRepository.save(token);
@@ -323,26 +326,26 @@ public class AuthService {
         // 验证验证码
         VerificationCode verificationCode = verificationCodeRepository
                 .findByEmailAndCode(email, code)
-                .orElseThrow(() -> new RuntimeException("验证码不存在"));
+                .orElseThrow(() -> new BadRequestException("验证码不存在"));
 
         // 检查验证码是否已使用
         if (verificationCode.getUsed()) {
-            throw new RuntimeException("验证码已使用");
+            throw new BadRequestException("验证码已使用");
         }
 
         // 检查验证码是否过期
         if (verificationCode.isExpired()) {
-            throw new RuntimeException("验证码已过期");
+            throw new BadRequestException("验证码已过期");
         }
 
         // 检查验证码类型
         if (!"PASSWORD_RESET".equals(verificationCode.getType())) {
-            throw new RuntimeException("验证码类型错误");
+            throw new BadRequestException("验证码类型错误");
         }
 
         // 获取用户
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
 
         // 更新密码
         user.setPasswordHash(passwordEncoder.encode(newPassword));

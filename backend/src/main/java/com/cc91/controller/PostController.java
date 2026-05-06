@@ -85,6 +85,14 @@ public class PostController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "PUBLISHED") String status
     ) {
+        // 非管理员请求非 PUBLISHED 状态时，强制改为 PUBLISHED
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = authentication != null && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !"PUBLISHED".equals(status)) {
+            status = "PUBLISHED";
+        }
         Page<PostResponse> posts = postService.getPostList(page, size, status);
         return ResponseEntity.ok(posts);
     }

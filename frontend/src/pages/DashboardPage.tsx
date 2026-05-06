@@ -33,30 +33,36 @@ export default function DashboardPage() {
       </div>
 
       {/* 快捷操作 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div
-          className="card"
+          className="card post-item"
+          role="button"
+          tabIndex={0}
           onClick={() => navigate('/posts/new')}
-          style={{ cursor: 'pointer', textAlign: 'center', padding: '1.5rem' }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/posts/new'); } }}
+          style={{ textAlign: 'center', padding: '1.5rem' }}
+          aria-label="发布新帖"
         >
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✏️</div>
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }} aria-hidden="true">&#x270F;&#xFE0F;</div>
           <div style={{ fontWeight: '500' }}>发帖</div>
         </div>
 
         <div
-          className="card"
+          className="card post-item"
+          role="button"
+          tabIndex={0}
           onClick={() => navigate('/notifications')}
-          style={{ cursor: 'pointer', textAlign: 'center', padding: '1.5rem', position: 'relative' }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/notifications'); } }}
+          style={{ textAlign: 'center', padding: '1.5rem', position: 'relative' }}
+          aria-label={`通知${unreadCount > 0 ? `，${unreadCount}条未读` : ''}`}
         >
           {unreadCount > 0 && (
-            <span style={{
+            <span className="badge badge-danger" style={{
               position: 'absolute',
               top: '10px',
               right: '10px',
-              background: '#e74c3c',
-              color: '#fff',
-              borderRadius: '50%',
-              width: '20px',
+              borderRadius: 'var(--radius-full)',
+              minWidth: '20px',
               height: '20px',
               display: 'flex',
               alignItems: 'center',
@@ -66,32 +72,40 @@ export default function DashboardPage() {
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔔</div>
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }} aria-hidden="true">&#x1F514;</div>
           <div style={{ fontWeight: '500' }}>通知</div>
         </div>
 
         <div
-          className="card"
+          className="card post-item"
+          role="button"
+          tabIndex={0}
           onClick={() => navigate(`/profile/${user?.username}`)}
-          style={{ cursor: 'pointer', textAlign: 'center', padding: '1.5rem' }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/profile/${user?.username}`); } }}
+          style={{ textAlign: 'center', padding: '1.5rem' }}
+          aria-label="查看我的资料"
         >
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>👤</div>
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }} aria-hidden="true">&#x1F464;</div>
           <div style={{ fontWeight: '500' }}>我的资料</div>
         </div>
 
         {user?.role === 'ADMIN' && (
           <div
-            className="card"
+            className="card post-item"
+            role="button"
+            tabIndex={0}
             onClick={() => navigate('/admin')}
-            style={{ cursor: 'pointer', textAlign: 'center', padding: '1.5rem', background: '#2c3e50', color: '#fff' }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/admin'); } }}
+            style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--color-header-bg)', color: '#fff' }}
+            aria-label="管理后台"
           >
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚙️</div>
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }} aria-hidden="true">&#x2699;&#xFE0F;</div>
             <div style={{ fontWeight: '500' }}>管理后台</div>
           </div>
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+      <div className="home-content-grid">
         {/* 左侧：说明区域 */}
         <div>
           <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
@@ -198,8 +212,7 @@ export default function DashboardPage() {
       <div style={{ marginTop: '2rem', textAlign: 'center' }}>
         <button
           onClick={logout}
-          className="btn"
-          style={{ background: '#e74c3c', color: '#fff' }}
+          className="btn btn-danger"
         >
           退出登录
         </button>

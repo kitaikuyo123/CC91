@@ -96,8 +96,13 @@ export default function CategoryManage() {
     saveMutation.mutate({ id: editingId || undefined, data: formData });
   };
 
-  if (loading) {
-    return <div>加载中...</div>;
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="spinner spinner-lg"></div>
+        <span>加载中...</span>
+      </div>
+    );
   }
 
   return (
@@ -116,7 +121,7 @@ export default function CategoryManage() {
       )}
 
       {success && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#d4edda', color: '#155724', borderRadius: '4px' }}>
+        <div className="success-message" style={{ marginBottom: '1rem' }}>
           {success}
         </div>
       )}
@@ -126,8 +131,9 @@ export default function CategoryManage() {
           <h2 style={{ marginBottom: '1rem' }}>{editingId ? '编辑版块' : '新建版块'}</h2>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>版块名称 *</label>
+              <label htmlFor="cat-name">版块名称 <span aria-hidden="true">*</span></label>
               <input
+                id="cat-name"
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -137,19 +143,20 @@ export default function CategoryManage() {
             </div>
 
             <div className="form-group">
-              <label>版块描述</label>
+              <label htmlFor="cat-desc">版块描述</label>
               <textarea
+                id="cat-desc"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="请输入版块描述"
                 rows={3}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
               />
             </div>
 
             <div className="form-group">
-              <label>排序顺序</label>
+              <label htmlFor="cat-sort">排序顺序</label>
               <input
+                id="cat-sort"
                 type="number"
                 value={formData.sortOrder}
                 onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
@@ -171,42 +178,40 @@ export default function CategoryManage() {
       )}
 
       <div className="card">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #eee' }}>
-              <th style={{ padding: '0.75rem', textAlign: 'left' }}>排序</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left' }}>名称</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left' }}>描述</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left' }}>操作</th>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>排序</th>
+                <th>名称</th>
+                <th>描述</th>
+                <th>操作</th>
             </tr>
           </thead>
           <tbody>
             {categories.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
+                <td colSpan={4} className="empty-state">
                   暂无版块
                 </td>
               </tr>
             ) : (
               categories.map((category) => (
-                <tr key={category.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem' }}>{category.sortOrder}</td>
-                  <td style={{ padding: '0.75rem', fontWeight: '500' }}>{category.name}</td>
-                  <td style={{ padding: '0.75rem', color: '#666' }}>
-                    {category.description || '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>
+                <tr key={category.id}>
+                  <td>{category.sortOrder}</td>
+                  <td style={{ fontWeight: '500' }}>{category.name}</td>
+                  <td className="hide-mobile">{category.description || '-'}</td>
+                  <td>
                     <button
-                      className="btn"
+                      className="btn btn-sm"
                       onClick={() => handleEdit(category)}
-                      style={{ marginRight: '0.5rem', fontSize: '0.85rem' }}
+                      style={{ marginRight: '0.5rem' }}
                     >
                       编辑
                     </button>
                     <button
-                      className="btn"
+                      className="btn btn-danger btn-sm"
                       onClick={() => handleDelete(category.id, category.name)}
-                      style={{ background: '#e74c3c', color: '#fff', fontSize: '0.85rem' }}
                     >
                       删除
                     </button>
@@ -216,6 +221,7 @@ export default function CategoryManage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

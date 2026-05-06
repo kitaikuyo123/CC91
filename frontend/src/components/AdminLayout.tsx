@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 /**
@@ -5,95 +6,77 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
  */
 export default function AdminLayout() {
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
+  const navItems = [
+    { to: '/admin', label: '首页', icon: '\u{1F4CA}' },
+    { to: '/admin/categories', label: '版块管理', icon: '\u{1F4C1}' },
+    { to: '/admin/content', label: '内容审核', icon: '\u{1F4DD}' },
+    { to: '/admin/users', label: '用户管理', icon: '\u{1F465}' },
+  ];
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* 侧边栏 */}
-      <aside style={{
-        width: '250px',
-        background: '#2c3e50',
-        color: '#fff',
-        padding: '1rem 0',
-        flexShrink: 0
-      }}>
-        <div style={{
-          padding: '0 1rem 1rem',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-          marginBottom: '1rem'
-        }}>
+    <div className="admin-layout">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="admin-sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile header */}
+      <div className="admin-mobile-header">
+        <button
+          className="admin-menu-toggle"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label={sidebarOpen ? '关闭菜单' : '打开菜单'}
+          aria-expanded={sidebarOpen}
+        >
+          <span className={`hamburger ${sidebarOpen ? 'hamburger-open' : ''}`}>
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
+        <span style={{ fontWeight: 600, color: '#fff' }}>管理后台</span>
+      </div>
+
+      {/* Sidebar */}
+      <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : ''}`}>
+        <div className="admin-sidebar-header">
           <h2 style={{ margin: 0, fontSize: '1.2rem' }}>管理后台</h2>
         </div>
 
-        <nav>
-          <Link
-            to="/admin"
-            style={{
-              display: 'block',
-              padding: '0.75rem 1rem',
-              color: '#fff',
-              textDecoration: 'none',
-              background: isActive('/admin') ? 'rgba(52, 152, 219, 0.3)' : 'transparent'
-            }}
-          >
-            📊 首页
-          </Link>
-          <Link
-            to="/admin/categories"
-            style={{
-              display: 'block',
-              padding: '0.75rem 1rem',
-              color: '#fff',
-              textDecoration: 'none',
-              background: isActive('/admin/categories') ? 'rgba(52, 152, 219, 0.3)' : 'transparent'
-            }}
-          >
-            📁 版块管理
-          </Link>
-          <Link
-            to="/admin/content"
-            style={{
-              display: 'block',
-              padding: '0.75rem 1rem',
-              color: '#fff',
-              textDecoration: 'none',
-              background: isActive('/admin/content') ? 'rgba(52, 152, 219, 0.3)' : 'transparent'
-            }}
-          >
-            📝 内容审核
-          </Link>
-          <Link
-            to="/admin/users"
-            style={{
-              display: 'block',
-              padding: '0.75rem 1rem',
-              color: '#fff',
-              textDecoration: 'none',
-              background: isActive('/admin/users') ? 'rgba(52, 152, 219, 0.3)' : 'transparent'
-            }}
-          >
-            👥 用户管理
-          </Link>
+        <nav aria-label="管理导航">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`admin-nav-link ${isActive(item.to) ? 'admin-nav-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+              aria-current={isActive(item.to) ? 'page' : undefined}
+            >
+              <span aria-hidden="true">{item.icon}</span> {item.label}
+            </Link>
+          ))}
           <Link
             to="/"
-            style={{
-              display: 'block',
-              padding: '0.75rem 1rem',
-              color: 'rgba(255,255,255,0.7)',
-              textDecoration: 'none',
-              marginTop: '1rem'
-            }}
+            className="admin-nav-link admin-nav-back"
+            onClick={() => setSidebarOpen(false)}
           >
-            ← 返回论坛
+            &larr; 返回论坛
           </Link>
         </nav>
       </aside>
 
-      {/* 主内容区 */}
-      <main style={{ flex: 1, background: '#f5f5f5', padding: '2rem' }}>
+      {/* Main content */}
+      <main className="admin-main">
         <Outlet />
       </main>
     </div>

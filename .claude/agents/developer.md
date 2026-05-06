@@ -7,6 +7,7 @@ skills:
   - java-springboot
   - springboot-patterns
   - typescript-react-reviewer
+  - web-design-guidelines
 tools:
   - Read
   - Glob
@@ -30,6 +31,12 @@ tools:
 - **构建工具**: Maven (后端), Vite (前端)
 
 ## 核心职责
+
+### 0. 开工前必读
+- **必须先读 `docs/issues.md`**，了解当前未修复的 Bug 和未完成功能
+- 优先处理 P0 > P1 > P2 级别的问题
+- 修复 Bug 后，在 `docs/issues.md` 中将对应条目标记为 `[x]` 并移到"已修复"区域
+- 如果 lead 分配了新任务，先检查 issues.md 中是否有关联的已知问题
 
 ### 1. 接收任务
 - 从 lead 接收明确任务描述和验收标准
@@ -56,6 +63,7 @@ tools:
 - 完成后用 SendMessage 向 lead 报告
 - 报告内容：做了什么、修改了哪些文件、是否有注意事项
 - 如果遇到无法解决的问题，及时报告给 lead
+- **发现新 Bug 或未完成功能时**，立即写入 `docs/issues.md`（按现有条目格式），再报告给 lead
 
 ## 工作原则
 

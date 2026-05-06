@@ -49,7 +49,22 @@
       "Bash(git push:*)",
       "Skill(update-config)",
       "Bash(grep \"\\\\.env$\")",
-      "Bash(timeout 30 mvn spring-boot:run)"
+      "Bash(timeout 30 mvn spring-boot:run)",
+      "Bash(winget install:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" auth status)",
+      "Bash(\"/c/Program Files \\(x86\\)/GitHub CLI/gh.exe\" auth status)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh auth:*)",
+      "Bash(rm -rf ~/.claude/teams/cc91-fix)",
+      "Bash(rm -rf ~/.claude/tasks/cc91-fix)",
+      "Bash(net start:*)",
+      "Bash(sc query:*)",
+      "Bash(mv pages/*.test.tsx __tests__/pages/)",
+      "Bash(mv components/*.test.tsx __tests__/components/)",
+      "Bash(mv context/*.test.tsx __tests__/context/)",
+      "Bash(find . -name \"*.tsx\" -exec sed -i \"s|'\\\\.\\\\./api/|'../../api/|g; s|'\\\\.\\\\./context/|'../../context/|g; s|'\\\\.\\\\./components/|'../../components/|g; s|'\\\\.\\\\./hooks/|'../../hooks/|g\" {} +)",
+      "Bash(gh pr create --title 'feat: 修复注册流程、完善帖子功能、新增管理后台模块' --body ':*)",
+      "Bash(xxd \"D:/aToys/LargeScale/frontend/src/pages/PostListPage.tsx\")"
     ]
   }
 }

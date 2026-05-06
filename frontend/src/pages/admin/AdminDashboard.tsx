@@ -39,7 +39,12 @@ export default function AdminDashboard() {
   const recentUsers = users.slice(0, 5);
 
   if (loading) {
-    return <div>加载中...</div>;
+    return (
+      <div className="loading-container">
+        <div className="spinner spinner-lg"></div>
+        <span>加载中...</span>
+      </div>
+    );
   }
 
   return (
@@ -47,102 +52,79 @@ export default function AdminDashboard() {
       <h1 style={{ marginBottom: '1.5rem' }}>管理后台首页</h1>
 
       {/* 统计卡片 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>👥</div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3498db' }}>{stats.totalUsers}</div>
-          <div style={{ color: '#666' }}>总用户数</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        <div className="stat-card">
+          <div className="stat-card-icon" aria-hidden="true">&#x1F465;</div>
+          <div className="stat-card-value" style={{ color: 'var(--color-primary)' }}>{stats.totalUsers}</div>
+          <div className="stat-card-label">总用户数</div>
         </div>
 
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📝</div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2ecc71' }}>{stats.totalPosts}</div>
-          <div style={{ color: '#666' }}>总帖子数</div>
+        <div className="stat-card">
+          <div className="stat-card-icon" aria-hidden="true">&#x1F4DD;</div>
+          <div className="stat-card-value" style={{ color: 'var(--color-success)' }}>{stats.totalPosts}</div>
+          <div className="stat-card-label">总帖子数</div>
         </div>
 
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📁</div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f39c12' }}>{stats.totalCategories}</div>
-          <div style={{ color: '#666' }}>版块数量</div>
+        <div className="stat-card">
+          <div className="stat-card-icon" aria-hidden="true">&#x1F4C1;</div>
+          <div className="stat-card-value" style={{ color: 'var(--color-warning)' }}>{stats.totalCategories}</div>
+          <div className="stat-card-label">版块数量</div>
         </div>
 
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔒</div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#e74c3c' }}>{stats.lockedUsers}</div>
-          <div style={{ color: '#666' }}>封禁用户</div>
+        <div className="stat-card">
+          <div className="stat-card-icon" aria-hidden="true">&#x1F512;</div>
+          <div className="stat-card-value" style={{ color: 'var(--color-danger)' }}>{stats.lockedUsers}</div>
+          <div className="stat-card-label">封禁用户</div>
         </div>
       </div>
 
       {/* 快捷入口 */}
-      <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+      <div className="admin-card" style={{ marginBottom: '2rem' }}>
         <h2 style={{ marginBottom: '1rem' }}>快捷操作</h2>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <Link to="/admin/categories" style={{
-            padding: '0.75rem 1.5rem',
-            background: '#3498db',
-            color: '#fff',
-            textDecoration: 'none',
-            borderRadius: '4px'
-          }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <Link to="/admin/categories" className="btn btn-primary">
             管理版块
           </Link>
-          <Link to="/admin/content" style={{
-            padding: '0.75rem 1.5rem',
-            background: '#2ecc71',
-            color: '#fff',
-            textDecoration: 'none',
-            borderRadius: '4px'
-          }}>
+          <Link to="/admin/content" className="btn btn-success">
             内容审核
           </Link>
-          <Link to="/admin/users" style={{
-            padding: '0.75rem 1.5rem',
-            background: '#f39c12',
-            color: '#fff',
-            textDecoration: 'none',
-            borderRadius: '4px'
-          }}>
+          <Link to="/admin/users" className="btn btn-warning">
             用户管理
           </Link>
         </div>
       </div>
 
       {/* 最新用户 */}
-      <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+      <div className="table-container">
+      <div className="admin-card">
         <h2 style={{ marginBottom: '1rem' }}>最新注册用户</h2>
         {recentUsers.length === 0 ? (
-          <div style={{ color: '#999', textAlign: 'center', padding: '1rem' }}>暂无用户</div>
+          <div className="empty-state">暂无用户</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="data-table">
             <thead>
-              <tr style={{ borderBottom: '2px solid #eee' }}>
-                <th style={{ padding: '0.75rem', textAlign: 'left' }}>用户名</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left' }}>邮箱</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left' }}>角色</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left' }}>状态</th>
+              <tr>
+                <th>用户名</th>
+                <th className="hide-mobile">邮箱</th>
+                <th>角色</th>
+                <th>状态</th>
               </tr>
             </thead>
             <tbody>
               {recentUsers.map(user => (
-                <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem' }}>{user.username}</td>
-                  <td style={{ padding: '0.75rem' }}>{user.email}</td>
-                  <td style={{ padding: '0.75rem' }}>
-                    <span style={{
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '4px',
-                      fontSize: '0.85rem',
-                      background: user.role === 'ADMIN' ? '#e74c3c' : '#95a5a6',
-                      color: '#fff'
-                    }}>
+                <tr key={user.id}>
+                  <td>{user.username}</td>
+                  <td className="hide-mobile">{user.email}</td>
+                  <td>
+                    <span className={`badge ${user.role === 'ADMIN' ? 'badge-danger' : 'badge-muted'}`}>
                       {user.role === 'ADMIN' ? '管理员' : '普通用户'}
                     </span>
                   </td>
-                  <td style={{ padding: '0.75rem' }}>
+                  <td>
                     {user.isLocked ? (
-                      <span style={{ color: '#e74c3c' }}>已封禁</span>
+                      <span style={{ color: 'var(--color-danger)' }}>已封禁</span>
                     ) : (
-                      <span style={{ color: '#2ecc71' }}>正常</span>
+                      <span style={{ color: 'var(--color-success)' }}>正常</span>
                     )}
                   </td>
                 </tr>
@@ -150,6 +132,7 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
     </div>
   );

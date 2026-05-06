@@ -11,6 +11,7 @@ import com.cc91.exception.UnauthorizedException;
 import com.cc91.repository.PostRepository;
 import com.cc91.repository.UserRepository;
 import com.cc91.repository.CategoryRepository;
+import com.cc91.repository.CommentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 帖子服务
@@ -31,11 +35,13 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final CommentRepository commentRepository;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository, CategoryRepository categoryRepository) {
+    public PostService(PostRepository postRepository, UserRepository userRepository, CategoryRepository categoryRepository, CommentRepository commentRepository) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
+        this.commentRepository = commentRepository;
     }
 
     /**
@@ -89,11 +95,7 @@ public class PostService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Post> posts = postRepository.findByCategoryIdAndStatus(categoryId, "PUBLISHED", pageable);
 
-        return posts.map(post -> {
-            User author = userRepository.findById(post.getAuthorId()).orElse(null);
-            String authorUsername = author != null ? author.getUsername() : "未知用户";
-            return toPostResponse(post, authorUsername);
-        });
+        return toPostResponsePage(posts);
     }
 
     /**
@@ -168,12 +170,7 @@ public class PostService {
             posts = postRepository.findByStatus(status, pageable);
         }
 
-        return posts.map(post -> {
-            User author = userRepository.findById(post.getAuthorId())
-                    .orElse(null);
-            String authorUsername = author != null ? author.getUsername() : "未知用户";
-            return toPostResponse(post, authorUsername);
-        });
+        return toPostResponsePage(posts);
     }
 
     /**
@@ -196,15 +193,76 @@ public class PostService {
                 pageable
         );
 
+        return toPostResponsePage(posts);
+    }
+
+    /**
+     * 批量转换 Post Page 为 PostResponse Page（解决 N+1 查询问题）
+     */
+    private Page<PostResponse> toPostResponsePage(Page<Post> posts) {
+        List<Post> postList = posts.getContent();
+
+        // 批量收集所有需要的 id
+        Set<Long> authorIds = postList.stream()
+                .map(Post::getAuthorId)
+                .collect(Collectors.toSet());
+
+        Set<Long> categoryIds = postList.stream()
+                .map(Post::getCategoryId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<Long> postIds = postList.stream()
+                .map(Post::getId)
+                .collect(Collectors.toSet());
+
+        // 批量查询用户
+        Map<Long, User> userMap = userRepository.findAllById(authorIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        // 批量查询分类
+        Map<Long, Category> categoryMap = categoryIds.isEmpty()
+                ? Collections.emptyMap()
+                : categoryRepository.findAllById(categoryIds).stream()
+                        .collect(Collectors.toMap(Category::getId, c -> c));
+
+        // 批量查询评论数
+        Map<Long, Long> commentCountMap = new HashMap<>();
+        for (Long postId : postIds) {
+            commentCountMap.put(postId, commentRepository.countByPostIdAndStatus(postId, "PUBLISHED"));
+        }
+
         return posts.map(post -> {
-            User author = userRepository.findById(post.getAuthorId()).orElse(null);
+            User author = userMap.get(post.getAuthorId());
             String authorUsername = author != null ? author.getUsername() : "未知用户";
-            return toPostResponse(post, authorUsername);
+
+            String categoryName = null;
+            if (post.getCategoryId() != null) {
+                Category category = categoryMap.get(post.getCategoryId());
+                categoryName = category != null ? category.getName() : null;
+            }
+
+            long commentCount = commentCountMap.getOrDefault(post.getId(), 0L);
+
+            return new PostResponse(
+                    post.getId(),
+                    post.getTitle(),
+                    post.getContent(),
+                    post.getAuthorId(),
+                    authorUsername,
+                    post.getCategoryId(),
+                    categoryName,
+                    post.getCreatedAt(),
+                    post.getUpdatedAt(),
+                    post.getViewCount(),
+                    post.getStatus(),
+                    commentCount
+            );
         });
     }
 
     /**
-     * 转换为 PostResponse
+     * 转换单个 Post 为 PostResponse（用于详情等单条查询场景）
      */
     private PostResponse toPostResponse(Post post, String authorUsername) {
         String categoryName = null;
@@ -212,6 +270,8 @@ public class PostService {
             Category category = categoryRepository.findById(post.getCategoryId()).orElse(null);
             categoryName = category != null ? category.getName() : null;
         }
+
+        long commentCount = commentRepository.countByPostIdAndStatus(post.getId(), "PUBLISHED");
 
         return new PostResponse(
                 post.getId(),
@@ -224,7 +284,8 @@ public class PostService {
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 post.getViewCount(),
-                post.getStatus()
+                post.getStatus(),
+                commentCount
         );
     }
 }

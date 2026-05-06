@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
 
 /**
@@ -126,13 +126,13 @@ export default function RegisterPage() {
         </h1>
 
         {error && (
-          <div className="error-message" style={{ marginBottom: '1rem' }}>
+          <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
             {error}
           </div>
         )}
 
         {success && (
-          <div className="success-message" style={{ marginBottom: '1rem' }}>
+          <div className="success-message" role="status" style={{ marginBottom: '1rem' }}>
             {success}
           </div>
         )}
@@ -197,11 +197,11 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%' }}
+              className="btn btn-primary btn-block"
               disabled={isLoading}
+              aria-busy={isLoading}
             >
-              {isLoading ? <span className="spinner"></span> : '发送验证码'}
+              {isLoading ? <span className="spinner" aria-hidden="true"></span> : '发送验证码'}
             </button>
           </form>
         ) : (
@@ -210,7 +210,7 @@ export default function RegisterPage() {
               验证码已发送至 <strong>{email}</strong>
             </p>
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }} role="group" aria-label="验证码输入">
               {[0, 1, 2, 3, 4, 5].map((index) => (
                 <input
                   key={index}
@@ -221,6 +221,7 @@ export default function RegisterPage() {
                   value={verificationCode[index] || ''}
                   onChange={(e) => handleCodeChange(index, e.target.value)}
                   disabled={isLoading}
+                  aria-label={`验证码第${index + 1}位`}
                   style={{
                     width: '45px',
                     height: '50px',
@@ -235,18 +236,18 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%' }}
+              className="btn btn-primary btn-block"
               disabled={isLoading || verificationCode.length !== 6}
+              aria-busy={isLoading}
             >
-              {isLoading ? <span className="spinner"></span> : '验证'}
+              {isLoading ? <span className="spinner" aria-hidden="true"></span> : '验证'}
             </button>
 
             <button
               type="button"
               onClick={handleResendCode}
-              className="btn btn-secondary"
-              style={{ width: '100%', marginTop: '0.5rem' }}
+              className="btn btn-secondary btn-block"
+              style={{ marginTop: '0.5rem' }}
               disabled={isLoading || countdown > 0}
             >
               {countdown > 0 ? `${countdown}秒后可重发` : '重新发送验证码'}
@@ -256,9 +257,9 @@ export default function RegisterPage() {
 
         <p style={{ marginTop: '1rem', textAlign: 'center' }}>
           已有账号？{' '}
-          <a href="/login" style={{ color: '#3498db' }}>
+          <Link to="/login">
             立即登录
-          </a>
+          </Link>
         </p>
       </div>
     </div>

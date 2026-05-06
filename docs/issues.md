@@ -1,0 +1,39 @@
+# CC91 论坛 - 问题跟踪与功能清单
+
+> Developer agent 每次开工前必须先读此文件，优先处理未修复的 Bug，再实现未完成功能。
+
+## 状态说明
+
+- `[ ]` 未处理
+- `[~]` 进行中
+- `[-]` 暂不处理（附原因）
+
+---
+
+## 未完成功能
+
+### F-01 Dashboard "我的帖子" / "我的评论"
+- **文件**: `DashboardPage.tsx:113-128`
+- **状态**: "我的评论"标注"正在开发中"；"我的帖子"只是跳转链接，无独立列表
+- **需要**: 后端 `GET /api/users/me/posts` 和 `GET /api/users/me/comments` 接口 + 前端展示
+
+### F-02 管理后台评论审核 UI
+- **文件**: `ContentModeration.tsx`
+- **状态**: `adminDeleteComment` API 已存在但 UI 未使用，评论审核界面未实现
+
+### F-03 已登录用户修改密码
+- **状态**: 目前只能通过忘记密码流程，缺少 `PUT /api/users/me/password` 接口
+
+### F-04 管理员修改用户角色
+- **文件**: `AdminUserController`
+- **状态**: 只能封禁/解封，无修改角色功能
+
+### F-05 404 页面
+- **文件**: `App.tsx`
+- **状态**: 无 catch-all `*` 路由，未匹配 URL 显示空白页
+
+### F-06 Admin 页面测试覆盖
+- **状态**: `AdminDashboard`、`CategoryManage`、`ContentModeration`、`UserManage` 无测试
+
+### F-07 后端搜索和分类查询测试
+- **状态**: `PostControllerTest` / `PostServiceTest` 缺少 search 和 by-category 测试用例

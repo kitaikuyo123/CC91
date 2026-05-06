@@ -69,10 +69,12 @@ describe('EditPostPage', () => {
   };
 
   describe('未登录状态', () => {
-    it('未登录应该导航到登录页', () => {
+    it('未登录应该导航到登录页', async () => {
       renderWithAuth(null);
 
-      expect(mockNavigate).toHaveBeenCalledWith('/login');
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
+      });
     });
 
     it('未登录应该不渲染内容', () => {

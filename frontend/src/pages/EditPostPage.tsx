@@ -49,16 +49,21 @@ export default function EditPostPage() {
   });
 
   // 检查登录状态
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   if (!isAuthenticated) {
-    navigate('/login');
     return null;
   }
 
   if (isLoading) {
     return (
-      <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
-        <div className="spinner"></div>
-        <p style={{ marginTop: '1rem' }}>加载中...</p>
+      <div className="loading-container">
+        <div className="spinner spinner-lg"></div>
+        <span>加载中...</span>
       </div>
     );
   }
@@ -66,7 +71,7 @@ export default function EditPostPage() {
   if (fetchError && !post) {
     return (
       <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message">{(fetchError as any)?.response?.data?.message || '加载失败'}</div>
+        <div className="error-message" role="alert">{(fetchError as any)?.response?.data?.message || '加载失败'}</div>
         <button
           onClick={() => navigate('/posts')}
           className="btn btn-primary"
@@ -128,7 +133,7 @@ export default function EditPostPage() {
         <h1 style={{ marginBottom: '1.5rem' }}>编辑帖子</h1>
 
         {error && (
-          <div className="error-message" style={{ marginBottom: '1rem' }}>
+          <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
             {error}
           </div>
         )}

@@ -1,6 +1,7 @@
 package com.cc91.config;
 
 import com.cc91.dto.ApiResponse;
+import com.cc91.exception.BadRequestException;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.exception.UnauthorizedException;
 import org.slf4j.Logger;
@@ -59,6 +60,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<String>> handleUnauthorizedException(UnauthorizedException ex) {
         logger.warn("Unauthorized access: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>(ex.getMessage()));
+    }
+
+    /**
+     * 处理请求参数错误异常（400）
+     */
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<String>> handleBadRequestException(BadRequestException ex) {
+        logger.warn("Bad request: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
                 .body(new ApiResponse<>(ex.getMessage()));
     }
 

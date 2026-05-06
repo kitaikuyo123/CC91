@@ -41,6 +41,39 @@ git commit -m "feat: 功能描述"
 - [ ] 错误处理：边界条件、异常捕获
 - [ ] 代码质量：命名、结构、重复
 
+## 问题跟踪
+
+- 审查代码、与用户对话、或任何环节中发现 Bug / 未完成功能时，**必须立即写入 `docs/issues.md`**
+- 格式：按现有条目样式，标注优先级（P0/P1/P2）和状态 `[ ]`
+- **修复后立即从文件中删除该条目**，不保留 `[x] 已修复` 的条目
+- `docs/issues.md` 只保留未完成的工作，保持简洁
+
+## 提交流程
+
+当用户要求提交，或一个完整功能/修复批次完成后：
+
+1. **创建分支** — 从 develop 创建功能分支
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b feat/功能描述
+   ```
+
+2. **分类暂存并提交** — 按逻辑分组，使用 conventional commits：
+   - `feat: 新功能描述`
+   - `fix: 修复描述`
+   - `refactor: 重构描述`
+   - `test: 测试描述`
+   - `docs: 文档描述`
+
+3. **推送并创建 PR** — 目标分支为 develop
+   ```bash
+   git push -u origin feat/功能描述
+   gh pr create --base develop --title "标题" --body "描述"
+   ```
+
+4. **验证** — 确认 PR 创建成功，等待合并
+
 ## 技术栈
 
 - 后端: Spring Boot 3.2 + Maven + MySQL + Flyway

@@ -4,12 +4,17 @@ import com.cc91.dto.CategoryDTO;
 import com.cc91.dto.CreateCategoryRequest;
 import com.cc91.dto.UpdateCategoryRequest;
 import com.cc91.entity.Category;
+import com.cc91.entity.Post;
+import com.cc91.entity.User;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.repository.CategoryRepository;
+import com.cc91.repository.PostRepository;
+import com.cc91.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,9 +35,20 @@ class CategoryServiceTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private PostRepository postRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @BeforeEach
     void cleanDatabase() {
+        postRepository.deleteAll();
         categoryRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     // ==================== findAll ====================
@@ -272,5 +288,44 @@ class CategoryServiceTest {
         Exception exception = assertThrows(ResourceNotFoundException.class,
                 () -> categoryService.delete(999L));
         assertEquals("版块不存在", exception.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void delete_CategoryWithPosts_ThrowsIllegalStateException() {
+        // Arrange: 创建用户、分类和帖子
+        User user = new User("author", "author@example.com", passwordEncoder.encode("password123"));
+        userRepository.save(user);
+
+        Category category = new Category("Tech", "Desc", 1);
+        category = categoryRepository.save(category);
+        Long categoryId = category.getId();
+
+        Post post = new Post("Title", "Content", user.getId());
+        post.setCategoryId(categoryId);
+        postRepository.save(post);
+
+        // Act & Assert: 有帖子引用此分类时应拒绝删除
+        Exception exception = assertThrows(IllegalStateException.class,
+                () -> categoryService.delete(categoryId));
+        assertTrue(exception.getMessage().contains("该版块下还有"));
+        assertTrue(exception.getMessage().contains("篇帖子，无法删除"));
+
+        // Assert: 分类仍然存在
+        assertTrue(categoryRepository.existsById(categoryId));
+    }
+
+    @Test
+    @Transactional
+    void delete_CategoryWithoutPosts_DeletesSuccessfully() {
+        // Arrange: 创建分类但不关联帖子
+        Category category = new Category("Tech", "Desc", 1);
+        Long categoryId = categoryRepository.save(category).getId();
+
+        // Act: 无帖子引用，可以删除
+        categoryService.delete(categoryId);
+
+        // Assert
+        assertFalse(categoryRepository.existsById(categoryId));
     }
 }

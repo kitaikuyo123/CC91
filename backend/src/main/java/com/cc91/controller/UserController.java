@@ -2,6 +2,7 @@ package com.cc91.controller;
 
 import com.cc91.dto.UpdateUserProfileRequest;
 import com.cc91.dto.UserProfileDTO;
+import com.cc91.exception.UnauthorizedException;
 import com.cc91.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -65,6 +66,6 @@ public class UserController {
         if (authentication != null && authentication.isAuthenticated()) {
             return authentication.getName();
         }
-        throw new RuntimeException("用户未登录");
+        throw new UnauthorizedException("用户未登录");
     }
 }

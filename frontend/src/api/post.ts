@@ -1,7 +1,8 @@
 import client from './client';
+import type { ApiResponse } from './types';
 
 /**
- * 帖子响应类型
+ * Post response type
  */
 export interface Post {
   id: number;
@@ -15,10 +16,11 @@ export interface Post {
   createdAt: string;
   updatedAt: string;
   viewCount: number;
+  commentCount: number;
 }
 
 /**
- * 创建帖子请求类型
+ * Create post request type
  */
 export interface CreatePostRequest {
   title: string;
@@ -28,7 +30,7 @@ export interface CreatePostRequest {
 }
 
 /**
- * 更新帖子请求类型
+ * Update post request type
  */
 export interface UpdatePostRequest {
   title?: string;
@@ -37,7 +39,7 @@ export interface UpdatePostRequest {
 }
 
 /**
- * 分页响应类型
+ * Paginated response type (Spring Boot Page)
  */
 export interface PageResponse<T> {
   content: T[];
@@ -53,26 +55,17 @@ export interface PageResponse<T> {
 }
 
 /**
- * API 响应包装类型（用于创建/更新/删除操作）
- */
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
-
-/**
- * 创建帖子
- * POST /api/posts
+ * Create post
+ * POST /api/posts - backend wraps in ApiResponse
  */
 export async function createPost(data: CreatePostRequest): Promise<Post> {
   const response = await client.post<ApiResponse<Post>>('/posts', data);
-  return response.data.data;
+  return response.data.data!;
 }
 
 /**
- * 获取帖子详情
- * GET /api/posts/{id}
+ * Get post detail
+ * GET /api/posts/{id} - backend returns PostResponse directly
  */
 export async function getPostById(id: number): Promise<Post> {
   const response = await client.get<Post>(`/posts/${id}`);
@@ -80,16 +73,16 @@ export async function getPostById(id: number): Promise<Post> {
 }
 
 /**
- * 更新帖子
- * PUT /api/posts/{id}
+ * Update post
+ * PUT /api/posts/{id} - backend wraps in ApiResponse
  */
 export async function updatePost(id: number, data: UpdatePostRequest): Promise<Post> {
   const response = await client.put<ApiResponse<Post>>(`/posts/${id}`, data);
-  return response.data.data;
+  return response.data.data!;
 }
 
 /**
- * 删除帖子
+ * Delete post
  * DELETE /api/posts/{id}
  */
 export async function deletePost(id: number): Promise<void> {
@@ -97,8 +90,8 @@ export async function deletePost(id: number): Promise<void> {
 }
 
 /**
- * 分页获取帖子列表
- * GET /api/posts?page=0&size=10
+ * Get paginated post list
+ * GET /api/posts?page=0&size=10 - backend returns Page directly
  */
 export async function getPostList(page: number = 0, size: number = 10, status?: string): Promise<PageResponse<Post>> {
   const response = await client.get<PageResponse<Post>>('/posts', {
@@ -108,8 +101,8 @@ export async function getPostList(page: number = 0, size: number = 10, status?: 
 }
 
 /**
- * 根据版块ID分页获取帖子
- * GET /api/posts/by-category/{categoryId}?page=0&size=10
+ * Get posts by category
+ * GET /api/posts/by-category/{categoryId}?page=0&size=10 - backend returns Page directly
  */
 export async function getPostsByCategory(categoryId: number, page: number = 0, size: number = 10): Promise<PageResponse<Post>> {
   const response = await client.get<PageResponse<Post>>(`/posts/by-category/${categoryId}`, {
@@ -119,8 +112,8 @@ export async function getPostsByCategory(categoryId: number, page: number = 0, s
 }
 
 /**
- * 搜索帖子
- * GET /api/posts/search?keyword=xxx&page=0&size=10
+ * Search posts
+ * GET /api/posts/search?keyword=xxx&page=0&size=10 - backend returns Page directly
  */
 export async function searchPosts(keyword: string, page: number = 0, size: number = 10): Promise<PageResponse<Post>> {
   const response = await client.get<PageResponse<Post>>('/posts/search', {

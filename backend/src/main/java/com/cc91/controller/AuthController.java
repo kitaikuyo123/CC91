@@ -55,7 +55,7 @@ public class AuthController {
             return ResponseEntity.ok(ApiResponse.success("邮箱验证成功"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.success(e.getMessage()));
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
 
@@ -119,7 +119,7 @@ public class AuthController {
             return ResponseEntity.ok(ApiResponse.success("登出成功"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.success(e.getMessage()));
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
 
@@ -149,7 +149,7 @@ public class AuthController {
             return ResponseEntity.ok(ApiResponse.success("密码重置成功，请使用新密码登录"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.success(e.getMessage()));
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
 }

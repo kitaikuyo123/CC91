@@ -15,10 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -129,11 +126,18 @@ public class CommentService {
             throw new UnauthorizedException("无权限删除此评论");
         }
 
-        // 软删除
+        // 软删除该评论及其所有子评论
         comment.setStatus("DELETED");
         commentRepository.save(comment);
 
-        logger.info("评论删除成功: id={}, author={}", commentId, username);
+        // 同时软删除所有子评论
+        List<Comment> replies = commentRepository.findByParentIdOrderByCreatedAtAsc(commentId);
+        for (Comment reply : replies) {
+            reply.setStatus("DELETED");
+        }
+        commentRepository.saveAll(replies);
+
+        logger.info("评论删除成功: id={}, 关联子评论数={}, author={}", commentId, replies.size(), username);
     }
 
     /**
@@ -147,14 +151,13 @@ public class CommentService {
         // 查询所有已发布的评论
         List<Comment> comments = commentRepository.findByPostIdAndStatusOrderByCreatedAtAsc(postId, "PUBLISHED");
 
-        // 构建用户名映射
-        Map<Long, String> userMap = new HashMap<>();
-        for (Comment comment : comments) {
-            if (!userMap.containsKey(comment.getAuthorId())) {
-                User author = userRepository.findById(comment.getAuthorId()).orElse(null);
-                userMap.put(comment.getAuthorId(), author != null ? author.getUsername() : "未知用户");
-            }
-        }
+        // 批量查询所有相关用户
+        Set<Long> authorIds = comments.stream()
+                .map(Comment::getAuthorId)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> userMap = userRepository.findAllById(authorIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
 
         // 构建树形结构
         return buildCommentTree(comments, userMap);

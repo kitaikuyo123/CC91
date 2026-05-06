@@ -20,6 +20,11 @@ public interface VerificationCodeRepository extends JpaRepository<VerificationCo
     Optional<VerificationCode> findByEmailAndCode(String email, String code);
 
     /**
+     * 根据邮箱、验证码和类型查找
+     */
+    Optional<VerificationCode> findByEmailAndCodeAndType(String email, String code, String type);
+
+    /**
      * 根据邮箱和类型查找最新的验证码
      */
     Optional<VerificationCode> findFirstByEmailAndTypeOrderByCreatedAtDesc(String email, String type);

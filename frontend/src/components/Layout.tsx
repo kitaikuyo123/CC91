@@ -13,24 +13,15 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { isAuthenticated } = useAuth();
   return (
-    <div className="app">
+    <div className="app-layout">
+      <a href="#main-content" className="skip-link">
+        跳转到主要内容
+      </a>
       <Header isLoggedIn={isAuthenticated} />
-      <main className="main">
+      <main id="main-content" className="main-content" role="main">
         {children}
       </main>
       <Footer />
-
-      <style>{`
-        .app {
-          display: flex;
-          flex-direction: column;
-          min-height: 100vh;
-        }
-        .main {
-          flex: 1;
-          padding: 2rem 0;
-        }
-      `}</style>
     </div>
   );
 }

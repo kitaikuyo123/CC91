@@ -1,5 +1,5 @@
 import { useState, type FormEvent, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { resetPassword } from '../api/auth';
 
 /**
@@ -56,9 +56,9 @@ export default function ResetPasswordPage() {
       <div className="container" style={{ maxWidth: '400px', marginTop: '2rem' }}>
         <div className="card">
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }} aria-hidden="true">&#x2705;</div>
             <h2>密码重置成功</h2>
-            <p style={{ color: '#666', marginTop: '1rem' }}>
+            <p style={{ color: 'var(--color-text-muted)', marginTop: '1rem' }}>
               您的密码已成功重置，现在可以使用新密码登录。
             </p>
             <button
@@ -133,25 +133,25 @@ export default function ResetPasswordPage() {
           </div>
 
           {error && (
-            <div className="error-message" style={{ marginBottom: '1rem' }}>
+            <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
               {error}
             </div>
           )}
 
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%' }}
+            className="btn btn-primary btn-block"
             disabled={isLoading}
+            aria-busy={isLoading}
           >
-            {isLoading ? <span className="spinner"></span> : '重置密码'}
+            {isLoading ? <span className="spinner" aria-hidden="true"></span> : '重置密码'}
           </button>
         </form>
 
         <p style={{ marginTop: '1rem', textAlign: 'center' }}>
-          <a href="/login" style={{ color: '#3498db' }}>
+          <Link to="/login">
             返回登录
-          </a>
+          </Link>
         </p>
       </div>
     </div>

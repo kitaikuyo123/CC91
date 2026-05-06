@@ -92,11 +92,7 @@ public class NotificationService {
             throw new ResourceNotFoundException("用户不存在");
         }
 
-        List<Notification> unreadNotifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        unreadNotifications.stream()
-                .filter(n -> !n.getIsRead())
-                .forEach(n -> n.setIsRead(true));
-        notificationRepository.saveAll(unreadNotifications);
+        notificationRepository.markAllAsReadByUserId(userId);
 
         logger.info("用户所有通知已标记为已读: userId={}", userId);
     }

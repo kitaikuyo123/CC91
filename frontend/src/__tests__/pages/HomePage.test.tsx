@@ -18,10 +18,6 @@ vi.mock('react-router-dom', async () => ({
   useNavigate: () => mockNavigate,
 }));
 
-// Mock window.open
-const mockWindowOpen = vi.fn();
-vi.stubGlobal('open', mockWindowOpen);
-
 describe('HomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -103,9 +99,12 @@ describe('HomePage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('讨论版块')).toBeInTheDocument();
-        expect(screen.getByText('Tech')).toBeInTheDocument();
+        // Use getAllByText since category names also appear in post meta
+        const techElements = screen.getAllByText('Tech');
+        expect(techElements.length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('Technology discussions')).toBeInTheDocument();
-        expect(screen.getByText('Life')).toBeInTheDocument();
+        const lifeElements = screen.getAllByText('Life');
+        expect(lifeElements.length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('Life chat')).toBeInTheDocument();
       });
     });
@@ -122,10 +121,11 @@ describe('HomePage', () => {
       render(<HomePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Tech')).toBeInTheDocument();
+        expect(screen.getByText('Technology discussions')).toBeInTheDocument();
       });
 
-      const categoryCard = screen.getByText('Tech').closest('.card');
+      // Find the category card by its unique description text
+      const categoryCard = screen.getByText('Technology discussions').closest('.card');
       await user.click(categoryCard!);
 
       expect(mockNavigate).toHaveBeenCalledWith('/category/1');
@@ -181,7 +181,7 @@ describe('HomePage', () => {
       const postCard = screen.getByText('Post 1').closest('.card');
       await user.click(postCard!);
 
-      expect(mockWindowOpen).toHaveBeenCalledWith('/posts/1', '_blank');
+      expect(mockNavigate).toHaveBeenCalledWith('/posts/1');
     });
   });
 
@@ -196,7 +196,7 @@ describe('HomePage', () => {
       render(<HomePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('🔥 热门帖子')).toBeInTheDocument();
+        expect(screen.getByText('热门帖子')).toBeInTheDocument();
         expect(screen.getByText('Post 2')).toBeInTheDocument();
         expect(screen.getByText('Post 1')).toBeInTheDocument();
       });
@@ -212,7 +212,7 @@ describe('HomePage', () => {
       render(<HomePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('🔥 热门帖子')).toBeInTheDocument();
+        expect(screen.getByText('热门帖子')).toBeInTheDocument();
       });
 
       // Should show ranking numbers
@@ -231,13 +231,13 @@ describe('HomePage', () => {
       render(<HomePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('🔥 热门帖子')).toBeInTheDocument();
+        expect(screen.getByText('热门帖子')).toBeInTheDocument();
         expect(screen.getByText('Post 2')).toBeInTheDocument();
       });
 
       await user.click(screen.getByText('Post 2'));
 
-      expect(mockWindowOpen).toHaveBeenCalledWith('/posts/2', '_blank');
+      expect(mockNavigate).toHaveBeenCalledWith('/posts/2');
     });
   });
 });

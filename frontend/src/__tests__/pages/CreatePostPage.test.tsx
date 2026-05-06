@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -10,7 +10,10 @@ import { AuthProvider } from '../../context/AuthContext';
 // Mock the API
 vi.mock('../../api/post');
 vi.mock('../../api/category', () => ({
-  getCategories: vi.fn().mockResolvedValue([]),
+  getCategories: vi.fn().mockResolvedValue([
+    { id: 1, name: 'Tech', description: 'Technology discussions', sortOrder: 1, createdAt: '2024-01-01T10:00:00' },
+    { id: 2, name: 'Life', description: 'Life chat', sortOrder: 2, createdAt: '2024-01-01T10:00:00' },
+  ]),
 }));
 
 // Mock react-router-dom
@@ -55,6 +58,16 @@ describe('CreatePostPage', () => {
     };
   };
 
+  /**
+   * 等待 categories 加载完成（通过检查 select 中的 Tech option）
+   */
+  const waitForCategoriesLoaded = async () => {
+    await waitFor(() => {
+      const select = screen.getByRole('combobox');
+      expect(within(select).getByText('Tech')).toBeInTheDocument();
+    });
+  };
+
   describe('未登录状态', () => {
     it('未登录应该导航到登录页', () => {
       render(<CreatePostPage />, { wrapper: createWrapper() });
@@ -72,25 +85,33 @@ describe('CreatePostPage', () => {
   describe('已登录状态', () => {
     beforeEach(setupAuth);
 
-    it('应该渲染创建帖子表单', () => {
+    it('应该渲染创建帖子表单', async () => {
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
-      expect(screen.getByText('发布新帖')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('请输入帖子标题')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('请输入帖子内容...')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '发布帖子' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '取消' })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('发布新帖')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('请输入帖子标题')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('请输入帖子内容...')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '发布帖子' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '取消' })).toBeInTheDocument();
+      });
     });
 
-    it('应该显示标题字符计数', () => {
+    it('应该显示标题字符计数', async () => {
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
-      expect(screen.getByText('(0/200)')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('(0/200)')).toBeInTheDocument();
+      });
     });
 
     it('输入标题时字符计数应该更新', async () => {
       const user = userEvent.setup();
       render(<CreatePostPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('请输入帖子标题')).toBeInTheDocument();
+      });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       await user.type(titleInput, 'Test Title');
@@ -102,13 +123,40 @@ describe('CreatePostPage', () => {
   describe('表单验证', () => {
     beforeEach(setupAuth);
 
-    it('提交空标题应该显示验证错误', async () => {
+    it('未选择版块应该显示验证错误', async () => {
       const user = userEvent.setup();
       render(<CreatePostPage />, { wrapper: createWrapper() });
+
+      await waitForCategoriesLoaded();
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
 
+      await user.type(titleInput, 'Test Title');
+      await user.type(contentInput, 'Some content');
+
+      const submitButton = screen.getByRole('button', { name: '发布帖子' });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        // Use role="alert" to avoid matching the option text "请选择版块"
+        const errorMessage = screen.getByRole('alert');
+        expect(errorMessage).toHaveTextContent('请选择版块');
+      });
+
+      expect(mockNavigate).not.toHaveBeenCalledWith('/posts/123');
+    });
+
+    it('提交空标题应该显示验证错误', async () => {
+      const user = userEvent.setup();
+      render(<CreatePostPage />, { wrapper: createWrapper() });
+
+      await waitForCategoriesLoaded();
+
+      const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
+
+      await user.selectOptions(categorySelect, '1');
       await user.type(contentInput, 'Some content');
 
       const submitButton = screen.getByRole('button', { name: '发布帖子' });
@@ -118,7 +166,6 @@ describe('CreatePostPage', () => {
         expect(screen.getByText('标题不能为空')).toBeInTheDocument();
       });
 
-      // Check that navigate was not called with a posts path (only /login might have been called in useEffect)
       expect(mockNavigate).not.toHaveBeenCalledWith('/posts/123');
     });
 
@@ -126,7 +173,12 @@ describe('CreatePostPage', () => {
       const user = userEvent.setup();
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
+      const categorySelect = screen.getByRole('combobox');
+
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, 'Test Title');
 
       const submitButton = screen.getByRole('button', { name: '发布帖子' });
@@ -143,9 +195,13 @@ describe('CreatePostPage', () => {
       const user = userEvent.setup();
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
 
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, '   ');
       await user.type(contentInput, 'Some content');
 
@@ -163,9 +219,13 @@ describe('CreatePostPage', () => {
       const user = userEvent.setup();
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
 
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, 'Test Title');
       await user.type(contentInput, '   ');
 
@@ -190,9 +250,13 @@ describe('CreatePostPage', () => {
 
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
 
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, 'Test Title');
       await user.type(contentInput, 'Test content');
 
@@ -201,7 +265,7 @@ describe('CreatePostPage', () => {
 
       await waitFor(() => {
         expect(postApi.createPost).toHaveBeenCalledWith(
-          { title: 'Test Title', content: 'Test content', status: 'PUBLISHED' },
+          { title: 'Test Title', content: 'Test content', categoryId: 1, status: 'PUBLISHED' },
           expect.objectContaining({})
         );
       });
@@ -216,9 +280,13 @@ describe('CreatePostPage', () => {
 
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
 
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, '  Test Title  ');
       await user.type(contentInput, '  Test content  ');
 
@@ -227,7 +295,7 @@ describe('CreatePostPage', () => {
 
       await waitFor(() => {
         expect(postApi.createPost).toHaveBeenCalledWith(
-          { title: 'Test Title', content: 'Test content', status: 'PUBLISHED' },
+          { title: 'Test Title', content: 'Test content', categoryId: 1, status: 'PUBLISHED' },
           expect.objectContaining({})
         );
       });
@@ -241,9 +309,13 @@ describe('CreatePostPage', () => {
 
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
 
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, 'Test Title');
       await user.type(contentInput, 'Test content');
 
@@ -268,9 +340,13 @@ describe('CreatePostPage', () => {
 
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
 
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, 'Test Title');
       await user.type(contentInput, 'Test content');
 
@@ -290,9 +366,13 @@ describe('CreatePostPage', () => {
 
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
 
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, 'Test Title');
       await user.type(contentInput, 'Test content');
 
@@ -312,6 +392,10 @@ describe('CreatePostPage', () => {
       const user = userEvent.setup();
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '取消' })).toBeInTheDocument();
+      });
+
       const cancelButton = screen.getByRole('button', { name: '取消' });
       await user.click(cancelButton);
 
@@ -326,9 +410,13 @@ describe('CreatePostPage', () => {
 
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
+      await waitForCategoriesLoaded();
+
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
+      const categorySelect = screen.getByRole('combobox');
 
+      await user.selectOptions(categorySelect, '1');
       await user.type(titleInput, 'Test Title');
       await user.type(contentInput, 'Test content');
 
@@ -348,6 +436,10 @@ describe('CreatePostPage', () => {
     it('标题输入应该限制最多200字符', async () => {
       const user = userEvent.setup();
       render(<CreatePostPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('请输入帖子标题')).toBeInTheDocument();
+      });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题') as HTMLInputElement;
       expect(titleInput.maxLength).toBe(200);
