@@ -82,90 +82,89 @@ export default function ContentModeration() {
       )}
 
       {success && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#d4edda', color: '#155724', borderRadius: '4px' }}>
+        <div className="success-message" style={{ marginBottom: '1rem' }}>
           {success}
         </div>
       )}
 
       {/* 筛选器 */}
       <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="filter-bar">
           <span>状态筛选：</span>
           <button
-            className="btn"
+            className={`filter-btn ${filterStatus === '' ? 'filter-active' : ''}`}
             onClick={() => setFilterStatus('')}
-            style={{ background: filterStatus === '' ? '#3498db' : '#95a5a6', color: '#fff' }}
           >
             全部
           </button>
           <button
-            className="btn"
+            className={`filter-btn ${filterStatus === 'PUBLISHED' ? 'filter-active' : ''}`}
             onClick={() => setFilterStatus('PUBLISHED')}
-            style={{ background: filterStatus === 'PUBLISHED' ? '#3498db' : '#95a5a6', color: '#fff' }}
           >
             已发布
           </button>
           <button
-            className="btn"
+            className={`filter-btn ${filterStatus === 'DRAFT' ? 'filter-active' : ''}`}
             onClick={() => setFilterStatus('DRAFT')}
-            style={{ background: filterStatus === 'DRAFT' ? '#3498db' : '#95a5a6', color: '#fff' }}
           >
             草稿
           </button>
           <button
-            className="btn"
+            className={`filter-btn ${filterStatus === 'DELETED' ? 'filter-active' : ''}`}
             onClick={() => setFilterStatus('DELETED')}
-            style={{ background: filterStatus === 'DELETED' ? '#3498db' : '#95a5a6', color: '#fff' }}
           >
             已删除
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div>加载中...</div>
+      {isLoading ? (
+        <div className="loading-container">
+          <div className="spinner spinner-lg"></div>
+          <span>加载中...</span>
+        </div>
       ) : (
+        <div className="table-container">
         <div className="card">
-          <p style={{ color: '#666', marginBottom: '1rem' }}>共 {posts.length} 条帖子</p>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }}>共 {posts.length} 条帖子</p>
 
           {posts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
-              暂无帖子
-            </div>
+            <div className="empty-state">暂无帖子</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '2px solid #eee' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>标题</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>作者</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>版块</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>状态</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>浏览</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>操作</th>
+                <tr>
+                  <th>标题</th>
+                  <th>作者</th>
+                  <th className="hide-mobile">版块</th>
+                  <th>状态</th>
+                  <th className="hide-mobile">浏览</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {posts.map((post) => (
-                  <tr key={post.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '0.75rem', maxWidth: '300px' }}>
+                  <tr key={post.id}>
+                    <td style={{ maxWidth: '300px' }}>
                       <div style={{ fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {post.title}
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: '#999' }}>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
                         {new Date(post.createdAt).toLocaleDateString()}
                       </div>
                     </td>
-                    <td style={{ padding: '0.75rem' }}>{post.authorUsername}</td>
-                    <td style={{ padding: '0.75rem' }}>{post.categoryName || '-'}</td>
-                    <td style={{ padding: '0.75rem' }}>
+                    <td>{post.authorUsername}</td>
+                    <td className="hide-mobile">{post.categoryName || '-'}</td>
+                    <td>
                       <select
                         value={post.status || 'PUBLISHED'}
                         onChange={(e) => handleStatusChange(post.id, e.target.value)}
                         disabled={statusMutation.isPending}
+                        aria-label={`修改帖子"${post.title}"的状态`}
                         style={{
                           padding: '0.25rem 0.5rem',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 'var(--radius-sm)',
                           background: getStatusColor(post.status || 'PUBLISHED'),
                           color: '#fff',
                           cursor: 'pointer'
@@ -176,20 +175,19 @@ export default function ContentModeration() {
                         <option value="DELETED">已删除</option>
                       </select>
                     </td>
-                    <td style={{ padding: '0.75rem' }}>{post.viewCount}</td>
-                    <td style={{ padding: '0.75rem' }}>
+                    <td className="hide-mobile">{post.viewCount}</td>
+                    <td>
                       <a
                         href={`/posts/${post.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ marginRight: '0.5rem', color: '#3498db', textDecoration: 'none' }}
+                        style={{ marginRight: '0.5rem' }}
                       >
                         查看
                       </a>
                       <button
-                        className="btn"
+                        className="btn btn-danger btn-sm"
                         onClick={() => handleDeletePost(post.id, post.title)}
-                        style={{ background: '#e74c3c', color: '#fff', fontSize: '0.85rem' }}
                       >
                         删除
                       </button>
@@ -199,6 +197,7 @@ export default function ContentModeration() {
               </tbody>
             </table>
           )}
+        </div>
         </div>
       )}
     </div>

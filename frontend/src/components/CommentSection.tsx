@@ -12,6 +12,7 @@ import { queryKeys } from '../lib/queryKeys';
 
 interface CommentSectionProps {
   postId: number;
+  commentCount?: number;
 }
 
 /**
@@ -53,8 +54,8 @@ function CommentItem({ comment, postId, currentUser, onDelete, onReply, isReplyi
           {isAuthor && (
             <button
               onClick={() => onDelete(comment.id)}
-              className="btn"
-              style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem', background: '#e74c3c', color: 'white' }}
+              className="btn btn-danger btn-sm"
+              aria-label={`删除${comment.authorUsername}的评论`}
             >
               删除
             </button>
@@ -134,7 +135,7 @@ function CommentItem({ comment, postId, currentUser, onDelete, onReply, isReplyi
 /**
  * 评论区域组件
  */
-export default function CommentSection({ postId }: CommentSectionProps) {
+export default function CommentSection({ postId, commentCount }: CommentSectionProps) {
   const { user: currentUser, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState('');
@@ -202,9 +203,9 @@ export default function CommentSection({ postId }: CommentSectionProps) {
 
   if (isLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '2rem' }}>
+      <div className="loading-container">
         <div className="spinner"></div>
-        <p style={{ marginTop: '0.5rem', color: '#888' }}>加载评论中...</p>
+        <span>加载评论中...</span>
       </div>
     );
   }
@@ -214,8 +215,8 @@ export default function CommentSection({ postId }: CommentSectionProps) {
     const errorMessage = (queryError as any)?.response?.data?.message || '加载评论失败';
     return (
       <div className="comment-section" style={{ marginTop: '2rem' }}>
-        <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>评论 (0)</h2>
-        <div className="error-message" style={{ marginBottom: '1rem' }}>
+        <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>评论 ({commentCount ?? 0})</h2>
+        <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
           {errorMessage}
         </div>
       </div>
@@ -224,11 +225,11 @@ export default function CommentSection({ postId }: CommentSectionProps) {
 
   return (
     <div className="comment-section" style={{ marginTop: '2rem' }}>
-      <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>评论 ({comments.length})</h2>
+      <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>评论 ({commentCount ?? comments.length})</h2>
 
       {/* 错误提示 */}
       {error && (
-        <div className="error-message" style={{ marginBottom: '1rem' }}>
+        <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
           {error}
         </div>
       )}
@@ -236,7 +237,9 @@ export default function CommentSection({ postId }: CommentSectionProps) {
       {/* 发表评论表单 */}
       {isAuthenticated && (
         <form onSubmit={handleSubmitComment} style={{ marginBottom: '1.5rem' }}>
+          <label htmlFor="new-comment" className="visually-hidden">发表评论</label>
           <textarea
+            id="new-comment"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="发表你的看法..."
@@ -265,16 +268,14 @@ export default function CommentSection({ postId }: CommentSectionProps) {
       )}
 
       {!isAuthenticated && (
-        <div className="card" style={{ padding: '1rem', textAlign: 'center', color: '#888', marginBottom: '1.5rem' }}>
-          请<a href="/login" style={{ color: '#3498db' }}>登录</a>后发表评论
+        <div className="card" style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
+          请<a href="/login">登录</a>后发表评论
         </div>
       )}
 
       {/* 评论列表 */}
       {comments.length === 0 ? (
-        <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
-          还没有评论，快来抢沙发吧！
-        </div>
+        <div className="empty-state">还没有评论，快来抢沙发吧！</div>
       ) : (
         <div className="comments-list">
           {comments.map((comment) => (

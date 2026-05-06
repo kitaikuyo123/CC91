@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPostList, type Post } from '../api/post';
 import { queryKeys } from '../lib/queryKeys';
+import { useAuth } from '../context/AuthContext';
+import { formatDate } from '../utils/formatDate';
 
 /**
  * 帖子列表页面 - 支持状态筛选
  */
 export default function PostListPage() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [currentPage, setCurrentPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('PUBLISHED');
   const pageSize = 10;
@@ -25,16 +28,6 @@ export default function PostListPage() {
   const totalPages = postsData?.totalPages || 0;
   const totalElements = postsData?.totalElements || 0;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages) {
       setCurrentPage(newPage);
@@ -49,9 +42,9 @@ export default function PostListPage() {
 
   if (isLoading) {
     return (
-      <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
-        <div className="spinner"></div>
-        <p style={{ marginTop: '1rem' }}>加载中...</p>
+      <div className="loading-container">
+        <div className="spinner spinner-lg"></div>
+        <span>加载中...</span>
       </div>
     );
   }
@@ -60,7 +53,7 @@ export default function PostListPage() {
     const errorMessage = (error as any)?.response?.data?.message || '加载帖子列表失败';
     return (
       <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message">{errorMessage}</div>
+        <div className="error-message" role="alert">{errorMessage}</div>
       </div>
     );
   }
@@ -80,59 +73,44 @@ export default function PostListPage() {
 
       {/* 状态筛选器 */}
       <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="filter-bar">
           <span>状态筛选：</span>
           <button
-            className="btn"
+            className={`filter-btn ${statusFilter === 'ALL' ? 'filter-active' : ''}`}
             onClick={() => handleStatusFilterChange('ALL')}
-            style={{
-              background: statusFilter === 'ALL' ? '#3498db' : '#95a5a6',
-              color: '#fff',
-              padding: '0.5rem 1rem',
-              fontSize: '0.9rem'
-            }}
           >
             全部
           </button>
           <button
-            className="btn"
+            className={`filter-btn ${statusFilter === 'PUBLISHED' ? 'filter-active' : ''}`}
             onClick={() => handleStatusFilterChange('PUBLISHED')}
-            style={{
-              background: statusFilter === 'PUBLISHED' ? '#3498db' : '#95a5a6',
-              color: '#fff',
-              padding: '0.5rem 1rem',
-              fontSize: '0.9rem'
-            }}
           >
             已发布
           </button>
-          <button
-            className="btn"
-            onClick={() => handleStatusFilterChange('DRAFT')}
-            style={{
-              background: statusFilter === 'DRAFT' ? '#3498db' : '#95a5a6',
-              color: '#fff',
-              padding: '0.5rem 1rem',
-              fontSize: '0.9rem'
-            }}
-          >
-            草稿
-          </button>
+          {isAuthenticated && (
+            <button
+              className={`filter-btn ${statusFilter === 'DRAFT' ? 'filter-active' : ''}`}
+              onClick={() => handleStatusFilterChange('DRAFT')}
+            >
+              草稿
+            </button>
+          )}
         </div>
       </div>
 
       {/* 帖子统计 */}
-      <div style={{ marginBottom: '1.5rem', color: '#888' }}>
+      <div style={{ marginBottom: '1.5rem', color: 'var(--color-text-muted)' }}>
         共 {totalElements} 篇帖子
       </div>
 
       {/* 帖子列表 */}
       {posts.length === 0 ? (
-        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-          <p style={{ color: '#888', marginBottom: '1rem' }}>暂无符合条件的帖子</p>
+        <div className="card empty-state">
+          <p>暂无符合条件的帖子</p>
           <button
             onClick={() => navigate('/posts/new')}
             className="btn btn-primary"
+            style={{ marginTop: '1rem' }}
           >
             发布第一篇帖子
           </button>
@@ -143,41 +121,37 @@ export default function PostListPage() {
             {posts.map((post) => (
               <div
                 key={post.id}
-                className="card"
-                style={{ padding: '1.5rem', marginBottom: '1rem', cursor: 'pointer' }}
-                onClick={() => window.open(`/posts/${post.id}`, '_blank')}
+                className="card post-item"
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/posts/${post.id}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/posts/${post.id}`); } }}
+                aria-label={`帖子: ${post.title}`}
               >
                 {/* 帖子标题 */}
                 <h2 style={{ marginBottom: '0.75rem', fontSize: '1.3rem' }}>
                   {post.title}
-                  <span style={{
-                    background: post.status === 'DRAFT' ? '#f39c12' : '#27ae60',
-                    color: '#fff',
-                    padding: '0.15rem 0.5rem',
-                    borderRadius: '3px',
-                    fontSize: '0.75rem',
-                    marginLeft: '0.5rem',
-                    verticalAlign: 'middle'
-                  }}>
+                  <span className={`badge ${post.status === 'DRAFT' ? 'badge-warning' : 'badge-success'}`} style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}>
                     {post.status === 'DRAFT' ? '草稿' : '已发布'}
                   </span>
                 </h2>
 
                 {/* 帖子元信息 */}
-                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#888', marginBottom: '0.75rem' }}>
+                <div className="post-meta" style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>
                   <span>
-                    作者: <strong style={{ color: '#333' }}>{post.authorUsername}</strong>
+                    作者: <strong style={{ color: 'var(--color-text-primary)' }}>{post.authorUsername}</strong>
                   </span>
                   {post.categoryName && (
                     <span>版块: {post.categoryName}</span>
                   )}
                   <span>浏览: {post.viewCount}</span>
-                  <span>{formatDate(post.createdAt)}</span>
+                    <span>评论: {post.commentCount}</span>
+                  <span><time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time></span>
                 </div>
 
                 {/* 帖子摘要 */}
                 <p style={{
-                  color: '#666',
+                  color: 'var(--color-text-secondary)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   display: '-webkit-box',
@@ -193,19 +167,18 @@ export default function PostListPage() {
 
           {/* 分页 */}
           {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '2rem' }}>
+            <nav className="pagination" aria-label="帖子分页">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 0}
                 className="btn"
-                style={{ minWidth: '80px' }}
+                aria-label="上一页"
               >
                 上一页
               </button>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 {Array.from({ length: totalPages }, (_, i) => {
-                  // 显示当前页附近页码
                   if (
                     i === 0 ||
                     i === totalPages - 1 ||
@@ -215,12 +188,9 @@ export default function PostListPage() {
                       <button
                         key={i}
                         onClick={() => handlePageChange(i)}
-                        className="btn"
-                        style={{
-                          minWidth: '40px',
-                          background: i === currentPage ? '#3498db' : undefined,
-                          color: i === currentPage ? 'white' : undefined
-                        }}
+                        className={`btn ${i === currentPage ? 'btn-active' : ''}`}
+                        aria-label={`第 ${i + 1} 页`}
+                        aria-current={i === currentPage ? 'page' : undefined}
                       >
                         {i + 1}
                       </button>
@@ -229,7 +199,7 @@ export default function PostListPage() {
                     i === currentPage - 2 ||
                     i === currentPage + 2
                   ) {
-                    return <span key={i} style={{ padding: '0 0.5rem', color: '#888' }}>...</span>;
+                    return <span key={i} className="pagination-info" aria-hidden="true">...</span>;
                   }
                   return null;
                 })}
@@ -239,11 +209,11 @@ export default function PostListPage() {
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage >= totalPages - 1}
                 className="btn"
-                style={{ minWidth: '80px' }}
+                aria-label="下一页"
               >
                 下一页
               </button>
-            </div>
+            </nav>
           )}
         </>
       )}

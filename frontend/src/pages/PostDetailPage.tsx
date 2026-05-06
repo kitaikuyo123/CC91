@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { getPostById, deletePost, type Post } from '../api/post';
 import CommentSection from '../components/CommentSection';
 import { queryKeys } from '../lib/queryKeys';
+import { formatDate } from '../utils/formatDate';
 
 /**
  * 帖子详情页面
@@ -52,23 +53,13 @@ export default function PostDetailPage() {
     navigate(`/posts/${postId}/edit`);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const isAuthor = currentUser?.username === post?.authorUsername;
 
   if (isLoading) {
     return (
-      <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
-        <div className="spinner"></div>
-        <p style={{ marginTop: '1rem' }}>加载中...</p>
+      <div className="loading-container">
+        <div className="spinner spinner-lg"></div>
+        <span>加载中...</span>
       </div>
     );
   }
@@ -76,7 +67,7 @@ export default function PostDetailPage() {
   if (error || !post) {
     return (
       <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message">{(error as any)?.response?.data?.message || '帖子不存在'}</div>
+        <div className="error-message" role="alert">{(error as any)?.response?.data?.message || '帖子不存在'}</div>
         <button
           onClick={() => navigate('/posts')}
           className="btn btn-primary"
@@ -96,11 +87,11 @@ export default function PostDetailPage() {
         className="btn"
         style={{ marginBottom: '1rem' }}
       >
-        ← 返回列表
+        &larr; 返回列表
       </button>
 
       {/* 帖子内容 */}
-      <div className="card" style={{ padding: '2rem' }}>
+      <article className="card" style={{ padding: '2rem' }}>
         {/* 操作按钮（仅作者可见） */}
         {isAuthor && (
           <div style={{ marginBottom: '1.5rem' }}>
@@ -113,15 +104,14 @@ export default function PostDetailPage() {
               </button>
               <button
                 onClick={handleDelete}
-                className="btn"
-                style={{ background: '#e74c3c', color: 'white' }}
+                className="btn btn-danger"
                 disabled={isDeleting}
               >
                 {isDeleting ? '删除中...' : '删除'}
               </button>
             </div>
             {deleteError && (
-              <div className="error-message" style={{ marginTop: '0.5rem' }}>
+              <div className="error-message" role="alert" style={{ marginTop: '0.5rem' }}>
                 {deleteError}
               </div>
             )}
@@ -136,17 +126,18 @@ export default function PostDetailPage() {
         {/* 帖子元信息 */}
         <div style={{
           padding: '1rem 0',
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: '1px solid var(--color-border)',
           marginBottom: '1.5rem'
         }}>
-          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.95rem', color: '#666' }}>
+          <div className="post-meta" style={{ fontSize: '0.95rem' }}>
             <span>
-              作者: <strong style={{ color: '#333' }}>{post.authorUsername}</strong>
+              作者: <strong style={{ color: 'var(--color-text-primary)' }}>{post.authorUsername}</strong>
             </span>
             <span>浏览: {post.viewCount}</span>
-            <span>发布于 {formatDate(post.createdAt)}</span>
+            <span>评论: {post.commentCount}</span>
+            <span>发布于 <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time></span>
             {post.updatedAt !== post.createdAt && (
-              <span>更新于 {formatDate(post.updatedAt)}</span>
+              <span>更新于 <time dateTime={post.updatedAt}>{formatDate(post.updatedAt)}</time></span>
             )}
           </div>
         </div>
@@ -155,15 +146,15 @@ export default function PostDetailPage() {
         <div style={{
           lineHeight: '1.8',
           fontSize: '1.05rem',
-          color: '#333',
+          color: 'var(--color-text-primary)',
           whiteSpace: 'pre-wrap'
         }}>
           {post.content}
         </div>
-      </div>
+      </article>
 
       {/* 评论区 */}
-      <CommentSection postId={postId} />
+      <CommentSection postId={postId} commentCount={post.commentCount} />
     </div>
   );
 }

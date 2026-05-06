@@ -60,6 +60,10 @@ export default function CreatePostPage() {
     e.preventDefault();
 
     // 基本验证
+    if (!categoryId) {
+      setError('请选择版块');
+      return;
+    }
     if (!title.trim()) {
       setError('标题不能为空');
       return;
@@ -78,6 +82,10 @@ export default function CreatePostPage() {
   };
 
   const handleSaveDraft = async () => {
+    if (!categoryId) {
+      setError('请选择版块');
+      return;
+    }
     if (!title.trim() && !content.trim()) {
       setError('标题或内容至少填写一项');
       return;
@@ -97,7 +105,7 @@ export default function CreatePostPage() {
         <h1 style={{ marginBottom: '1.5rem' }}>发布新帖</h1>
 
         {error && (
-          <div className="error-message" style={{ marginBottom: '1rem' }}>
+          <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
             {error}
           </div>
         )}
@@ -106,7 +114,7 @@ export default function CreatePostPage() {
           {/* 版块选择 */}
           <div className="form-group" style={{ marginBottom: '1.5rem' }}>
             <label htmlFor="category" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-              版块
+              版块 <span style={{ color: '#e74c3c' }}>*</span>
             </label>
             <select
               id="category"
@@ -121,7 +129,7 @@ export default function CreatePostPage() {
                 fontSize: '1rem'
               }}
             >
-              <option value="">选择版块（可选）</option>
+              <option value="">请选择版块</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}

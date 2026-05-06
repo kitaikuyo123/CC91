@@ -69,9 +69,9 @@ export default function ProfileEditPage() {
 
   if (isLoading) {
     return (
-      <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
-        <div className="spinner"></div>
-        <p style={{ marginTop: '1rem' }}>加载中...</p>
+      <div className="loading-container">
+        <div className="spinner spinner-lg"></div>
+        <span>加载中...</span>
       </div>
     );
   }
@@ -93,7 +93,7 @@ export default function ProfileEditPage() {
               disabled={updateMutation.isPending}
               placeholder="https://example.com/avatar.jpg"
             />
-            <small style={{ color: '#888' }}>请输入图片的完整 URL 地址</small>
+            <small className="form-hint">请输入图片的完整 URL 地址</small>
           </div>
 
           {/* 头像预览 */}
@@ -160,7 +160,7 @@ export default function ProfileEditPage() {
           </div>
 
           {error && (
-            <div className="error-message" style={{ marginBottom: '1rem' }}>
+            <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
               {error}
             </div>
           )}

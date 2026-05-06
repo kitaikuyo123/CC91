@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile, type UserProfile } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
+import { formatDate } from '../utils/formatDate';
 
 /**
  * 用户资料页面组件
@@ -21,19 +22,11 @@ export default function ProfilePage() {
     enabled: !!username,
   });
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   if (isLoading) {
     return (
-      <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
-        <div className="spinner"></div>
-        <p style={{ marginTop: '1rem' }}>加载中...</p>
+      <div className="loading-container">
+        <div className="spinner spinner-lg"></div>
+        <span>加载中...</span>
       </div>
     );
   }
@@ -41,7 +34,7 @@ export default function ProfilePage() {
   if (error || !profile) {
     return (
       <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message">{(error as any)?.response?.data?.message || '用户不存在'}</div>
+        <div className="error-message" role="alert">{(error as any)?.response?.data?.message || '用户不存在'}</div>
       </div>
     );
   }
@@ -55,14 +48,15 @@ export default function ProfilePage() {
           <div style={{
             width: '120px',
             height: '120px',
-            borderRadius: '50%',
-            backgroundColor: '#e0e0e0',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-bg-active)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '3rem',
-            color: '#757575',
-            overflow: 'hidden'
+            color: 'var(--color-text-muted)',
+            overflow: 'hidden',
+            flexShrink: 0
           }}>
             {profile.avatarUrl ? (
               <img
@@ -71,7 +65,7 @@ export default function ProfilePage() {
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             ) : (
-              <span>{profile.username.charAt(0).toUpperCase()}</span>
+              <span aria-hidden="true">{profile.username.charAt(0).toUpperCase()}</span>
             )}
           </div>
 
@@ -79,9 +73,9 @@ export default function ProfilePage() {
           <div style={{ flex: 1 }}>
             <h1 style={{ marginBottom: '0.5rem' }}>{profile.username}</h1>
             {profile.bio && (
-              <p style={{ color: '#666', marginBottom: '0.5rem' }}>{profile.bio}</p>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{profile.bio}</p>
             )}
-            <div style={{ fontSize: '0.9rem', color: '#888' }}>
+            <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
               加入于 {formatDate(profile.createdAt)}
             </div>
 
@@ -106,7 +100,7 @@ export default function ProfilePage() {
           {/* 所在地 */}
           {profile.location && (
             <div>
-              <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.25rem' }}>所在地</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>所在地</div>
               <div style={{ fontSize: '1rem' }}>{profile.location}</div>
             </div>
           )}
@@ -114,13 +108,12 @@ export default function ProfilePage() {
           {/* 网站 */}
           {profile.website && (
             <div>
-              <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.25rem' }}>个人网站</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>个人网站</div>
               <div>
                 <a
                   href={profile.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: '#3498db', textDecoration: 'none' }}
                 >
                   {profile.website}
                 </a>
@@ -130,14 +123,14 @@ export default function ProfilePage() {
 
           {/* 邮箱 */}
           <div>
-            <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.25rem' }}>邮箱</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>邮箱</div>
             <div style={{ fontSize: '1rem' }}>{profile.email}</div>
           </div>
         </div>
 
         {/* 无详细信息时的占位 */}
         {!profile.location && !profile.website && (
-          <div style={{ color: '#888', fontStyle: 'italic' }}>
+          <div className="empty-state" style={{ fontStyle: 'italic' }}>
             暂无详细信息
           </div>
         )}

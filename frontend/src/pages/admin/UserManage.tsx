@@ -64,78 +64,72 @@ export default function UserManage() {
       )}
 
       {success && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#d4edda', color: '#155724', borderRadius: '4px' }}>
+        <div className="success-message" style={{ marginBottom: '1rem' }}>
           {success}
         </div>
       )}
 
-      {loading ? (
-        <div>加载中...</div>
+      {isLoading ? (
+        <div className="loading-container">
+          <div className="spinner spinner-lg"></div>
+          <span>加载中...</span>
+        </div>
       ) : (
+        <div className="table-container">
         <div className="card">
-          <p style={{ color: '#666', marginBottom: '1rem' }}>共 {users.length} 位用户</p>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }}>共 {users.length} 位用户</p>
 
           {users.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
-              暂无用户
-            </div>
+            <div className="empty-state">暂无用户</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '2px solid #eee' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>ID</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>用户名</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>邮箱</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>角色</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>状态</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>注册时间</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>操作</th>
+                <tr>
+                  <th>ID</th>
+                  <th>用户名</th>
+                  <th className="hide-mobile">邮箱</th>
+                  <th>角色</th>
+                  <th>状态</th>
+                  <th className="hide-mobile">注册时间</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user) => (
-                  <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '0.75rem', color: '#666' }}>#{user.id}</td>
-                    <td style={{ padding: '0.75rem', fontWeight: '500' }}>{user.username}</td>
-                    <td style={{ padding: '0.75rem' }}>{user.email}</td>
-                    <td style={{ padding: '0.75rem' }}>
-                      <span style={{
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.85rem',
-                        background: user.role === 'ADMIN' ? '#e74c3c' : '#95a5a6',
-                        color: '#fff'
-                      }}>
+                  <tr key={user.id}>
+                    <td style={{ color: 'var(--color-text-muted)' }}>#{user.id}</td>
+                    <td style={{ fontWeight: '500' }}>{user.username}</td>
+                    <td className="hide-mobile">{user.email}</td>
+                    <td>
+                      <span className={`badge ${user.role === 'ADMIN' ? 'badge-danger' : 'badge-muted'}`}>
                         {user.role === 'ADMIN' ? '管理员' : '普通用户'}
                       </span>
                     </td>
-                    <td style={{ padding: '0.75rem' }}>
+                    <td>
                       {user.isLocked ? (
-                        <span style={{ color: '#e74c3c' }}>
-                          🔒 已封禁
-                          {user.lockUntil && ` 至 ${new Date(user.lockUntil).toLocaleString()}`}
+                        <span style={{ color: 'var(--color-danger)' }}>
+                          <span aria-hidden="true">&#x1F512;</span> 已封禁
+                          {user.lockUntil && <span className="hide-mobile"> 至 {new Date(user.lockUntil).toLocaleString()}</span>}
                         </span>
                       ) : (
-                        <span style={{ color: '#2ecc71' }}>✓ 正常</span>
+                        <span style={{ color: 'var(--color-success)' }}>&#x2713; 正常</span>
                       )}
                     </td>
-                    <td style={{ padding: '0.75rem', color: '#666', fontSize: '0.9rem' }}>
+                    <td className="hide-mobile" style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
-                    <td style={{ padding: '0.75rem' }}>
+                    <td>
                       {user.isLocked ? (
                         <button
-                          className="btn"
+                          className="btn btn-success btn-sm"
                           onClick={() => handleUnban(user.id, user.username)}
-                          style={{ background: '#2ecc71', color: '#fff', fontSize: '0.85rem' }}
                         >
                           解封
                         </button>
                       ) : (
                         <button
-                          className="btn"
+                          className="btn btn-danger btn-sm"
                           onClick={() => handleBan(user.id, user.username)}
-                          style={{ background: '#e74c3c', color: '#fff', fontSize: '0.85rem' }}
                         >
                           封禁
                         </button>
@@ -144,8 +138,9 @@ export default function UserManage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+                </table>
           )}
+        </div>
         </div>
       )}
     </div>

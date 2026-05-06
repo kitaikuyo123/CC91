@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 
 /**
- * 登录页面组件
+ * Login page component
  */
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -25,22 +25,28 @@ export default function LoginPage() {
         password,
       });
 
-      const { accessToken } = response.data;
+      const { accessToken, refreshToken } = response.data;
 
-      // 获取用户信息以确定角色
+      // B-09 fix: Store tokens FIRST so the axios interceptor can use them
+      localStorage.setItem('access_token', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+
+      // Now fetch user role - token is available for the interceptor
       let userRole = 'USER';
       try {
         const userResponse = await client.get(`/users/${username}`);
         userRole = userResponse.data.role || 'USER';
       } catch (err) {
-        // 如果获取用户信息失败，默认为普通用户
-        console.error('获取用户角色失败', err);
+        // If user info fetch fails, default to regular user
+        console.error('Failed to fetch user role', err);
       }
 
       login(username, accessToken, userRole);
       navigate(`/profile/${username}`);
-    } catch (err: any) {
-      const message = err.response?.data?.message || '登录失败，请重试';
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed, please try again';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -50,62 +56,62 @@ export default function LoginPage() {
   return (
     <div className="container" style={{ maxWidth: '400px', marginTop: '2rem' }}>
       <div className="card">
-        <h1 style={{ marginBottom: '1.5rem' }}>用户登录</h1>
+        <h1 style={{ marginBottom: '1.5rem' }}>User Login</h1>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="username">用户名</label>
+            <label htmlFor="username">Username</label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={isLoading}
-              placeholder="请输入用户名"
+              placeholder="Enter your username"
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">密码</label>
+            <label htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
-              placeholder="请输入密码"
+              placeholder="Enter your password"
               required
             />
           </div>
 
           {error && (
-            <div className="error-message" style={{ marginBottom: '1rem' }}>
+            <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
               {error}
             </div>
           )}
 
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%' }}
+            className="btn btn-primary btn-block"
             disabled={isLoading}
+            aria-busy={isLoading}
           >
-            {isLoading ? <span className="spinner"></span> : '登录'}
+            {isLoading ? <span className="spinner" aria-hidden="true"></span> : 'Login'}
           </button>
         </form>
 
         <p style={{ marginTop: '1rem', textAlign: 'center' }}>
-          还没有账号？{' '}
-          <a href="/register" style={{ color: '#3498db' }}>
-            立即注册
-          </a>
+          Don't have an account?{' '}
+          <Link to="/register">
+            Register now
+          </Link>
         </p>
 
         <p style={{ marginTop: '0.5rem', textAlign: 'center' }}>
-          <a href="/forgot-password" style={{ color: '#3498db' }}>
-            忘记密码？
-          </a>
+          <Link to="/forgot-password">
+            Forgot password?
+          </Link>
         </p>
       </div>
     </div>

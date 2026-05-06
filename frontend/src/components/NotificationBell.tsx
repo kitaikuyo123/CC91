@@ -70,20 +70,20 @@ export default function NotificationBell() {
           fontSize: '1.2rem',
           cursor: 'pointer',
           padding: '0.25rem',
-          position: 'relative'
+          position: 'relative',
+          color: 'inherit'
         }}
-        aria-label="通知"
+        aria-label={`通知${unreadCount > 0 ? `，${unreadCount}条未读` : ''}`}
+        aria-expanded={showDropdown}
+        aria-haspopup="true"
       >
-        🔔
+        <span aria-hidden="true">&#x1F514;</span>
         {unreadCount > 0 && (
-          <span style={{
+          <span className="badge badge-danger" style={{
             position: 'absolute',
             top: '-2px',
             right: '-2px',
-            background: '#e74c3c',
-            color: '#fff',
             fontSize: '0.7rem',
-            padding: '0 4px',
             borderRadius: '10px',
             minWidth: '16px',
             textAlign: 'center'
