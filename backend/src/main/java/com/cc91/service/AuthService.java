@@ -78,6 +78,15 @@ public class AuthService {
             throw new RuntimeException("邮箱已被注册");
         }
 
+        // 创建用户，设置 isLocked = true（未验证邮箱不能登录）
+        User user = new User(
+                request.getUsername(),
+                request.getEmail(),
+                passwordEncoder.encode(request.getPassword())
+        );
+        user.setIsLocked(true);
+        userRepository.save(user);
+
         // 生成 6 位数字验证码
         String code = generateVerificationCode();
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
@@ -124,7 +133,13 @@ public class AuthService {
         verificationCode.setUsed(true);
         verificationCodeRepository.save(verificationCode);
 
-        logger.info("邮箱验证成功: {}", request.getEmail());
+        // 查找对应邮箱的 User，解锁账户
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        user.setIsLocked(false);
+        userRepository.save(user);
+
+        logger.info("邮箱验证成功，用户已解锁: {}", request.getEmail());
     }
 
     /**

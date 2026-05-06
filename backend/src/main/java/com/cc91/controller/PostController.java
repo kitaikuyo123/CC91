@@ -77,14 +77,43 @@ public class PostController {
 
     /**
      * 分页查询帖子列表
-     * GET /api/posts?page=0&size=10
+     * GET /api/posts?page=0&size=10&status=PUBLISHED
      */
     @GetMapping
     public ResponseEntity<Page<PostResponse>> getPostList(
             @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "PUBLISHED") String status
+    ) {
+        Page<PostResponse> posts = postService.getPostList(page, size, status);
+        return ResponseEntity.ok(posts);
+    }
+
+    /**
+     * 根据版块ID分页查询帖子
+     * GET /api/posts/by-category/{categoryId}?page=0&size=10
+     */
+    @GetMapping("/by-category/{categoryId}")
+    public ResponseEntity<Page<PostResponse>> getPostsByCategory(
+            @PathVariable Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        Page<PostResponse> posts = postService.getPostList(page, size);
+        Page<PostResponse> posts = postService.getPostsByCategory(categoryId, page, size);
+        return ResponseEntity.ok(posts);
+    }
+
+    /**
+     * 搜索帖子（按标题或内容）
+     * GET /api/posts/search?keyword=xxx&page=0&size=10
+     */
+    @GetMapping("/search")
+    public ResponseEntity<Page<PostResponse>> searchPosts(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<PostResponse> posts = postService.searchPosts(keyword, page, size);
         return ResponseEntity.ok(posts);
     }
 

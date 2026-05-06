@@ -1,38 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPostList, type Post, type PageResponse } from '../api/post';
+import { useQuery } from '@tanstack/react-query';
+import { getPostList, type Post } from '../api/post';
+import { queryKeys } from '../lib/queryKeys';
 
 /**
- * 帖子列表页面
+ * 帖子列表页面 - 支持状态筛选
  */
 export default function PostListPage() {
   const navigate = useNavigate();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('PUBLISHED');
   const pageSize = 10;
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        setLoading(true);
-        const data: PageResponse<Post> = await getPostList(currentPage, pageSize);
-        setPosts(data.content);
-        setTotalPages(data.totalPages);
-        setTotalElements(data.totalElements);
-        setError('');
-      } catch (err: any) {
-        setError(err.response?.data?.message || '加载帖子列表失败');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // 使用 React Query 获取帖子列表
+  const statusParam = statusFilter === 'ALL' ? undefined : statusFilter;
 
-    fetchPosts();
-  }, [currentPage]);
+  const { data: postsData, isLoading, error } = useQuery({
+    queryKey: queryKeys.posts.list({ page: currentPage, size: pageSize, status: statusParam }),
+    queryFn: () => getPostList(currentPage, pageSize, statusParam),
+  });
+
+  const posts = postsData?.content || [];
+  const totalPages = postsData?.totalPages || 0;
+  const totalElements = postsData?.totalElements || 0;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('zh-CN', {
@@ -51,7 +42,12 @@ export default function PostListPage() {
     }
   };
 
-  if (loading) {
+  const handleStatusFilterChange = (newStatus: 'ALL' | 'PUBLISHED' | 'DRAFT') => {
+    setStatusFilter(newStatus);
+    setCurrentPage(0);
+  };
+
+  if (isLoading) {
     return (
       <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
         <div className="spinner"></div>
@@ -61,9 +57,10 @@ export default function PostListPage() {
   }
 
   if (error) {
+    const errorMessage = (error as any)?.response?.data?.message || '加载帖子列表失败';
     return (
       <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message">{error}</div>
+        <div className="error-message">{errorMessage}</div>
       </div>
     );
   }
@@ -81,6 +78,49 @@ export default function PostListPage() {
         </button>
       </div>
 
+      {/* 状态筛选器 */}
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <span>状态筛选：</span>
+          <button
+            className="btn"
+            onClick={() => handleStatusFilterChange('ALL')}
+            style={{
+              background: statusFilter === 'ALL' ? '#3498db' : '#95a5a6',
+              color: '#fff',
+              padding: '0.5rem 1rem',
+              fontSize: '0.9rem'
+            }}
+          >
+            全部
+          </button>
+          <button
+            className="btn"
+            onClick={() => handleStatusFilterChange('PUBLISHED')}
+            style={{
+              background: statusFilter === 'PUBLISHED' ? '#3498db' : '#95a5a6',
+              color: '#fff',
+              padding: '0.5rem 1rem',
+              fontSize: '0.9rem'
+            }}
+          >
+            已发布
+          </button>
+          <button
+            className="btn"
+            onClick={() => handleStatusFilterChange('DRAFT')}
+            style={{
+              background: statusFilter === 'DRAFT' ? '#3498db' : '#95a5a6',
+              color: '#fff',
+              padding: '0.5rem 1rem',
+              fontSize: '0.9rem'
+            }}
+          >
+            草稿
+          </button>
+        </div>
+      </div>
+
       {/* 帖子统计 */}
       <div style={{ marginBottom: '1.5rem', color: '#888' }}>
         共 {totalElements} 篇帖子
@@ -89,7 +129,7 @@ export default function PostListPage() {
       {/* 帖子列表 */}
       {posts.length === 0 ? (
         <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-          <p style={{ color: '#888', marginBottom: '1rem' }}>还没有帖子</p>
+          <p style={{ color: '#888', marginBottom: '1rem' }}>暂无符合条件的帖子</p>
           <button
             onClick={() => navigate('/posts/new')}
             className="btn btn-primary"
@@ -105,11 +145,22 @@ export default function PostListPage() {
                 key={post.id}
                 className="card"
                 style={{ padding: '1.5rem', marginBottom: '1rem', cursor: 'pointer' }}
-                onClick={() => navigate(`/posts/${post.id}`)}
+                onClick={() => window.open(`/posts/${post.id}`, '_blank')}
               >
                 {/* 帖子标题 */}
                 <h2 style={{ marginBottom: '0.75rem', fontSize: '1.3rem' }}>
                   {post.title}
+                  <span style={{
+                    background: post.status === 'DRAFT' ? '#f39c12' : '#27ae60',
+                    color: '#fff',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '3px',
+                    fontSize: '0.75rem',
+                    marginLeft: '0.5rem',
+                    verticalAlign: 'middle'
+                  }}>
+                    {post.status === 'DRAFT' ? '草稿' : '已发布'}
+                  </span>
                 </h2>
 
                 {/* 帖子元信息 */}
@@ -117,6 +168,9 @@ export default function PostListPage() {
                   <span>
                     作者: <strong style={{ color: '#333' }}>{post.authorUsername}</strong>
                   </span>
+                  {post.categoryName && (
+                    <span>版块: {post.categoryName}</span>
+                  )}
                   <span>浏览: {post.viewCount}</span>
                   <span>{formatDate(post.createdAt)}</span>
                 </div>

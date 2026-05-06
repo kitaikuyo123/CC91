@@ -1,7 +1,9 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getPostById, updatePost, type Post, type UpdatePostRequest } from '../api/post';
+import { queryKeys } from '../lib/queryKeys';
 
 /**
  * 编辑帖子页面
@@ -10,48 +12,49 @@ export default function EditPostPage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const postId = id ? parseInt(id, 10) : 0;
 
-  const [post, setPost] = useState<Post | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 使用 React Query 获取帖子
+  const { data: post, isLoading, error: fetchError } = useQuery({
+    queryKey: queryKeys.posts.detail(postId),
+    queryFn: () => getPostById(postId),
+    enabled: postId > 0,
+  });
+
+  // React Query v5 移除了 onSuccess，改用 useEffect
   useEffect(() => {
-    const fetchPost = async () => {
-      if (!postId) return;
+    if (post) {
+      setTitle(post.title);
+      setContent(post.content);
+    }
+  }, [post]);
 
-      try {
-        setLoading(true);
-        const data = await getPostById(postId);
-        setPost(data);
-        setTitle(data.title);
-        setContent(data.content);
-      } catch (err: any) {
-        setError(err.response?.data?.message || '加载帖子失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPost();
-  }, [postId]);
+  // 更新帖子的 mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdatePostRequest }) => updatePost(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
+      navigate(`/posts/${postId}`);
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || '更新帖子失败');
+    },
+  });
 
   // 检查登录状态
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
-
   if (!isAuthenticated) {
+    navigate('/login');
     return null;
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
         <div className="spinner"></div>
@@ -60,10 +63,10 @@ export default function EditPostPage() {
     );
   }
 
-  if (error && !post) {
+  if (fetchError && !post) {
     return (
       <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message">{error}</div>
+        <div className="error-message">{(fetchError as any)?.response?.data?.message || '加载失败'}</div>
         <button
           onClick={() => navigate('/posts')}
           className="btn btn-primary"
@@ -109,22 +112,14 @@ export default function EditPostPage() {
       return;
     }
 
-    setIsSubmitting(true);
     setError('');
 
-    try {
-      const updateData: UpdatePostRequest = {
-        title: title.trim(),
-        content: content.trim()
-      };
+    const updateData: UpdatePostRequest = {
+      title: title.trim(),
+      content: content.trim()
+    };
 
-      await updatePost(postId, updateData);
-      navigate(`/posts/${postId}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '更新帖子失败');
-    } finally {
-      setIsSubmitting(false);
-    }
+    updateMutation.mutate({ id: postId, data: updateData });
   };
 
   return (
@@ -152,7 +147,7 @@ export default function EditPostPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={isSubmitting}
+              disabled={updateMutation.isPending}
               placeholder="请输入帖子标题"
               style={{
                 width: '100%',
@@ -175,7 +170,7 @@ export default function EditPostPage() {
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              disabled={isSubmitting}
+              disabled={updateMutation.isPending}
               placeholder="请输入帖子内容..."
               style={{
                 width: '100%',
@@ -196,16 +191,16 @@ export default function EditPostPage() {
               type="submit"
               className="btn btn-primary"
               style={{ flex: 1, padding: '0.75rem' }}
-              disabled={isSubmitting}
+              disabled={updateMutation.isPending}
             >
-              {isSubmitting ? '保存中...' : '保存修改'}
+              {updateMutation.isPending ? '保存中...' : '保存修改'}
             </button>
             <button
               type="button"
               onClick={() => navigate(`/posts/${postId}`)}
               className="btn"
               style={{ padding: '0.75rem 1.5rem' }}
-              disabled={isSubmitting}
+              disabled={updateMutation.isPending}
             >
               取消
             </button>

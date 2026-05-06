@@ -1,7 +1,10 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { createPost, type CreatePostRequest } from '../api/post';
+import { getCategories } from '../api/category';
+import { queryKeys } from '../lib/queryKeys';
 
 /**
  * 创建帖子页面
@@ -9,22 +12,49 @@ import { createPost, type CreatePostRequest } from '../api/post';
 export default function CreatePostPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 检查登录状态
+  // 获取版块列表
+  const { data: categories = [] } = useQuery({
+    queryKey: queryKeys.categories.list(),
+    queryFn: getCategories,
+  });
+
+  // 使用 useEffect 进行导航检查，避免在 hooks 之前 return
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
+  // 创建帖子的 mutation - 必须始终调用，保持 hooks 顺序一致
+  const createMutation = useMutation({
+    mutationFn: createPost,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
+      navigate(`/posts/${data.id}`);
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || '创建帖子失败');
+    },
+  });
+
+  // 如果未认证，不渲染内容
   if (!isAuthenticated) {
     return null;
   }
+
+  const buildPostData = (status: string): CreatePostRequest => ({
+    title: title.trim(),
+    content: content.trim(),
+    ...(categoryId ? { categoryId } : {}),
+    status,
+  });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,22 +73,22 @@ export default function CreatePostPage() {
       return;
     }
 
-    setIsSubmitting(true);
     setError('');
+    createMutation.mutate(buildPostData('PUBLISHED'));
+  };
 
-    try {
-      const postData: CreatePostRequest = {
-        title: title.trim(),
-        content: content.trim()
-      };
-
-      const createdPost = await createPost(postData);
-      navigate(`/posts/${createdPost.id}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '创建帖子失败');
-    } finally {
-      setIsSubmitting(false);
+  const handleSaveDraft = async () => {
+    if (!title.trim() && !content.trim()) {
+      setError('标题或内容至少填写一项');
+      return;
     }
+    if (title.length > 200) {
+      setError('标题长度不能超过200个字符');
+      return;
+    }
+
+    setError('');
+    createMutation.mutate(buildPostData('DRAFT'));
   };
 
   return (
@@ -73,6 +103,33 @@ export default function CreatePostPage() {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* 版块选择 */}
+          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+            <label htmlFor="category" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+              版块
+            </label>
+            <select
+              id="category"
+              value={categoryId ?? ''}
+              onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : undefined)}
+              disabled={createMutation.isPending}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '1rem'
+              }}
+            >
+              <option value="">选择版块（可选）</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* 标题输入 */}
           <div className="form-group" style={{ marginBottom: '1.5rem' }}>
             <label htmlFor="title" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
@@ -86,7 +143,7 @@ export default function CreatePostPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
               placeholder="请输入帖子标题"
               style={{
                 width: '100%',
@@ -109,7 +166,7 @@ export default function CreatePostPage() {
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
               placeholder="请输入帖子内容..."
               style={{
                 width: '100%',
@@ -130,16 +187,25 @@ export default function CreatePostPage() {
               type="submit"
               className="btn btn-primary"
               style={{ flex: 1, padding: '0.75rem' }}
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
             >
-              {isSubmitting ? '发布中...' : '发布帖子'}
+              {createMutation.isPending ? '发布中...' : '发布帖子'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              className="btn"
+              style={{ flex: 1, padding: '0.75rem', background: '#f39c12', color: '#fff' }}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? '保存中...' : '保存草稿'}
             </button>
             <button
               type="button"
               onClick={() => navigate('/posts')}
               className="btn"
               style={{ padding: '0.75rem 1.5rem' }}
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
             >
               取消
             </button>

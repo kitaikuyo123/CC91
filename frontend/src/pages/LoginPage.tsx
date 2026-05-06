@@ -26,7 +26,18 @@ export default function LoginPage() {
       });
 
       const { accessToken } = response.data;
-      login(username, accessToken);
+
+      // 获取用户信息以确定角色
+      let userRole = 'USER';
+      try {
+        const userResponse = await client.get(`/users/${username}`);
+        userRole = userResponse.data.role || 'USER';
+      } catch (err) {
+        // 如果获取用户信息失败，默认为普通用户
+        console.error('获取用户角色失败', err);
+      }
+
+      login(username, accessToken, userRole);
       navigate(`/profile/${username}`);
     } catch (err: any) {
       const message = err.response?.data?.message || '登录失败，请重试';
@@ -88,6 +99,12 @@ export default function LoginPage() {
           还没有账号？{' '}
           <a href="/register" style={{ color: '#3498db' }}>
             立即注册
+          </a>
+        </p>
+
+        <p style={{ marginTop: '0.5rem', textAlign: 'center' }}>
+          <a href="/forgot-password" style={{ color: '#3498db' }}>
+            忘记密码？
           </a>
         </p>
       </div>

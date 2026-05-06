@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext';
-import LoginPage from '../pages/LoginPage';
-import client from '../api/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '../../context/AuthContext';
+import LoginPage from '../../pages/LoginPage';
+import client from '../../api/client';
 
 // Mock the API client
-vi.mock('../api/client');
+vi.mock('../../api/client');
 
 describe('LoginPage', () => {
   beforeEach(() => {
@@ -15,10 +16,19 @@ describe('LoginPage', () => {
     localStorage.clear();
   });
 
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
+
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter>
-      <AuthProvider>{children}</AuthProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <AuthProvider>{children}</AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 
   it('should render login form', () => {

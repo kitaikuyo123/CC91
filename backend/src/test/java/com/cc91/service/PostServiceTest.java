@@ -11,6 +11,7 @@ import com.cc91.repository.PostRepository;
 import com.cc91.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -337,21 +338,24 @@ class PostServiceTest {
     @Test
     @Transactional
     void getPostList_ReturnsPublishedPostsInDescendingOrder() {
-        // Arrange: 创建用户和多个帖子
+        // Arrange: 创建用户和多个帖子（显式设置 createdAt 确保倒序排列可验证）
         User user = new User("author", "author@example.com", passwordEncoder.encode("password123"));
         userRepository.saveAndFlush(user);
 
         Post post1 = new Post("帖子1", "内容1", user.getId());
+        post1.setCreatedAt(LocalDateTime.now().minusMinutes(30));
         postRepository.saveAndFlush(post1);
 
         Post post2 = new Post("帖子2", "内容2", user.getId());
+        post2.setCreatedAt(LocalDateTime.now().minusMinutes(20));
         postRepository.saveAndFlush(post2);
 
         Post post3 = new Post("帖子3", "内容3", user.getId());
+        post3.setCreatedAt(LocalDateTime.now().minusMinutes(10));
         postRepository.saveAndFlush(post3);
 
         // Act: 分页查询
-        Page<PostResponse> result = postService.getPostList(0, 10);
+        Page<PostResponse> result = postService.getPostList(0, 10, "PUBLISHED");
 
         // Assert: 验证返回结果
         assertNotNull(result);
@@ -380,7 +384,7 @@ class PostServiceTest {
         postRepository.saveAndFlush(draftPost);
 
         // Act: 查询帖子列表
-        Page<PostResponse> result = postService.getPostList(0, 10);
+        Page<PostResponse> result = postService.getPostList(0, 10, "PUBLISHED");
 
         // Assert: 只返回 PUBLISHED 状态的帖子
         assertEquals(1, result.getTotalElements());
@@ -400,7 +404,7 @@ class PostServiceTest {
         }
 
         // Act: 查询第一页（每页5条）
-        Page<PostResponse> page1 = postService.getPostList(0, 5);
+        Page<PostResponse> page1 = postService.getPostList(0, 5, "PUBLISHED");
 
         // Assert: 验证第一页
         assertEquals(15, page1.getTotalElements());
@@ -408,7 +412,7 @@ class PostServiceTest {
         assertEquals(5, page1.getContent().size());
 
         // Act: 查询第二页
-        Page<PostResponse> page2 = postService.getPostList(1, 5);
+        Page<PostResponse> page2 = postService.getPostList(1, 5, "PUBLISHED");
 
         // Assert: 验证第二页
         assertEquals(5, page2.getContent().size());

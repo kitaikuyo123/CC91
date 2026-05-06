@@ -12,6 +12,7 @@ import com.cc91.repository.PostRepository;
 import com.cc91.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -286,18 +287,22 @@ class CommentServiceTest {
         Post post = new Post("标题", "内容", user1.getId());
         postRepository.saveAndFlush(post);
 
-        // 创建顶级评论
+        // 创建顶级评论（显式设置 createdAt 确保排序可验证）
         Comment comment1 = new Comment(post.getId(), user1.getId(), "评论1", null);
+        comment1.setCreatedAt(LocalDateTime.now().minusMinutes(5));
         commentRepository.saveAndFlush(comment1);
 
         Comment comment2 = new Comment(post.getId(), user2.getId(), "评论2", null);
+        comment2.setCreatedAt(LocalDateTime.now().minusMinutes(4));
         commentRepository.saveAndFlush(comment2);
 
-        // 创建回复
+        // 创建回复（显式设置 createdAt 确保排序可验证）
         Comment reply1 = new Comment(post.getId(), user2.getId(), "回复1-1", comment1.getId());
+        reply1.setCreatedAt(LocalDateTime.now().minusMinutes(3));
         commentRepository.saveAndFlush(reply1);
 
         Comment reply2 = new Comment(post.getId(), user1.getId(), "回复1-2", comment1.getId());
+        reply2.setCreatedAt(LocalDateTime.now().minusMinutes(2));
         commentRepository.saveAndFlush(reply2);
 
         entityManager.clear();

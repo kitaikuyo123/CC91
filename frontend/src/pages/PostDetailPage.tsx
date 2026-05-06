@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getPostById, deletePost, type Post } from '../api/post';
 import CommentSection from '../components/CommentSection';
+import { queryKeys } from '../lib/queryKeys';
 
 /**
  * 帖子详情页面
@@ -11,49 +13,39 @@ export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const postId = id ? parseInt(id, 10) : 0;
 
-  useEffect(() => {
-    const fetchPost = async () => {
-      if (!postId) return;
+  // 使用 React Query 获取帖子
+  const { data: post, isLoading, error } = useQuery({
+    queryKey: queryKeys.posts.detail(postId),
+    queryFn: () => getPostById(postId),
+    enabled: postId > 0,
+  });
 
-      try {
-        setLoading(true);
-        const data = await getPostById(postId);
-        setPost(data);
-        setError('');
-      } catch (err: any) {
-        const errorMsg = err.response?.data?.message || '加载帖子失败';
-        setError(errorMsg);
-        if (err.response?.status === 404) {
-          setError('帖子不存在');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPost();
-  }, [postId]);
+  // 删除帖子的 mutation
+  const deleteMutation = useMutation({
+    mutationFn: deletePost,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
+      navigate('/posts');
+    },
+    onError: (err: any) => {
+      setIsDeleting(false);
+      setDeleteError(err.response?.data?.message || '删除失败');
+    },
+  });
 
   const handleDelete = async () => {
     if (!post) return;
     if (!confirm('确定要删除这篇帖子吗？此操作不可恢复。')) return;
 
     setIsDeleting(true);
-    try {
-      await deletePost(post.id);
-      navigate('/posts');
-    } catch (err: any) {
-      setError(err.response?.data?.message || '删除失败');
-      setIsDeleting(false);
-    }
+    deleteMutation.mutate(post.id);
   };
 
   const handleEdit = () => {
@@ -72,7 +64,7 @@ export default function PostDetailPage() {
 
   const isAuthor = currentUser?.username === post?.authorUsername;
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
         <div className="spinner"></div>
@@ -84,7 +76,7 @@ export default function PostDetailPage() {
   if (error || !post) {
     return (
       <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message">{error || '帖子不存在'}</div>
+        <div className="error-message">{(error as any)?.response?.data?.message || '帖子不存在'}</div>
         <button
           onClick={() => navigate('/posts')}
           className="btn btn-primary"
@@ -111,21 +103,28 @@ export default function PostDetailPage() {
       <div className="card" style={{ padding: '2rem' }}>
         {/* 操作按钮（仅作者可见） */}
         {isAuthor && (
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            <button
-              onClick={handleEdit}
-              className="btn btn-primary"
-            >
-              编辑
-            </button>
-            <button
-              onClick={handleDelete}
-              className="btn"
-              style={{ background: '#e74c3c', color: 'white' }}
-              disabled={isDeleting}
-            >
-              {isDeleting ? '删除中...' : '删除'}
-            </button>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={handleEdit}
+                className="btn btn-primary"
+              >
+                编辑
+              </button>
+              <button
+                onClick={handleDelete}
+                className="btn"
+                style={{ background: '#e74c3c', color: 'white' }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? '删除中...' : '删除'}
+              </button>
+            </div>
+            {deleteError && (
+              <div className="error-message" style={{ marginTop: '0.5rem' }}>
+                {deleteError}
+              </div>
+            )}
           </div>
         )}
 

@@ -65,8 +65,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("GET", "/api/users/{username}").permitAll()
-                        .requestMatchers("GET", "/api/posts", "/api/posts/{id}").permitAll()
+                        .requestMatchers("GET", "/api/posts", "/api/posts/{id}", "/api/posts/search").permitAll()
                         .requestMatchers("GET", "/api/posts/*/comments").permitAll()
+                        .requestMatchers("GET", "/api/categories").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

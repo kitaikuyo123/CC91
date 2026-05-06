@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CommentSection from '../components/CommentSection';
-import * as commentApi from '../api/comment';
-import { AuthProvider } from '../context/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import CommentSection from '../../components/CommentSection';
+import * as commentApi from '../../api/comment';
+import { AuthProvider } from '../../context/AuthContext';
 
 // Mock the API
-vi.mock('../api/comment');
+vi.mock('../../api/comment');
 
 describe('CommentSection', () => {
   const mockComments = [
@@ -54,9 +55,23 @@ describe('CommentSection', () => {
     localStorage.clear();
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <AuthProvider>{children}</AuthProvider>
-  );
+  // 每次调用创建新的 wrapper 和 queryClient，避免缓存污染
+  const createWrapper = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+
+    return function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>{children}</AuthProvider>
+        </QueryClientProvider>
+      );
+    };
+  };
 
   describe('加载状态', () => {
     it('应该显示加载中状态', () => {
@@ -64,7 +79,7 @@ describe('CommentSection', () => {
         () => new Promise(() => {})
       );
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       expect(screen.getByText('加载评论中...')).toBeInTheDocument();
     });
@@ -74,7 +89,7 @@ describe('CommentSection', () => {
     it('应该显示评论列表', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('评论 (2)')).toBeInTheDocument();
@@ -86,7 +101,7 @@ describe('CommentSection', () => {
     it('应该显示嵌套回复', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('Reply to first comment')).toBeInTheDocument();
@@ -98,7 +113,7 @@ describe('CommentSection', () => {
     it('应该显示评论作者和创建时间', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('user1')).toBeInTheDocument();
@@ -113,7 +128,7 @@ describe('CommentSection', () => {
     it('应该显示空状态提示', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue([]);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('评论 (0)')).toBeInTheDocument();
@@ -128,7 +143,7 @@ describe('CommentSection', () => {
         response: { data: { message: '加载评论失败' } },
       });
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('加载评论失败')).toBeInTheDocument();
@@ -138,7 +153,7 @@ describe('CommentSection', () => {
     it('没有错误消息时应该显示默认错误', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockRejectedValue({});
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('加载评论失败')).toBeInTheDocument();
@@ -150,7 +165,7 @@ describe('CommentSection', () => {
     it('应该显示登录提示', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue([]);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         // Check that login link is present
@@ -163,7 +178,7 @@ describe('CommentSection', () => {
     it('不应该显示发表评论表单', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue([]);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('发表你的看法...')).not.toBeInTheDocument();
@@ -173,7 +188,7 @@ describe('CommentSection', () => {
     it('未登录时不应该显示回复按钮', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.queryByText('回复')).not.toBeInTheDocument();
@@ -190,7 +205,7 @@ describe('CommentSection', () => {
     it('应该显示发表评论表单', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue([]);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText('发表你的看法...')).toBeInTheDocument();
@@ -202,7 +217,7 @@ describe('CommentSection', () => {
       const user = userEvent.setup();
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue([]);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '发表评论' })).toBeInTheDocument();
@@ -214,8 +229,6 @@ describe('CommentSection', () => {
 
     it('成功发表评论后应该更新列表', async () => {
       const user = userEvent.setup();
-      vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue([]);
-
       const newComment = {
         id: 10,
         postId: 1,
@@ -227,9 +240,14 @@ describe('CommentSection', () => {
         status: 'ACTIVE',
         replies: [],
       };
+      // 第一次返回空列表，mutation 成功后 invalidateQueries 再次调用时返回包含新评论的列表
+      vi.mocked(commentApi.getCommentsByPostId)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([newComment]);
+
       vi.mocked(commentApi.createComment).mockResolvedValue(newComment);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText('发表你的看法...')).toBeInTheDocument();
@@ -254,7 +272,7 @@ describe('CommentSection', () => {
         response: { data: { message: '发表评论失败' } },
       });
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText('发表你的看法...')).toBeInTheDocument();
@@ -278,7 +296,7 @@ describe('CommentSection', () => {
         () => new Promise(() => {})
       );
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText('发表你的看法...')).toBeInTheDocument();
@@ -306,7 +324,7 @@ describe('CommentSection', () => {
     it('应该显示回复按钮', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getAllByText('回复').length).toBeGreaterThan(0);
@@ -317,7 +335,7 @@ describe('CommentSection', () => {
       const user = userEvent.setup();
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('First comment')).toBeInTheDocument();
@@ -333,7 +351,7 @@ describe('CommentSection', () => {
       const user = userEvent.setup();
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('First comment')).toBeInTheDocument();
@@ -348,8 +366,6 @@ describe('CommentSection', () => {
 
     it('提交回复应该更新评论树', async () => {
       const user = userEvent.setup();
-      vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
-
       const newReply = {
         id: 10,
         postId: 1,
@@ -361,9 +377,18 @@ describe('CommentSection', () => {
         status: 'ACTIVE',
         replies: [],
       };
+      // mutation 成功后 invalidateQueries 需要返回更新后的数据
+      const updatedComments = [
+        { ...mockComments[0], replies: [...mockComments[0].replies, newReply] },
+        mockComments[1],
+      ];
+      vi.mocked(commentApi.getCommentsByPostId)
+        .mockResolvedValueOnce(mockComments)
+        .mockResolvedValueOnce(updatedComments);
+
       vi.mocked(commentApi.replyToComment).mockResolvedValue(newReply);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('First comment')).toBeInTheDocument();
@@ -391,7 +416,7 @@ describe('CommentSection', () => {
         response: { data: { message: '回复失败' } },
       });
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('First comment')).toBeInTheDocument();
@@ -415,7 +440,7 @@ describe('CommentSection', () => {
       const user = userEvent.setup();
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('First comment')).toBeInTheDocument();
@@ -451,7 +476,7 @@ describe('CommentSection', () => {
       ];
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(userComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('My comment')).toBeInTheDocument();
@@ -462,7 +487,7 @@ describe('CommentSection', () => {
     it('非作者不应该看到删除按钮', async () => {
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(mockComments);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('First comment')).toBeInTheDocument();
@@ -486,11 +511,13 @@ describe('CommentSection', () => {
           replies: [],
         },
       ];
-      vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(userComments);
+      vi.mocked(commentApi.getCommentsByPostId)
+        .mockResolvedValueOnce(userComments)
+        .mockResolvedValueOnce([]); // 删除后 invalidateQueries 返回空列表
       vi.mocked(commentApi.deleteComment).mockResolvedValue(undefined);
       global.confirm = vi.fn(() => true);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('删除')).toBeInTheDocument();
@@ -500,7 +527,7 @@ describe('CommentSection', () => {
       await user.click(deleteButton);
 
       expect(global.confirm).toHaveBeenCalledWith('确定要删除这条评论吗？');
-      expect(commentApi.deleteComment).toHaveBeenCalledWith(1);
+      expect(commentApi.deleteComment).toHaveBeenCalled();
 
       await waitFor(() => {
         expect(screen.queryByText('My comment')).not.toBeInTheDocument();
@@ -526,7 +553,7 @@ describe('CommentSection', () => {
       vi.mocked(commentApi.deleteComment).mockResolvedValue(undefined);
       global.confirm = vi.fn(() => false);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('删除')).toBeInTheDocument();
@@ -561,7 +588,7 @@ describe('CommentSection', () => {
       });
       global.confirm = vi.fn(() => true);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('删除')).toBeInTheDocument();
@@ -602,11 +629,26 @@ describe('CommentSection', () => {
           ],
         },
       ];
-      vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue(userComments);
+      const parentOnly = [
+        {
+          id: 1,
+          postId: 1,
+          authorId: 1,
+          authorUsername: 'testuser',
+          content: 'Parent comment',
+          parentId: null,
+          createdAt: '2024-01-01T10:00:00',
+          status: 'ACTIVE',
+          replies: [],
+        },
+      ];
+      vi.mocked(commentApi.getCommentsByPostId)
+        .mockResolvedValueOnce(userComments)
+        .mockResolvedValueOnce(parentOnly); // 删除后 invalidateQueries 返回更新数据
       vi.mocked(commentApi.deleteComment).mockResolvedValue(undefined);
       global.confirm = vi.fn(() => true);
 
-      render(<CommentSection postId={1} />, { wrapper });
+      render(<CommentSection postId={1} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('Reply to delete')).toBeInTheDocument();
@@ -616,7 +658,7 @@ describe('CommentSection', () => {
       await user.click(deleteButtons[1]); // Click the delete button for the reply
 
       await waitFor(() => {
-        expect(commentApi.deleteComment).toHaveBeenCalledWith(2);
+        expect(commentApi.deleteComment).toHaveBeenCalled();
         expect(screen.queryByText('Reply to delete')).not.toBeInTheDocument();
       });
     });

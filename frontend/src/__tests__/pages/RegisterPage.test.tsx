@@ -2,17 +2,18 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext';
-import RegisterPage from './RegisterPage';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '../../context/AuthContext';
+import RegisterPage from '../../pages/RegisterPage';
 
 // Mock axios client
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   default: {
     post: vi.fn()
   }
 }));
 
-import client from '../api/client';
+import client from '../../api/client';
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -33,10 +34,19 @@ describe('RegisterPage', () => {
     global.alert = alertMock;
   });
 
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
+
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter>
-      <AuthProvider>{children}</AuthProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <AuthProvider>{children}</AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 
   describe('Step 1: Registration Form', () => {

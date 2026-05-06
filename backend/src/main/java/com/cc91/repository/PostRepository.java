@@ -28,4 +28,19 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 按状态分页查询帖子
      */
     Page<Post> findByStatus(String status, Pageable pageable);
+
+    /**
+     * 按版块ID和状态分页查询帖子
+     */
+    Page<Post> findByCategoryIdAndStatus(Long categoryId, String status, Pageable pageable);
+
+    /**
+     * 按标题或内容搜索帖子（分页）
+     * 只返回指定状态的帖子
+     */
+    Page<Post> findByStatusAndTitleContainingOrStatusAndContentContaining(
+            String status, String titleKeyword,
+            String status2, String contentKeyword,
+            Pageable pageable
+    );
 }

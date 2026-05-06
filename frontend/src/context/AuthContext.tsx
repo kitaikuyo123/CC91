@@ -3,12 +3,14 @@ import { type ReactNode, createContext, useContext, useState, useEffect } from '
 interface User {
   username: string;
   email: string;
+  role?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (username: string, accessToken: string) => void;
+  isAdmin: boolean;
+  login: (username: string, accessToken: string, role?: string) => void;
   logout: () => void;
 }
 
@@ -17,6 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // 检查本地存储中的 token
@@ -25,8 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (token && storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
         setIsAuthenticated(true);
+        setIsAdmin(userData.role === 'ADMIN');
       } catch {
         // 清除无效的用户数据
         localStorage.removeItem('user');
@@ -35,10 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = (username: string, accessToken: string) => {
-    const userData: User = { username, email: '' };
+  const login = (username: string, accessToken: string, role: string = 'USER') => {
+    const userData: User = { username, email: '', role };
     setUser(userData);
     setIsAuthenticated(true);
+    setIsAdmin(role === 'ADMIN');
     localStorage.setItem('access_token', accessToken);
     localStorage.setItem('user', JSON.stringify(userData));
   };
@@ -46,13 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
+    setIsAdmin(false);
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

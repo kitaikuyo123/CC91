@@ -1,7 +1,9 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getMyProfile, updateProfile } from '../api/user';
+import { queryKeys } from '../lib/queryKeys';
 
 /**
  * 编辑个人资料页面组件
@@ -9,58 +11,54 @@ import { getMyProfile, updateProfile } from '../api/user';
 export default function ProfileEditPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [website, setWebsite] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // 加载当前资料
+  // 使用 React Query 获取当前资料
+  const { data: profile, isLoading } = useQuery({
+    queryKey: queryKeys.users.me(),
+    queryFn: getMyProfile,
+  });
+
+  // React Query v5 移除了 onSuccess，改用 useEffect
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const profile = await getMyProfile();
-        setAvatarUrl(profile.avatarUrl || '');
-        setBio(profile.bio || '');
-        setLocation(profile.location || '');
-        setWebsite(profile.website || '');
-        setError('');
-      } catch (err: any) {
-        setError(err.response?.data?.message || '获取资料失败');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (profile) {
+      setAvatarUrl(profile.avatarUrl || '');
+      setBio(profile.bio || '');
+      setLocation(profile.location || '');
+      setWebsite(profile.website || '');
+    }
+  }, [profile]);
 
-    fetchProfile();
-  }, []);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError('');
-
-    try {
-      await updateProfile({
-        avatarUrl: avatarUrl.trim() || undefined,
-        bio: bio.trim() || undefined,
-        location: location.trim() || undefined,
-        website: website.trim() || undefined,
-      });
-
-      // 跳转到个人资料页
+  // 更新资料的 mutation
+  const updateMutation = useMutation({
+    mutationFn: updateProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
       if (user) {
         navigate(`/profile/${user.username}`);
       }
-    } catch (err: any) {
-      const message = err.response?.data?.message || '更新失败，请重试';
-      setError(message);
-    } finally {
-      setSubmitting(false);
-    }
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || '更新失败，请重试');
+    },
+  });
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    updateMutation.mutate({
+      avatarUrl: avatarUrl.trim() || undefined,
+      bio: bio.trim() || undefined,
+      location: location.trim() || undefined,
+      website: website.trim() || undefined,
+    });
   };
 
   const handleCancel = () => {
@@ -69,7 +67,7 @@ export default function ProfileEditPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
         <div className="spinner"></div>
@@ -92,7 +90,7 @@ export default function ProfileEditPage() {
               type="url"
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
-              disabled={submitting}
+              disabled={updateMutation.isPending}
               placeholder="https://example.com/avatar.jpg"
             />
             <small style={{ color: '#888' }}>请输入图片的完整 URL 地址</small>
@@ -123,7 +121,7 @@ export default function ProfileEditPage() {
               id="bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              disabled={submitting}
+              disabled={updateMutation.isPending}
               placeholder="介绍一下你自己..."
               rows={3}
               maxLength={500}
@@ -142,7 +140,7 @@ export default function ProfileEditPage() {
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              disabled={submitting}
+              disabled={updateMutation.isPending}
               placeholder="例如：北京, 中国"
               maxLength={100}
             />
@@ -156,7 +154,7 @@ export default function ProfileEditPage() {
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              disabled={submitting}
+              disabled={updateMutation.isPending}
               placeholder="https://yourwebsite.com"
             />
           </div>
@@ -172,16 +170,16 @@ export default function ProfileEditPage() {
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={submitting}
+              disabled={updateMutation.isPending}
               style={{ flex: 1 }}
             >
-              {submitting ? <span className="spinner"></span> : '保存'}
+              {updateMutation.isPending ? <span className="spinner"></span> : '保存'}
             </button>
             <button
               type="button"
               onClick={handleCancel}
               className="btn"
-              disabled={submitting}
+              disabled={updateMutation.isPending}
               style={{ flex: 1 }}
             >
               取消

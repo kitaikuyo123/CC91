@@ -1,4 +1,5 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import {
   getCommentsByPostId,
@@ -7,6 +8,7 @@ import {
   deleteComment,
   type Comment
 } from '../api/comment';
+import { queryKeys } from '../lib/queryKeys';
 
 interface CommentSectionProps {
   postId: number;
@@ -15,29 +17,24 @@ interface CommentSectionProps {
 /**
  * 单个评论组件（递归渲染嵌套回复）
  */
-function CommentItem({ comment, postId, currentUser, onDelete, onReply }: {
+function CommentItem({ comment, postId, currentUser, onDelete, onReply, isReplying, isSubmitting }: {
   comment: Comment;
   postId: number;
   currentUser: string | null;
   onDelete: (commentId: number) => void;
   onReply: (commentId: number, content: string) => void;
+  isReplying: boolean;
+  isSubmitting: boolean;
 }) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmitReply = async (e: FormEvent) => {
     e.preventDefault();
     if (!replyContent.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      await onReply(comment.id, replyContent);
-      setReplyContent('');
-      setShowReplyForm(false);
-    } finally {
-      setIsSubmitting(false);
-    }
+    onReply(comment.id, replyContent);
+    setReplyContent('');
+    setShowReplyForm(false);
   };
 
   const isAuthor = currentUser === comment.authorUsername;
@@ -105,9 +102,9 @@ function CommentItem({ comment, postId, currentUser, onDelete, onReply }: {
               type="submit"
               className="btn btn-primary"
               style={{ fontSize: '0.85rem' }}
-              disabled={isSubmitting || !replyContent.trim()}
+              disabled={isReplying || !replyContent.trim()}
             >
-              {isSubmitting ? '发送中...' : '发送回复'}
+              {isReplying ? '发送中...' : '发送回复'}
             </button>
           </div>
         </form>
@@ -124,6 +121,8 @@ function CommentItem({ comment, postId, currentUser, onDelete, onReply }: {
               currentUser={currentUser}
               onDelete={onDelete}
               onReply={onReply}
+              isReplying={isReplying}
+              isSubmitting={isSubmitting}
             />
           ))}
         </div>
@@ -137,105 +136,88 @@ function CommentItem({ comment, postId, currentUser, onDelete, onReply }: {
  */
 export default function CommentSection({ postId }: CommentSectionProps) {
   const { user: currentUser, isAuthenticated } = useAuth();
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  // 加载评论列表
-  useEffect(() => {
-    const fetchComments = async () => {
-      try {
-        setLoading(true);
-        const data = await getCommentsByPostId(postId);
-        setComments(data);
-        setError('');
-      } catch (err: any) {
-        setError(err.response?.data?.message || '加载评论失败');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // 使用 React Query 获取评论列表
+  const { data: comments = [], isLoading, error: queryError } = useQuery({
+    queryKey: queryKeys.comments.byPost(postId),
+    queryFn: () => getCommentsByPostId(postId),
+  });
 
-    fetchComments();
-  }, [postId]);
+  // 创建评论的 mutation
+  const createCommentMutation = useMutation({
+    mutationFn: ({ postId, content }: { postId: number; content: string }) =>
+      createComment(postId, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.comments.byPost(postId) });
+      setNewComment('');
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || '发表评论失败');
+    },
+  });
+
+  // 回复评论的 mutation
+  const replyCommentMutation = useMutation({
+    mutationFn: ({ commentId, content }: { commentId: number; content: string }) =>
+      replyToComment(commentId, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.comments.byPost(postId) });
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || '回复失败');
+    },
+  });
+
+  // 删除评论的 mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: deleteComment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.comments.byPost(postId) });
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || '删除评论失败');
+    },
+  });
 
   // 发表新评论
-  const handleSubmitComment = async (e: FormEvent) => {
+  const handleSubmitComment = (e: FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      const created = await createComment(postId, { content: newComment });
-      setComments([...comments, created]);
-      setNewComment('');
-    } catch (err: any) {
-      setError(err.response?.data?.message || '发表评论失败');
-    } finally {
-      setIsSubmitting(false);
-    }
+    createCommentMutation.mutate({ postId, content: newComment });
   };
 
   // 回复评论
-  const handleReply = async (commentId: number, content: string) => {
-    try {
-      const created = await replyToComment(commentId, { content });
-
-      // 递归更新评论树中的回复
-      const updateReplies = (commentList: Comment[]): Comment[] => {
-        return commentList.map(comment => {
-          if (comment.id === commentId) {
-            return {
-              ...comment,
-              replies: [...comment.replies, created]
-            };
-          }
-          if (comment.replies.length > 0) {
-            return {
-              ...comment,
-              replies: updateReplies(comment.replies)
-            };
-          }
-          return comment;
-        });
-      };
-
-      setComments(updateReplies(comments));
-    } catch (err: any) {
-      setError(err.response?.data?.message || '回复失败');
-    }
+  const handleReply = (commentId: number, content: string) => {
+    replyCommentMutation.mutate({ commentId, content });
   };
 
   // 删除评论
-  const handleDelete = async (commentId: number) => {
+  const handleDelete = (commentId: number) => {
     if (!confirm('确定要删除这条评论吗？')) return;
-
-    try {
-      await deleteComment(commentId);
-
-      // 递归从评论树中移除评论
-      const removeComment = (commentList: Comment[]): Comment[] => {
-        return commentList
-          .filter(comment => comment.id !== commentId)
-          .map(comment => ({
-            ...comment,
-            replies: removeComment(comment.replies)
-          }));
-      };
-
-      setComments(removeComment(comments));
-    } catch (err: any) {
-      setError(err.response?.data?.message || '删除评论失败');
-    }
+    deleteCommentMutation.mutate(commentId);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div style={{ textAlign: 'center', padding: '2rem' }}>
         <div className="spinner"></div>
         <p style={{ marginTop: '0.5rem', color: '#888' }}>加载评论中...</p>
+      </div>
+    );
+  }
+
+  // 显示查询错误
+  if (queryError) {
+    const errorMessage = (queryError as any)?.response?.data?.message || '加载评论失败';
+    return (
+      <div className="comment-section" style={{ marginTop: '2rem' }}>
+        <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>评论 (0)</h2>
+        <div className="error-message" style={{ marginBottom: '1rem' }}>
+          {errorMessage}
+        </div>
       </div>
     );
   }
@@ -270,14 +252,14 @@ export default function CommentSection({ postId }: CommentSectionProps) {
               resize: 'vertical',
               marginBottom: '0.5rem'
             }}
-            disabled={isSubmitting}
+            disabled={createCommentMutation.isPending}
           />
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={isSubmitting || !newComment.trim()}
+            disabled={createCommentMutation.isPending || !newComment.trim()}
           >
-            {isSubmitting ? '发表中...' : '发表评论'}
+            {createCommentMutation.isPending ? '发表中...' : '发表评论'}
           </button>
         </form>
       )}
@@ -303,6 +285,8 @@ export default function CommentSection({ postId }: CommentSectionProps) {
               currentUser={currentUser?.username || null}
               onDelete={handleDelete}
               onReply={handleReply}
+              isReplying={replyCommentMutation.isPending}
+              isSubmitting={createCommentMutation.isPending || replyCommentMutation.isPending || deleteCommentMutation.isPending}
             />
           ))}
         </div>

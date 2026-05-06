@@ -12,6 +12,8 @@ public class UpdatePostRequest {
 
     private String content;
 
+    private Long categoryId;
+
     public UpdatePostRequest() {}
 
     public UpdatePostRequest(String title, String content) {
@@ -25,4 +27,7 @@ public class UpdatePostRequest {
 
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 }
