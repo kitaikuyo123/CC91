@@ -1,7 +1,8 @@
 import client from './client';
+import type { ApiResponse } from './types';
 
 /**
- * 版块分类类型
+ * Category type
  */
 export interface Category {
   id: number;
@@ -12,7 +13,7 @@ export interface Category {
 }
 
 /**
- * 创建版块请求类型
+ * Create category request type
  */
 export interface CreateCategoryRequest {
   name: string;
@@ -21,7 +22,7 @@ export interface CreateCategoryRequest {
 }
 
 /**
- * 更新版块请求类型
+ * Update category request type
  */
 export interface UpdateCategoryRequest {
   name?: string;
@@ -30,16 +31,8 @@ export interface UpdateCategoryRequest {
 }
 
 /**
- * API 响应包装类型
- */
-export interface ApiResponse<T> {
-  message: string;
-  data: T;
-}
-
-/**
- * 获取所有版块
- * GET /api/categories
+ * Get all categories
+ * GET /api/categories - backend returns List directly
  */
 export async function getCategories(): Promise<Category[]> {
   const response = await client.get<Category[]>('/categories');
@@ -47,8 +40,8 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 /**
- * 根据ID获取版块详情
- * GET /api/categories/{id}
+ * Get category by ID
+ * GET /api/categories/{id} - backend returns CategoryDTO directly
  */
 export async function getCategoryById(id: number): Promise<Category> {
   const response = await client.get<Category>(`/categories/${id}`);
@@ -56,25 +49,25 @@ export async function getCategoryById(id: number): Promise<Category> {
 }
 
 /**
- * 创建版块（管理员）
- * POST /api/categories
+ * Create category (admin)
+ * POST /api/categories - backend wraps in ApiResponse
  */
 export async function createCategory(data: CreateCategoryRequest): Promise<Category> {
   const response = await client.post<ApiResponse<Category>>('/categories', data);
-  return response.data.data;
+  return response.data.data!;
 }
 
 /**
- * 更新版块（管理员）
- * PUT /api/categories/{id}
+ * Update category (admin)
+ * PUT /api/categories/{id} - backend wraps in ApiResponse
  */
 export async function updateCategory(id: number, data: UpdateCategoryRequest): Promise<Category> {
   const response = await client.put<ApiResponse<Category>>(`/categories/${id}`, data);
-  return response.data.data;
+  return response.data.data!;
 }
 
 /**
- * 删除版块（管理员）
+ * Delete category (admin)
  * DELETE /api/categories/{id}
  */
 export async function deleteCategory(id: number): Promise<void> {

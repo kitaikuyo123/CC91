@@ -1,7 +1,8 @@
 import client from './client';
+import type { ApiResponse } from './types';
 
 /**
- * 评论响应类型
+ * Comment response type
  */
 export interface Comment {
   id: number;
@@ -16,41 +17,32 @@ export interface Comment {
 }
 
 /**
- * 创建评论请求类型
+ * Create comment request type
  */
 export interface CreateCommentRequest {
   content: string;
 }
 
 /**
- * API 响应包装类型
- */
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
-
-/**
- * 创建评论
- * POST /api/posts/{postId}/comments
+ * Create comment
+ * POST /api/posts/{postId}/comments - backend wraps in ApiResponse
  */
 export async function createComment(postId: number, data: CreateCommentRequest): Promise<Comment> {
   const response = await client.post<ApiResponse<Comment>>(`/posts/${postId}/comments`, data);
-  return response.data.data;
+  return response.data.data!;
 }
 
 /**
- * 回复评论
- * POST /api/comments/{id}/reply
+ * Reply to comment
+ * POST /api/comments/{id}/reply - backend wraps in ApiResponse
  */
 export async function replyToComment(commentId: number, data: CreateCommentRequest): Promise<Comment> {
   const response = await client.post<ApiResponse<Comment>>(`/comments/${commentId}/reply`, data);
-  return response.data.data;
+  return response.data.data!;
 }
 
 /**
- * 删除评论
+ * Delete comment
  * DELETE /api/comments/{id}
  */
 export async function deleteComment(commentId: number): Promise<void> {
@@ -58,8 +50,8 @@ export async function deleteComment(commentId: number): Promise<void> {
 }
 
 /**
- * 获取帖子的所有评论（树形结构）
- * GET /api/posts/{postId}/comments
+ * Get all comments for a post (tree structure)
+ * GET /api/posts/{postId}/comments - backend returns List directly
  */
 export async function getCommentsByPostId(postId: number): Promise<Comment[]> {
   const response = await client.get<Comment[]>(`/posts/${postId}/comments`);

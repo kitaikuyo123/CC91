@@ -1,15 +1,19 @@
 import client from './client';
+import type { ApiResponse } from './types';
 
 /**
- * 登录响应类型
+ * Login response type
+ * Backend returns this directly (NOT wrapped in ApiResponse)
  */
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
 }
 
 /**
- * 注册响应类型
+ * Register response type
  */
 export interface RegisterResponse {
   username: string;
@@ -17,22 +21,14 @@ export interface RegisterResponse {
 }
 
 /**
- * API 响应包装类型
- */
-export interface ApiResponse<T> {
-  message: string;
-  data?: T;
-}
-
-/**
- * 忘记密码请求类型
+ * Forgot password request type
  */
 export interface ForgotPasswordRequest {
   email: string;
 }
 
 /**
- * 重置密码请求类型
+ * Reset password request type
  */
 export interface ResetPasswordRequest {
   email: string;
@@ -41,7 +37,7 @@ export interface ResetPasswordRequest {
 }
 
 /**
- * 登录
+ * Login
  * POST /api/auth/login
  */
 export async function login(username: string, password: string): Promise<LoginResponse> {
@@ -53,20 +49,20 @@ export async function login(username: string, password: string): Promise<LoginRe
 }
 
 /**
- * 注册
+ * Register
  * POST /api/auth/register
  */
 export async function register(username: string, email: string, password: string): Promise<RegisterResponse> {
-  const response = await client.post<ApiResponse<RegisterResponse>>('/auth/register', {
+  const response = await client.post<RegisterResponse>('/auth/register', {
     username,
     email,
     password,
   });
-  return response.data.data || response.data as any;
+  return response.data;
 }
 
 /**
- * 发送密码重置验证码
+ * Send password reset verification code
  * POST /api/auth/forgot-password
  */
 export async function forgotPassword(email: string): Promise<ApiResponse<void>> {
@@ -77,7 +73,7 @@ export async function forgotPassword(email: string): Promise<ApiResponse<void>> 
 }
 
 /**
- * 重置密码
+ * Reset password
  * POST /api/auth/reset-password
  */
 export async function resetPassword(email: string, code: string, newPassword: string): Promise<ApiResponse<void>> {
@@ -90,20 +86,25 @@ export async function resetPassword(email: string, code: string, newPassword: st
 }
 
 /**
- * 刷新令牌
+ * Refresh token
  * POST /api/auth/refresh
  */
-export async function refreshToken(refreshToken: string): Promise<LoginResponse> {
+export async function refreshToken(refreshTokenValue: string): Promise<LoginResponse> {
   const response = await client.post<LoginResponse>('/auth/refresh', {
-    refreshToken,
+    refreshToken: refreshTokenValue,
   });
   return response.data;
 }
 
 /**
- * 登出
+ * Logout (invalidate refresh token on server)
  * POST /api/auth/logout
  */
 export async function logout(): Promise<void> {
-  await client.post('/auth/logout');
+  const storedRefreshToken = localStorage.getItem('refresh_token');
+  if (storedRefreshToken) {
+    await client.post('/auth/logout', {
+      refreshToken: storedRefreshToken,
+    });
+  }
 }
