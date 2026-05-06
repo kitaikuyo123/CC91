@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile, type UserProfile } from '../api/user';
+import { queryKeys } from '../lib/queryKeys';
 
 /**
  * 用户资料页面组件
@@ -11,30 +12,14 @@ export default function ProfilePage() {
   const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
   const isOwnProfile = currentUser?.username === username;
 
-  useEffect(() => {
-    if (!username) return;
-
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const data = await getUserProfile(username);
-        setProfile(data);
-        setError('');
-      } catch (err: any) {
-        setError(err.response?.data?.message || '获取用户资料失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [username]);
+  // 使用 React Query 获取用户资料
+  const { data: profile, isLoading, error } = useQuery({
+    queryKey: queryKeys.users.detail(username || ''),
+    queryFn: () => getUserProfile(username || ''),
+    enabled: !!username,
+  });
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('zh-CN', {
@@ -44,7 +29,7 @@ export default function ProfilePage() {
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
         <div className="spinner"></div>
@@ -56,7 +41,7 @@ export default function ProfilePage() {
   if (error || !profile) {
     return (
       <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message">{error || '用户不存在'}</div>
+        <div className="error-message">{(error as any)?.response?.data?.message || '用户不存在'}</div>
       </div>
     );
   }

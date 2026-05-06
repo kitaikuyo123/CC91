@@ -32,13 +32,16 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public CommentService(CommentRepository commentRepository,
                          PostRepository postRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -54,6 +57,20 @@ public class CommentService {
 
         Comment comment = new Comment(postId, user.getId(), request.getContent(), null);
         comment = commentRepository.save(comment);
+
+        // 如果评论的不是自己的帖子，通知帖子作者
+        if (!post.getAuthorId().equals(user.getId())) {
+            User postAuthor = userRepository.findById(post.getAuthorId()).orElse(null);
+            if (postAuthor != null) {
+                notificationService.createNotification(
+                        post.getAuthorId(),
+                        "REPLY",
+                        "新评论通知",
+                        user.getUsername() + " 评论了你的帖子: " + post.getTitle(),
+                        comment.getId()
+                );
+            }
+        }
 
         logger.info("评论创建成功: id={}, postId={}, author={}", comment.getId(), postId, username);
 
@@ -74,6 +91,22 @@ public class CommentService {
         Comment reply = new Comment(parentComment.getPostId(), user.getId(),
                                     request.getContent(), commentId);
         reply = commentRepository.save(reply);
+
+        // 通知被回复的评论作者（如果不是自己回复自己）
+        if (!parentComment.getAuthorId().equals(user.getId())) {
+            User parentAuthor = userRepository.findById(parentComment.getAuthorId()).orElse(null);
+            if (parentAuthor != null) {
+                Post post = postRepository.findById(parentComment.getPostId()).orElse(null);
+                String postTitle = post != null ? post.getTitle() : "未知帖子";
+                notificationService.createNotification(
+                        parentComment.getAuthorId(),
+                        "REPLY",
+                        "新回复通知",
+                        user.getUsername() + " 回复了你在「" + postTitle + "」中的评论",
+                        reply.getId()
+                );
+            }
+        }
 
         logger.info("回复评论成功: id={}, parentId={}, author={}", reply.getId(), commentId, username);
 

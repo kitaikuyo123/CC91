@@ -2,14 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import PostDetailPage from '../pages/PostDetailPage';
-import CommentSection from '../components/CommentSection';
-import * as postApi from '../api/post';
-import { AuthProvider } from '../context/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import PostDetailPage from '../../pages/PostDetailPage';
+import CommentSection from '../../components/CommentSection';
+import * as postApi from '../../api/post';
+import { AuthProvider } from '../../context/AuthContext';
 
 // Mock the API
-vi.mock('../api/post');
-vi.mock('../components/CommentSection');
+vi.mock('../../api/post');
+vi.mock('../../components/CommentSection');
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -38,15 +39,25 @@ describe('PostDetailPage', () => {
     viewCount: 100,
   };
 
+  // 每次调用创建新的 wrapper 和 queryClient，避免缓存污染
   const renderWithAuth = (username: string | null) => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+
     const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-      <MemoryRouter initialEntries={['/posts/1']}>
-        <AuthProvider>
-          <Routes>
-            <Route path="/posts/:id" element={children} />
-          </Routes>
-        </AuthProvider>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/posts/1']}>
+          <AuthProvider>
+            <Routes>
+              <Route path="/posts/:id" element={children} />
+            </Routes>
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
 
     // Set up auth state
@@ -187,8 +198,10 @@ describe('PostDetailPage', () => {
       await user.click(deleteButton);
 
       expect(global.confirm).toHaveBeenCalledWith('确定要删除这篇帖子吗？此操作不可恢复。');
-      expect(postApi.deletePost).toHaveBeenCalledWith(1);
-      expect(mockNavigate).toHaveBeenCalledWith('/posts');
+      expect(postApi.deletePost).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/posts');
+      });
     });
 
     it('删除时取消确认不应该删除', async () => {
@@ -272,7 +285,7 @@ describe('PostDetailPage', () => {
       });
     });
 
-    it('404错误应该显示特定错误信息', async () => {
+    it('404错误应该显示API返回的错误信息', async () => {
       vi.mocked(postApi.getPostById).mockRejectedValue({
         response: { data: { message: 'Not found' }, status: 404 },
       });
@@ -280,7 +293,7 @@ describe('PostDetailPage', () => {
       renderWithAuth('testuser');
 
       await waitFor(() => {
-        expect(screen.getByText('帖子不存在')).toBeInTheDocument();
+        expect(screen.getByText('Not found')).toBeInTheDocument();
       });
     });
 

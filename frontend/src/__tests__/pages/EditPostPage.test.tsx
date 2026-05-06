@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import EditPostPage from '../pages/EditPostPage';
-import * as postApi from '../api/post';
-import { AuthProvider } from '../context/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import EditPostPage from '../../pages/EditPostPage';
+import * as postApi from '../../api/post';
+import { AuthProvider } from '../../context/AuthContext';
 
 // Mock the API
-vi.mock('../api/post');
+vi.mock('../../api/post');
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -38,15 +39,25 @@ describe('EditPostPage', () => {
     localStorage.clear();
   });
 
+  // 每次调用创建新的 wrapper 和 queryClient，避免缓存污染
   const renderWithAuth = (username: string | null) => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+
     const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-      <MemoryRouter initialEntries={['/posts/1/edit']}>
-        <AuthProvider>
-          <Routes>
-            <Route path="/posts/:id/edit" element={children} />
-          </Routes>
-        </AuthProvider>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/posts/1/edit']}>
+          <AuthProvider>
+            <Routes>
+              <Route path="/posts/:id/edit" element={children} />
+            </Routes>
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
 
     if (username) {

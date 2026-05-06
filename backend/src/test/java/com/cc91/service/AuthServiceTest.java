@@ -179,6 +179,11 @@ class AuthServiceTest {
     @Test
     @Transactional
     void verifyEmail_Success_MarksCodeAsUsed() {
+        // Arrange: 创建一个用户（模拟注册流程中已创建但锁定的用户）
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+        user.setIsLocked(true);
+        userRepository.save(user);
+
         // Arrange: 创建一个有效的验证码
         VerificationCode validCode = new VerificationCode(
                 "test@example.com",
@@ -201,6 +206,11 @@ class AuthServiceTest {
                 .orElse(null);
         assertNotNull(updatedCode);
         assertTrue(updatedCode.getUsed());
+
+        // Assert: 用户账户已解锁
+        User updatedUser = userRepository.findByUsername("testuser").orElse(null);
+        assertNotNull(updatedUser);
+        assertFalse(updatedUser.getIsLocked());
     }
 
     // ==================== login 方法测试 ====================

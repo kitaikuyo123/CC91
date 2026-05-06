@@ -48,7 +48,8 @@ public class UserService {
                 profile.getBio(),
                 profile.getLocation(),
                 profile.getWebsite(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getRole()
         );
     }
 
@@ -100,7 +101,8 @@ public class UserService {
                 profile.getBio(),
                 profile.getLocation(),
                 profile.getWebsite(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getRole()
         );
     }
 }

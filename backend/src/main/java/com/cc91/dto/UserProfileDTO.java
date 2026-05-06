@@ -14,11 +14,13 @@ public class UserProfileDTO {
     private String location;
     private String website;
     private LocalDateTime createdAt;
+    private String role;
 
     public UserProfileDTO() {}
 
     public UserProfileDTO(String username, String email, String avatarUrl, String bio,
-                          String location, String website, LocalDateTime createdAt) {
+                          String location, String website, LocalDateTime createdAt,
+                          String role) {
         this.username = username;
         this.email = email;
         this.avatarUrl = avatarUrl;
@@ -26,6 +28,7 @@ public class UserProfileDTO {
         this.location = location;
         this.website = website;
         this.createdAt = createdAt;
+        this.role = role;
     }
 
     // Getters and Setters
@@ -49,4 +52,7 @@ public class UserProfileDTO {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 }

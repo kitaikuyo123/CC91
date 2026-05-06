@@ -2,12 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import CreatePostPage from '../pages/CreatePostPage';
-import * as postApi from '../api/post';
-import { AuthProvider } from '../context/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import CreatePostPage from '../../pages/CreatePostPage';
+import * as postApi from '../../api/post';
+import { AuthProvider } from '../../context/AuthContext';
 
 // Mock the API
-vi.mock('../api/post');
+vi.mock('../../api/post');
+vi.mock('../../api/category', () => ({
+  getCategories: vi.fn().mockResolvedValue([]),
+}));
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -31,21 +35,35 @@ describe('CreatePostPage', () => {
     localStorage.clear();
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter>
-      <AuthProvider>{children}</AuthProvider>
-    </MemoryRouter>
-  );
+  // 每次调用创建新的 wrapper 和 queryClient，避免缓存污染
+  const createWrapper = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+
+    return function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <AuthProvider>{children}</AuthProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+    };
+  };
 
   describe('未登录状态', () => {
     it('未登录应该导航到登录页', () => {
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
-      expect(mockNavigate).toHaveBeenCalledWith('/login');
+      expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
     });
 
     it('未登录应该不渲染内容', () => {
-      const { container } = render(<CreatePostPage />, { wrapper });
+      const { container } = render(<CreatePostPage />, { wrapper: createWrapper() });
 
       expect(container.firstChild).toBeNull();
     });
@@ -55,7 +73,7 @@ describe('CreatePostPage', () => {
     beforeEach(setupAuth);
 
     it('应该渲染创建帖子表单', () => {
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       expect(screen.getByText('发布新帖')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('请输入帖子标题')).toBeInTheDocument();
@@ -65,14 +83,14 @@ describe('CreatePostPage', () => {
     });
 
     it('应该显示标题字符计数', () => {
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       expect(screen.getByText('(0/200)')).toBeInTheDocument();
     });
 
     it('输入标题时字符计数应该更新', async () => {
       const user = userEvent.setup();
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       await user.type(titleInput, 'Test Title');
@@ -86,7 +104,7 @@ describe('CreatePostPage', () => {
 
     it('提交空标题应该显示验证错误', async () => {
       const user = userEvent.setup();
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -106,7 +124,7 @@ describe('CreatePostPage', () => {
 
     it('提交空内容应该显示验证错误', async () => {
       const user = userEvent.setup();
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       await user.type(titleInput, 'Test Title');
@@ -123,7 +141,7 @@ describe('CreatePostPage', () => {
 
     it('只有空格的标题应该显示验证错误', async () => {
       const user = userEvent.setup();
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -143,7 +161,7 @@ describe('CreatePostPage', () => {
 
     it('只有空格的内容应该显示验证错误', async () => {
       const user = userEvent.setup();
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -170,7 +188,7 @@ describe('CreatePostPage', () => {
       const mockCreatedPost = { id: 123, title: 'Test Title', content: 'Test content' };
       vi.mocked(postApi.createPost).mockResolvedValue(mockCreatedPost as any);
 
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -182,10 +200,10 @@ describe('CreatePostPage', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(postApi.createPost).toHaveBeenCalledWith({
-          title: 'Test Title',
-          content: 'Test content',
-        });
+        expect(postApi.createPost).toHaveBeenCalledWith(
+          { title: 'Test Title', content: 'Test content', status: 'PUBLISHED' },
+          expect.objectContaining({})
+        );
       });
 
       expect(mockNavigate).toHaveBeenCalledWith('/posts/123');
@@ -196,7 +214,7 @@ describe('CreatePostPage', () => {
       const mockCreatedPost = { id: 123, title: 'Test Title', content: 'Test content' };
       vi.mocked(postApi.createPost).mockResolvedValue(mockCreatedPost as any);
 
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -208,10 +226,10 @@ describe('CreatePostPage', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(postApi.createPost).toHaveBeenCalledWith({
-          title: 'Test Title',
-          content: 'Test content',
-        });
+        expect(postApi.createPost).toHaveBeenCalledWith(
+          { title: 'Test Title', content: 'Test content', status: 'PUBLISHED' },
+          expect.objectContaining({})
+        );
       });
     });
 
@@ -221,7 +239,7 @@ describe('CreatePostPage', () => {
         () => new Promise(() => {})
       );
 
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -248,7 +266,7 @@ describe('CreatePostPage', () => {
         response: { data: { message: '创建失败，请重试' } },
       });
 
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -270,7 +288,7 @@ describe('CreatePostPage', () => {
       const user = userEvent.setup();
       vi.mocked(postApi.createPost).mockRejectedValue({});
 
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -292,7 +310,7 @@ describe('CreatePostPage', () => {
 
     it('点击取消应该导航到帖子列表', async () => {
       const user = userEvent.setup();
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const cancelButton = screen.getByRole('button', { name: '取消' });
       await user.click(cancelButton);
@@ -306,7 +324,7 @@ describe('CreatePostPage', () => {
         () => new Promise(() => {})
       );
 
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题');
       const contentInput = screen.getByPlaceholderText('请输入帖子内容...');
@@ -329,7 +347,7 @@ describe('CreatePostPage', () => {
 
     it('标题输入应该限制最多200字符', async () => {
       const user = userEvent.setup();
-      render(<CreatePostPage />, { wrapper });
+      render(<CreatePostPage />, { wrapper: createWrapper() });
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题') as HTMLInputElement;
       expect(titleInput.maxLength).toBe(200);

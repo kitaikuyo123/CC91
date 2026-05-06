@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext';
-import ProfileEditPage from '../pages/ProfileEditPage';
-import * as userApi from '../api/user';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '../../context/AuthContext';
+import ProfileEditPage from '../../pages/ProfileEditPage';
+import * as userApi from '../../api/user';
 
 // Mock the user API
-vi.mock('../api/user');
+vi.mock('../../api/user');
 
 describe('ProfileEditPage', () => {
   beforeEach(() => {
@@ -18,16 +19,28 @@ describe('ProfileEditPage', () => {
     localStorage.setItem('user', JSON.stringify({ username: 'testuser', email: 'test@example.com' }));
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter initialEntries={['/profile/edit']}>
-      <AuthProvider>
-        <Routes>
-          <Route path="/profile/edit" element={children} />
-          <Route path="/profile/:username" element={<div>Profile Page</div>} />
-        </Routes>
-      </AuthProvider>
-    </MemoryRouter>
-  );
+  // 每次调用创建新的 wrapper 和 queryClient，避免缓存污染
+  const createWrapper = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+
+    return ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/profile/edit']}>
+          <AuthProvider>
+            <Routes>
+              <Route path="/profile/edit" element={children} />
+              <Route path="/profile/:username" element={<div>Profile Page</div>} />
+            </Routes>
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  };
 
   const mockProfile = {
     username: 'testuser',
@@ -43,7 +56,7 @@ describe('ProfileEditPage', () => {
     it('should load and display current profile data in form', async () => {
       vi.mocked(userApi.getMyProfile).mockResolvedValue(mockProfile);
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByLabelText('头像 URL')).toHaveValue('https://example.com/avatar.jpg');
@@ -58,7 +71,7 @@ describe('ProfileEditPage', () => {
         () => new Promise(() => {}) // Never resolves
       );
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       expect(screen.getByText('加载中...')).toBeInTheDocument();
     });
@@ -70,7 +83,7 @@ describe('ProfileEditPage', () => {
       vi.mocked(userApi.getMyProfile).mockResolvedValue(mockProfile);
       vi.mocked(userApi.updateProfile).mockResolvedValue(mockProfile);
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       // 等待表单加载
       await waitFor(() => {
@@ -91,7 +104,9 @@ describe('ProfileEditPage', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(userApi.updateProfile).toHaveBeenCalledWith({
+        expect(userApi.updateProfile).toHaveBeenCalled();
+        const callArgs = vi.mocked(userApi.updateProfile).mock.calls[0][0];
+        expect(callArgs).toEqual({
           avatarUrl: 'https://example.com/avatar.jpg',
           bio: '更新后的个人签名',
           location: '上海',
@@ -105,7 +120,7 @@ describe('ProfileEditPage', () => {
       vi.mocked(userApi.getMyProfile).mockResolvedValue(mockProfile);
       vi.mocked(userApi.updateProfile).mockResolvedValue(mockProfile);
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
@@ -136,7 +151,7 @@ describe('ProfileEditPage', () => {
       vi.mocked(userApi.getMyProfile).mockResolvedValue(mockProfile);
       vi.mocked(userApi.updateProfile).mockResolvedValue(mockProfile);
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
@@ -163,7 +178,7 @@ describe('ProfileEditPage', () => {
       };
       vi.mocked(userApi.getMyProfile).mockResolvedValue(emptyProfile);
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByLabelText('头像 URL')).toHaveValue('');
@@ -187,7 +202,7 @@ describe('ProfileEditPage', () => {
       vi.mocked(userApi.getMyProfile).mockResolvedValue(emptyProfile);
       vi.mocked(userApi.updateProfile).mockResolvedValue(emptyProfile);
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByLabelText('头像 URL')).toHaveValue('');
@@ -213,7 +228,7 @@ describe('ProfileEditPage', () => {
         response: { data: { message: '更新失败，网络错误' } },
       });
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
@@ -233,7 +248,7 @@ describe('ProfileEditPage', () => {
         () => new Promise(() => {}) // Never resolves
       );
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
@@ -253,7 +268,7 @@ describe('ProfileEditPage', () => {
       const user = userEvent.setup();
       vi.mocked(userApi.getMyProfile).mockResolvedValue(mockProfile);
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
@@ -271,7 +286,7 @@ describe('ProfileEditPage', () => {
     it('should display character count for bio field', async () => {
       vi.mocked(userApi.getMyProfile).mockResolvedValue(mockProfile);
 
-      render(<ProfileEditPage />, { wrapper });
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('8/500')).toBeInTheDocument(); // '这是我的个人签名' is 8 chars

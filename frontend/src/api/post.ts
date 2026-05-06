@@ -9,6 +9,9 @@ export interface Post {
   content: string;
   authorId: number;
   authorUsername: string;
+  categoryId?: number;
+  categoryName?: string;
+  status?: string;
   createdAt: string;
   updatedAt: string;
   viewCount: number;
@@ -20,6 +23,8 @@ export interface Post {
 export interface CreatePostRequest {
   title: string;
   content: string;
+  categoryId?: number;
+  status?: string;
 }
 
 /**
@@ -28,6 +33,7 @@ export interface CreatePostRequest {
 export interface UpdatePostRequest {
   title?: string;
   content?: string;
+  categoryId?: number;
 }
 
 /**
@@ -94,9 +100,31 @@ export async function deletePost(id: number): Promise<void> {
  * 分页获取帖子列表
  * GET /api/posts?page=0&size=10
  */
-export async function getPostList(page: number = 0, size: number = 10): Promise<PageResponse<Post>> {
+export async function getPostList(page: number = 0, size: number = 10, status?: string): Promise<PageResponse<Post>> {
   const response = await client.get<PageResponse<Post>>('/posts', {
+    params: { page, size, ...(status ? { status } : {}) }
+  });
+  return response.data;
+}
+
+/**
+ * 根据版块ID分页获取帖子
+ * GET /api/posts/by-category/{categoryId}?page=0&size=10
+ */
+export async function getPostsByCategory(categoryId: number, page: number = 0, size: number = 10): Promise<PageResponse<Post>> {
+  const response = await client.get<PageResponse<Post>>(`/posts/by-category/${categoryId}`, {
     params: { page, size }
+  });
+  return response.data;
+}
+
+/**
+ * 搜索帖子
+ * GET /api/posts/search?keyword=xxx&page=0&size=10
+ */
+export async function searchPosts(keyword: string, page: number = 0, size: number = 10): Promise<PageResponse<Post>> {
+  const response = await client.get<PageResponse<Post>>('/posts/search', {
+    params: { keyword, page, size }
   });
   return response.data;
 }

@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 @Table(name = "posts", indexes = {
     @Index(name = "idx_author_id", columnList = "author_id"),
     @Index(name = "idx_created_at", columnList = "created_at"),
-    @Index(name = "idx_status", columnList = "status")
+    @Index(name = "idx_status", columnList = "status"),
+    @Index(name = "idx_category_id", columnList = "category_id")
 })
 public class Post {
 
@@ -31,6 +32,13 @@ public class Post {
     @JoinColumn(name = "author_id", insertable = false, updatable = false)
     private User author;
 
+    @Column(name = "category_id")
+    private Long categoryId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", insertable = false, updatable = false)
+    private Category category;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -45,8 +53,12 @@ public class Post {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
     }
 
     @PreUpdate
@@ -90,4 +102,10 @@ public class Post {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
 }

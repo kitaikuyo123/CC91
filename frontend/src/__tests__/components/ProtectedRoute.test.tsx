@@ -1,23 +1,33 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext';
-import ProtectedRoute from './ProtectedRoute';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '../../context/AuthContext';
+import ProtectedRoute from '../../components/ProtectedRoute';
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
+
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter initialEntries={['/protected']}>
-      <AuthProvider>
-        <Routes>
-          <Route path="/protected" element={<ProtectedRoute>{children}</ProtectedRoute>} />
-          <Route path="/login" element={<div>Login Page</div>} />
-        </Routes>
-      </AuthProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/protected']}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/protected" element={<ProtectedRoute>{children}</ProtectedRoute>} />
+            <Route path="/login" element={<div>Login Page</div>} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 
   it('should redirect to login when not authenticated', () => {

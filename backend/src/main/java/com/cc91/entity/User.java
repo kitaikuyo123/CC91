@@ -24,6 +24,9 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
+    @Column(length = 20, nullable = false)
+    private String role = "USER";
+
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
@@ -71,6 +74,9 @@ public class User {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }

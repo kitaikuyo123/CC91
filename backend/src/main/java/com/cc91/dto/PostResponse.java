@@ -12,15 +12,18 @@ public class PostResponse {
     private String content;
     private Long authorId;
     private String authorUsername;
+    private Long categoryId;
+    private String categoryName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer viewCount;
+    private String status;
 
     public PostResponse() {}
 
     public PostResponse(Long id, String title, String content, Long authorId,
                        String authorUsername, LocalDateTime createdAt,
-                       LocalDateTime updatedAt, Integer viewCount) {
+                       LocalDateTime updatedAt, Integer viewCount, String status) {
         this.id = id;
         this.title = title;
         this.content = content;
@@ -29,6 +32,24 @@ public class PostResponse {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.viewCount = viewCount;
+        this.status = status;
+    }
+
+    public PostResponse(Long id, String title, String content, Long authorId,
+                       String authorUsername, Long categoryId, String categoryName,
+                       LocalDateTime createdAt, LocalDateTime updatedAt, Integer viewCount,
+                       String status) {
+        this.id = id;
+        this.title = title;
+        this.content = content;
+        this.authorId = authorId;
+        this.authorUsername = authorUsername;
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.viewCount = viewCount;
+        this.status = status;
     }
 
     // Getters and Setters
@@ -55,4 +76,13 @@ public class PostResponse {
 
     public Integer getViewCount() { return viewCount; }
     public void setViewCount(Integer viewCount) { this.viewCount = viewCount; }
+
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+
+    public String getCategoryName() { return categoryName; }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

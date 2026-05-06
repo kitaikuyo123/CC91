@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import PostListPage from '../pages/PostListPage';
-import * as postApi from '../api/post';
-import { AuthProvider } from '../context/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import PostListPage from '../../pages/PostListPage';
+import * as postApi from '../../api/post';
+import { AuthProvider } from '../../context/AuthContext';
 
 // Mock the API
-vi.mock('../api/post');
+vi.mock('../../api/post');
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -16,16 +17,34 @@ vi.mock('react-router-dom', async () => ({
   useNavigate: () => mockNavigate,
 }));
 
+// Mock window.open
+const mockWindowOpen = vi.fn();
+vi.stubGlobal('open', mockWindowOpen);
+
 describe('PostListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter>
-      <AuthProvider>{children}</AuthProvider>
-    </MemoryRouter>
-  );
+  // 每次调用创建新的 wrapper 和 queryClient，避免缓存污染
+  const createWrapper = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+
+    return function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <AuthProvider>{children}</AuthProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+    };
+  };
 
   const mockPosts = [
     {
@@ -56,7 +75,7 @@ describe('PostListPage', () => {
         () => new Promise(() => {})
       );
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       expect(screen.getByText('加载中...')).toBeInTheDocument();
     });
@@ -74,7 +93,7 @@ describe('PostListPage', () => {
         empty: false,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('Test Post 1')).toBeInTheDocument();
@@ -95,7 +114,7 @@ describe('PostListPage', () => {
         empty: false,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getAllByText('作者:').length).toBeGreaterThan(0);
@@ -116,7 +135,7 @@ describe('PostListPage', () => {
         empty: false,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('Test Post 1')).toBeInTheDocument();
@@ -125,7 +144,7 @@ describe('PostListPage', () => {
       const postCard = screen.getByText('Test Post 1').closest('.card');
       await user.click(postCard!);
 
-      expect(mockNavigate).toHaveBeenCalledWith('/posts/1');
+      expect(mockWindowOpen).toHaveBeenCalledWith('/posts/1', '_blank');
     });
 
     it('点击发布新帖按钮应该导航到创建页面', async () => {
@@ -140,7 +159,7 @@ describe('PostListPage', () => {
         empty: false,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('发布新帖')).toBeInTheDocument();
@@ -165,10 +184,10 @@ describe('PostListPage', () => {
         empty: true,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('还没有帖子')).toBeInTheDocument();
+        expect(screen.getByText('暂无符合条件的帖子')).toBeInTheDocument();
       });
 
       expect(screen.getByText('发布第一篇帖子')).toBeInTheDocument();
@@ -186,7 +205,7 @@ describe('PostListPage', () => {
         empty: true,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('发布第一篇帖子')).toBeInTheDocument();
@@ -205,7 +224,7 @@ describe('PostListPage', () => {
         response: { data: { message: '网络错误' } },
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('网络错误')).toBeInTheDocument();
@@ -215,7 +234,7 @@ describe('PostListPage', () => {
     it('没有错误消息时应该显示默认错误', async () => {
       vi.mocked(postApi.getPostList).mockRejectedValue({});
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('加载帖子列表失败')).toBeInTheDocument();
@@ -235,7 +254,7 @@ describe('PostListPage', () => {
         empty: false,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('上一页')).toBeInTheDocument();
@@ -257,7 +276,7 @@ describe('PostListPage', () => {
         empty: false,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         const prevButton = screen.getByText('上一页');
@@ -287,7 +306,7 @@ describe('PostListPage', () => {
           empty: false,
         });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('上一页')).toBeInTheDocument();
@@ -297,7 +316,7 @@ describe('PostListPage', () => {
       await user.click(page2Button);
 
       await waitFor(() => {
-        expect(postApi.getPostList).toHaveBeenCalledWith(1, 10);
+        expect(postApi.getPostList).toHaveBeenCalledWith(1, 10, 'PUBLISHED');
       });
     });
 
@@ -323,7 +342,7 @@ describe('PostListPage', () => {
           empty: false,
         });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.getByText('下一页')).toBeInTheDocument();
@@ -333,7 +352,7 @@ describe('PostListPage', () => {
       await user.click(nextButton);
 
       await waitFor(() => {
-        expect(postApi.getPostList).toHaveBeenCalledWith(1, 10);
+        expect(postApi.getPostList).toHaveBeenCalledWith(1, 10, 'PUBLISHED');
       });
     });
 
@@ -368,7 +387,7 @@ describe('PostListPage', () => {
           empty: false,
         });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       // Navigate to last page by clicking page 3
       await waitFor(() => {
@@ -395,7 +414,7 @@ describe('PostListPage', () => {
         empty: false,
       });
 
-      render(<PostListPage />, { wrapper });
+      render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(screen.queryByText('上一页')).not.toBeInTheDocument();
