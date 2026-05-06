@@ -115,10 +115,10 @@ describe('NotificationBell', () => {
       render(<NotificationBell />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('通知')).toBeInTheDocument();
+        expect(screen.getByLabelText('通知，2条未读')).toBeInTheDocument();
       });
 
-      const bell = screen.getByLabelText('通知');
+      const bell = screen.getByLabelText('通知，2条未读');
       await user.click(bell);
 
       await waitFor(() => {
@@ -135,10 +135,10 @@ describe('NotificationBell', () => {
       render(<NotificationBell />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('通知')).toBeInTheDocument();
+        expect(screen.getByLabelText('通知，2条未读')).toBeInTheDocument();
       });
 
-      const bell = screen.getByLabelText('通知');
+      const bell = screen.getByLabelText('通知，2条未读');
       await user.click(bell);
 
       await waitFor(() => {
@@ -174,10 +174,10 @@ describe('NotificationBell', () => {
       render(<NotificationBell />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('通知')).toBeInTheDocument();
+        expect(screen.getByLabelText('通知，2条未读')).toBeInTheDocument();
       });
 
-      const bell = screen.getByLabelText('通知');
+      const bell = screen.getByLabelText('通知，2条未读');
       await user.click(bell);
 
       await waitFor(() => {
@@ -185,7 +185,7 @@ describe('NotificationBell', () => {
       });
 
       // Click overlay to close
-      const bellContainer = screen.getByLabelText('通知').parentElement;
+      const bellContainer = screen.getByLabelText('通知，2条未读').parentElement;
       const overlay = bellContainer!.querySelector('[style*="position: fixed"]');
       if (overlay) await user.click(overlay as HTMLElement);
 
@@ -204,10 +204,10 @@ describe('NotificationBell', () => {
       render(<NotificationBell />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('通知')).toBeInTheDocument();
+        expect(screen.getByLabelText('通知，2条未读')).toBeInTheDocument();
       });
 
-      const bell = screen.getByLabelText('通知');
+      const bell = screen.getByLabelText('通知，2条未读');
       await user.click(bell);
 
       await waitFor(() => {
@@ -228,10 +228,10 @@ describe('NotificationBell', () => {
       render(<NotificationBell />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('通知')).toBeInTheDocument();
+        expect(screen.getByLabelText('通知，2条未读')).toBeInTheDocument();
       });
 
-      const bell = screen.getByLabelText('通知');
+      const bell = screen.getByLabelText('通知，2条未读');
       await user.click(bell);
 
       await waitFor(() => {
@@ -254,10 +254,10 @@ describe('NotificationBell', () => {
       render(<NotificationBell />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('通知')).toBeInTheDocument();
+        expect(screen.getByLabelText('通知，2条未读')).toBeInTheDocument();
       });
 
-      const bell = screen.getByLabelText('通知');
+      const bell = screen.getByLabelText('通知，2条未读');
       await user.click(bell);
 
       await waitFor(() => {

@@ -24,10 +24,6 @@ vi.mock('react-router-dom', async () => ({
   ],
 }));
 
-// Mock window.open
-const mockWindowOpen = vi.fn();
-vi.stubGlobal('open', mockWindowOpen);
-
 describe('SearchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -204,7 +200,7 @@ describe('SearchPage', () => {
       const postCard = screen.getByText('Test Post 1').closest('.card');
       await user.click(postCard!);
 
-      expect(mockWindowOpen).toHaveBeenCalledWith('/posts/1', '_blank');
+      expect(mockNavigate).toHaveBeenCalledWith('/posts/1');
     });
   });
 

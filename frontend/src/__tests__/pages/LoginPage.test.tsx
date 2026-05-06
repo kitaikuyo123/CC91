@@ -34,21 +34,21 @@ describe('LoginPage', () => {
   it('should render login form', () => {
     render(<LoginPage />, { wrapper });
 
-    expect(screen.getByText('用户登录')).toBeInTheDocument();
-    expect(screen.getByLabelText('用户名')).toBeInTheDocument();
-    expect(screen.getByLabelText('密码')).toBeInTheDocument();
+    expect(screen.getByText('User Login')).toBeInTheDocument();
+    expect(screen.getByLabelText('Username')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
   it('should show validation errors for empty fields', async () => {
     const user = userEvent.setup();
     render(<LoginPage />, { wrapper });
 
-    const submitButton = screen.getByRole('button', { name: '登录' });
+    const submitButton = screen.getByRole('button', { name: 'Login' });
     await user.click(submitButton);
 
     // HTML5 required validation should prevent submission
-    const usernameInput = screen.getByLabelText('用户名');
-    const passwordInput = screen.getByLabelText('密码');
+    const usernameInput = screen.getByLabelText('Username');
+    const passwordInput = screen.getByLabelText('Password');
 
     expect(usernameInput).toBeInvalid();
     expect(passwordInput).toBeInvalid();
@@ -57,14 +57,17 @@ describe('LoginPage', () => {
   it('should call login API on form submit', async () => {
     const user = userEvent.setup();
     vi.mocked(client.post).mockResolvedValue({
-      data: { accessToken: 'test-token' },
+      data: { accessToken: 'test-token', refreshToken: 'test-refresh' },
+    } as any);
+    vi.mocked(client.get).mockResolvedValue({
+      data: { role: 'USER' },
     } as any);
 
     render(<LoginPage />, { wrapper });
 
-    await user.type(screen.getByLabelText('用户名'), 'testuser');
-    await user.type(screen.getByLabelText('密码'), 'password123');
-    await user.click(screen.getByRole('button', { name: '登录' }));
+    await user.type(screen.getByLabelText('Username'), 'testuser');
+    await user.type(screen.getByLabelText('Password'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'Login' }));
 
     await waitFor(() => {
       expect(client.post).toHaveBeenCalledWith('/auth/login', {
@@ -82,9 +85,9 @@ describe('LoginPage', () => {
 
     render(<LoginPage />, { wrapper });
 
-    await user.type(screen.getByLabelText('用户名'), 'testuser');
-    await user.type(screen.getByLabelText('密码'), 'wrongpassword');
-    await user.click(screen.getByRole('button', { name: '登录' }));
+    await user.type(screen.getByLabelText('Username'), 'testuser');
+    await user.type(screen.getByLabelText('Password'), 'wrongpassword');
+    await user.click(screen.getByRole('button', { name: 'Login' }));
 
     await waitFor(() => {
       expect(screen.getByText('用户名或密码错误')).toBeInTheDocument();
@@ -99,10 +102,10 @@ describe('LoginPage', () => {
 
     render(<LoginPage />, { wrapper });
 
-    await user.type(screen.getByLabelText('用户名'), 'testuser');
-    await user.type(screen.getByLabelText('密码'), 'password123');
+    await user.type(screen.getByLabelText('Username'), 'testuser');
+    await user.type(screen.getByLabelText('Password'), 'password123');
 
-    const submitButton = screen.getByRole('button', { name: '登录' });
+    const submitButton = screen.getByRole('button', { name: 'Login' });
     await user.click(submitButton);
 
     await waitFor(() => {

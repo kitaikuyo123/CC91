@@ -19,10 +19,6 @@ vi.mock('react-router-dom', async () => ({
   useParams: () => ({ id: '1' }),
 }));
 
-// Mock window.open
-const mockWindowOpen = vi.fn();
-vi.stubGlobal('open', mockWindowOpen);
-
 describe('CategoryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -148,7 +144,7 @@ describe('CategoryPage', () => {
       const postCard = screen.getByText('Post 1').closest('.card');
       await user.click(postCard!);
 
-      expect(mockWindowOpen).toHaveBeenCalledWith('/posts/1', '_blank');
+      expect(mockNavigate).toHaveBeenCalledWith('/posts/1');
     });
   });
 

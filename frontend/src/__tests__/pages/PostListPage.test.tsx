@@ -17,10 +17,6 @@ vi.mock('react-router-dom', async () => ({
   useNavigate: () => mockNavigate,
 }));
 
-// Mock window.open
-const mockWindowOpen = vi.fn();
-vi.stubGlobal('open', mockWindowOpen);
-
 describe('PostListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -144,7 +140,7 @@ describe('PostListPage', () => {
       const postCard = screen.getByText('Test Post 1').closest('.card');
       await user.click(postCard!);
 
-      expect(mockWindowOpen).toHaveBeenCalledWith('/posts/1', '_blank');
+      expect(mockNavigate).toHaveBeenCalledWith('/posts/1');
     });
 
     it('点击发布新帖按钮应该导航到创建页面', async () => {
