@@ -7,20 +7,13 @@ import com.cc91.entity.Post;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.repository.CommentRepository;
 import com.cc91.repository.PostRepository;
-import com.cc91.repository.UserRepository;
-import com.cc91.repository.CategoryRepository;
+import com.cc91.service.PostService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 管理员 - 内容审核控制器
@@ -34,45 +27,27 @@ public class AdminContentController {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
-    private final UserRepository userRepository;
-    private final CategoryRepository categoryRepository;
+    private final PostService postService;
 
     public AdminContentController(PostRepository postRepository,
                                   CommentRepository commentRepository,
-                                  UserRepository userRepository,
-                                  CategoryRepository categoryRepository) {
+                                  PostService postService) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
-        this.userRepository = userRepository;
-        this.categoryRepository = categoryRepository;
+        this.postService = postService;
     }
 
     /**
      * 查看所有帖子（按状态筛选）
-     * GET /api/admin/posts?status=PUBLISHED
+     * GET /api/admin/posts?status=PUBLISHED&page=0&size=20
      */
     @GetMapping("/posts")
-    public ResponseEntity<List<PostResponse>> getPostsByStatus(
-            @RequestParam(required = false) String status
+    public ResponseEntity<Page<PostResponse>> getPostsByStatus(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Post> posts;
-
-        if (status != null && !status.isEmpty()) {
-            posts = postRepository.findByStatus(status, pageable);
-        } else {
-            posts = postRepository.findAll(pageable);
-        }
-
-        List<PostResponse> response = posts.stream()
-                .map(post -> {
-                    String authorUsername = userRepository.findById(post.getAuthorId())
-                            .map(u -> u.getUsername())
-                            .orElse("未知用户");
-                    return toPostResponse(post, authorUsername);
-                })
-                .collect(Collectors.toList());
-
+        Page<PostResponse> response = postService.getPostList(page, size, status);
         return ResponseEntity.ok(response);
     }
 
@@ -118,7 +93,6 @@ public class AdminContentController {
      */
     @DeleteMapping("/comments/{id}")
     public ResponseEntity<ApiResponse<Void>> forceDeleteComment(@PathVariable Long id) {
-        CommentRepository commentRepository = this.commentRepository;
         com.cc91.entity.Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("评论不存在"));
 
@@ -127,31 +101,5 @@ public class AdminContentController {
         logger.info("管理员强制删除评论: id={}", id);
 
         return ResponseEntity.ok(ApiResponse.success("评论已删除"));
-    }
-
-    /**
-     * 转换为 PostResponse
-     */
-    private PostResponse toPostResponse(com.cc91.entity.Post post, String authorUsername) {
-        String categoryName = null;
-        if (post.getCategoryId() != null) {
-            categoryName = categoryRepository.findById(post.getCategoryId())
-                    .map(c -> c.getName())
-                    .orElse(null);
-        }
-
-        return new PostResponse(
-                post.getId(),
-                post.getTitle(),
-                post.getContent(),
-                post.getAuthorId(),
-                authorUsername,
-                post.getCategoryId(),
-                categoryName,
-                post.getCreatedAt(),
-                post.getUpdatedAt(),
-                post.getViewCount(),
-                post.getStatus()
-        );
     }
 }

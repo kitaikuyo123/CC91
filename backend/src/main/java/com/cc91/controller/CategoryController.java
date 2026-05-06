@@ -7,6 +7,7 @@ import com.cc91.dto.UpdateCategoryRequest;
 import com.cc91.service.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -50,6 +51,7 @@ public class CategoryController {
      * POST /api/categories
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CategoryDTO>> createCategory(
             @Valid @RequestBody CreateCategoryRequest request
     ) {
@@ -62,6 +64,7 @@ public class CategoryController {
      * PUT /api/categories/{id}
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CategoryDTO>> updateCategory(
             @PathVariable Long id,
             @Valid @RequestBody UpdateCategoryRequest request
@@ -75,6 +78,7 @@ public class CategoryController {
      * DELETE /api/categories/{id}
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable Long id) {
         categoryService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("版块删除成功"));

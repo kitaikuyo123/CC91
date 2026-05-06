@@ -6,6 +6,7 @@ import com.cc91.dto.UpdateCategoryRequest;
 import com.cc91.entity.Category;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.repository.CategoryRepository;
+import com.cc91.repository.PostRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,9 +24,11 @@ public class CategoryService {
     private static final Logger logger = LoggerFactory.getLogger(CategoryService.class);
 
     private final CategoryRepository categoryRepository;
+    private final PostRepository postRepository;
 
-    public CategoryService(CategoryRepository categoryRepository) {
+    public CategoryService(CategoryRepository categoryRepository, PostRepository postRepository) {
         this.categoryRepository = categoryRepository;
+        this.postRepository = postRepository;
     }
 
     /**
@@ -109,6 +112,12 @@ public class CategoryService {
     public void delete(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("版块不存在"));
+
+        // 检查是否有帖子引用此分类
+        long postCount = postRepository.countByCategoryId(id);
+        if (postCount > 0) {
+            throw new IllegalStateException("该版块下还有 " + postCount + " 篇帖子，无法删除");
+        }
 
         categoryRepository.delete(category);
 

@@ -35,6 +35,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByCategoryIdAndStatus(Long categoryId, String status, Pageable pageable);
 
     /**
+     * 统计某分类下的帖子数量
+     */
+    long countByCategoryId(Long categoryId);
+
+    /**
      * 按标题或内容搜索帖子（分页）
      * 只返回指定状态的帖子
      */

@@ -18,6 +18,7 @@ public class PostResponse {
     private LocalDateTime updatedAt;
     private Integer viewCount;
     private String status;
+    private Long commentCount;
 
     public PostResponse() {}
 
@@ -38,7 +39,7 @@ public class PostResponse {
     public PostResponse(Long id, String title, String content, Long authorId,
                        String authorUsername, Long categoryId, String categoryName,
                        LocalDateTime createdAt, LocalDateTime updatedAt, Integer viewCount,
-                       String status) {
+                       String status, Long commentCount) {
         this.id = id;
         this.title = title;
         this.content = content;
@@ -50,6 +51,7 @@ public class PostResponse {
         this.updatedAt = updatedAt;
         this.viewCount = viewCount;
         this.status = status;
+        this.commentCount = commentCount;
     }
 
     // Getters and Setters
@@ -85,4 +87,7 @@ public class PostResponse {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Long getCommentCount() { return commentCount; }
+    public void setCommentCount(Long commentCount) { this.commentCount = commentCount; }
 }
