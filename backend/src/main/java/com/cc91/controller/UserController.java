@@ -69,13 +69,23 @@ public class UserController {
     }
 
     /**
-     * 获取当前用户帖子列表
+     * 获取当前用户帖子列表（仅已发布）
      * GET /api/users/me/posts
      */
     @GetMapping("/me/posts")
     public ResponseEntity<List<PostResponse>> getMyPosts() {
         String username = getCurrentUsername();
         return ResponseEntity.ok(postService.getMyPosts(username));
+    }
+
+    /**
+     * 获取当前用户草稿列表
+     * GET /api/users/me/drafts
+     */
+    @GetMapping("/me/drafts")
+    public ResponseEntity<List<PostResponse>> getMyDrafts() {
+        String username = getCurrentUsername();
+        return ResponseEntity.ok(postService.getMyDrafts(username));
     }
 
     /**

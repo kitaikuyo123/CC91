@@ -174,14 +174,30 @@ public class PostService {
     }
 
     /**
-     * 获取当前用户的帖子列表（用于 Dashboard "我的帖子"）
+     * 获取当前用户已发布的帖子列表（用于 Dashboard "我的帖子"）
      */
     @Transactional(readOnly = true)
     public List<PostResponse> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
 
-        List<Post> posts = postRepository.findByAuthorIdOrderByCreatedAtDesc(user.getId());
+        List<Post> posts = postRepository.findByAuthorIdAndStatusOrderByCreatedAtDesc(user.getId(), "PUBLISHED");
+        if (posts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return toPostResponseList(posts);
+    }
+
+    /**
+     * 获取当前用户的草稿列表
+     */
+    @Transactional(readOnly = true)
+    public List<PostResponse> getMyDrafts(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        List<Post> posts = postRepository.findByAuthorIdAndStatusOrderByCreatedAtDesc(user.getId(), "DRAFT");
         if (posts.isEmpty()) {
             return Collections.emptyList();
         }

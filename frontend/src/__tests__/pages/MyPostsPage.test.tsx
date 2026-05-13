@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -27,19 +27,6 @@ const mockPost = {
   viewCount: 100,
   commentCount: 5,
   status: 'PUBLISHED',
-};
-
-const mockDraftPost = {
-  id: 2,
-  title: 'Draft Post',
-  content: 'Draft content here.',
-  authorId: 1,
-  authorUsername: 'testuser',
-  createdAt: '2024-01-03T10:00:00',
-  updatedAt: '2024-01-03T10:00:00',
-  viewCount: 0,
-  commentCount: 0,
-  status: 'DRAFT',
 };
 
 describe('MyPostsPage', () => {
@@ -79,40 +66,6 @@ describe('MyPostsPage', () => {
       expect(screen.getByText('This is the content of my post.')).toBeInTheDocument();
     });
     expect(screen.getByText('共 1 篇帖子')).toBeInTheDocument();
-  });
-
-  it('已发布帖子应显示"已发布"徽章', async () => {
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([mockPost]);
-
-    render(<MyPostsPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByText('已发布')).toBeInTheDocument();
-    });
-  });
-
-  it('草稿帖子应显示"草稿"徽章', async () => {
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([mockDraftPost]);
-
-    render(<MyPostsPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByText('草稿')).toBeInTheDocument();
-    });
-  });
-
-  it('应同时显示已发布和草稿帖子', async () => {
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([mockPost, mockDraftPost]);
-
-    render(<MyPostsPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByText('已发布')).toBeInTheDocument();
-      expect(screen.getByText('草稿')).toBeInTheDocument();
-      expect(screen.getByText('My Post 1')).toBeInTheDocument();
-      expect(screen.getByText('Draft Post')).toBeInTheDocument();
-    });
-    expect(screen.getByText('共 2 篇帖子')).toBeInTheDocument();
   });
 
   it('点击帖子应跳转到帖子详情页', async () => {

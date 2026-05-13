@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getNotifications, getUnreadCount } from '../api/notification';
-import { getMyComments, getMyPosts } from '../api/user';
+import { getMyComments, getMyPosts, getMyDrafts } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
 import { formatDate } from '../utils/formatDate';
 
@@ -46,6 +46,13 @@ export default function DashboardPage() {
   } = useQuery({
     queryKey: queryKeys.users.meComments(),
     queryFn: () => getMyComments(),
+    enabled: !!user,
+  });
+
+  // 获取我的草稿（仅最新一条）
+  const { data: myDrafts = [] } = useQuery({
+    queryKey: queryKeys.users.meDrafts(),
+    queryFn: () => getMyDrafts(),
     enabled: !!user,
   });
 
@@ -170,7 +177,6 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ fontSize: '0.85rem', color: '#999', display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
                       <span><time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time></span>
-                      {post.status && <span>{post.status}</span>}
                       <span>评论 {post.commentCount ?? 0}</span>
                     </div>
                   </li>
@@ -316,6 +322,54 @@ export default function DashboardPage() {
               style={{ width: '100%', marginTop: '1rem' }}
             >
               查看全部通知
+            </button>
+          </div>
+
+          {/* 草稿 */}
+          <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
+            <h2 style={{ marginBottom: '1rem' }}>📄 草稿</h2>
+
+            {myDrafts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '1rem', color: '#999' }}>暂无草稿</div>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {myDrafts.slice(0, 1).map((draft) => (
+                  <li
+                    key={draft.id}
+                    className="post-item"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/posts/new?draftId=${draft.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/posts/new?draftId=${draft.id}`);
+                      }
+                    }}
+                    style={{
+                      padding: '0.75rem 0',
+                      cursor: 'pointer'
+                    }}
+                    aria-label={`编辑草稿：${draft.title}`}
+                  >
+                    <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span className="badge badge-warning" style={{ marginRight: '0.5rem', fontSize: '0.75rem' }}>草稿</span>
+                      {draft.title || '(无标题)'}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
+                      <time dateTime={draft.createdAt}>{formatDate(draft.createdAt)}</time>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              className="btn"
+              onClick={() => navigate('/dashboard/drafts')}
+              style={{ width: '100%', marginTop: '1rem' }}
+            >
+              查看所有草稿
             </button>
           </div>
         </div>

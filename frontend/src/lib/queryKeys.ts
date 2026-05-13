@@ -37,6 +37,7 @@ export const queryKeys = {
     me: () => [...queryKeys.users.all, 'me'] as const,
     mePosts: () => [...queryKeys.users.me(), 'posts'] as const,
     meComments: () => [...queryKeys.users.me(), 'comments'] as const,
+    meDrafts: () => [...queryKeys.users.me(), 'drafts'] as const,
   },
 
   // 通知相关

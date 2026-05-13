@@ -1,20 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { getMyPosts } from '../api/user';
+import { getMyDrafts } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
 import { formatDate } from '../utils/formatDate';
 
 /**
- * 我的帖子页面 - 展示当前用户全部帖子（含已发布与草稿）
+ * 我的草稿页面 - 展示当前用户全部草稿
  */
-export default function MyPostsPage() {
+export default function MyDraftsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data: myPosts = [], isLoading, error } = useQuery({
-    queryKey: queryKeys.users.mePosts(),
-    queryFn: () => getMyPosts(),
+  const { data: myDrafts = [], isLoading, error } = useQuery({
+    queryKey: queryKeys.users.meDrafts(),
+    queryFn: () => getMyDrafts(),
     enabled: !!user,
   });
 
@@ -44,53 +44,47 @@ export default function MyPostsPage() {
         &larr; 返回 Dashboard
       </button>
 
-      {/* 页面标题 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1>📝 我的帖子</h1>
+        <h1>📄 我的草稿</h1>
       </div>
 
-      {/* 帖子统计 */}
       <div style={{ marginBottom: '1.5rem', color: 'var(--color-text-muted)' }}>
-        共 {myPosts.length} 篇帖子
+        共 {myDrafts.length} 篇草稿
       </div>
 
-      {myPosts.length === 0 ? (
+      {myDrafts.length === 0 ? (
         <div className="card empty-state">
-          <p>你还没有发布帖子</p>
+          <p>暂无草稿</p>
         </div>
       ) : (
         <div className="posts-list">
-          {myPosts.map((post) => (
+          {myDrafts.map((draft) => (
             <div
-              key={post.id}
+              key={draft.id}
               className="card post-item"
               role="link"
               tabIndex={0}
-              onClick={() => navigate(`/posts/${post.id}`)}
+              onClick={() => navigate(`/posts/new?draftId=${draft.id}`)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  navigate(`/posts/${post.id}`);
+                  navigate(`/posts/new?draftId=${draft.id}`);
                 }
               }}
-              aria-label={`帖子: ${post.title}`}
+              aria-label={`编辑草稿: ${draft.title}`}
             >
-              {/* 帖子标题 */}
               <h2 style={{ marginBottom: '0.75rem', fontSize: '1.3rem' }}>
-                {post.title}
+                {draft.title || '(无标题)'}
+                <span className="badge badge-warning" style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}>
+                  草稿
+                </span>
               </h2>
 
-              {/* 帖子元信息 */}
               <div className="post-meta" style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>
-                {post.categoryName && (
-                  <span>版块: {post.categoryName}</span>
-                )}
-                <span>浏览: {post.viewCount}</span>
-                <span>评论: {post.commentCount}</span>
-                <span><time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time></span>
+                {draft.categoryName && <span>版块: {draft.categoryName}</span>}
+                <span><time dateTime={draft.createdAt}>{formatDate(draft.createdAt)}</time></span>
               </div>
 
-              {/* 帖子摘要 */}
               <p style={{
                 color: 'var(--color-text-secondary)',
                 overflow: 'hidden',
@@ -101,7 +95,7 @@ export default function MyPostsPage() {
                 lineHeight: '1.5',
                 margin: 0,
               }}>
-                {post.content}
+                {draft.content || '(空内容)'}
               </p>
             </div>
           ))}

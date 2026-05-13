@@ -62,10 +62,18 @@ export async function updateProfile(data: UpdateUserProfileRequest): Promise<Use
 }
 
 /**
- * 获取当前用户帖子列表
+ * 获取当前用户帖子列表（仅已发布）
  */
 export async function getMyPosts(): Promise<Post[]> {
   const response = await client.get<Post[]>('/users/me/posts');
+  return response.data;
+}
+
+/**
+ * 获取当前用户草稿列表
+ */
+export async function getMyDrafts(): Promise<Post[]> {
+  const response = await client.get<Post[]>('/users/me/drafts');
   return response.data;
 }
 
