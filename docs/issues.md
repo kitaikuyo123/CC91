@@ -28,12 +28,16 @@
 - **文件**: `AdminUserController`
 - **状态**: 只能封禁/解封，无修改角色功能
 
-### F-05 404 页面
-- **文件**: `App.tsx`
-- **状态**: 无 catch-all `*` 路由，未匹配 URL 显示空白页
-
 ### F-06 Admin 页面测试覆盖
 - **状态**: `AdminDashboard`、`CategoryManage`、`ContentModeration`、`UserManage` 无测试
 
 ### F-07 后端搜索和分类查询测试
 - **状态**: `PostControllerTest` / `PostServiceTest` 缺少 search 和 by-category 测试用例
+
+---
+
+## 已修复
+
+### F-05 404 页面
+- [x] **文件**: `App.tsx`
+- **修复**: 增加 catch-all `*` 路由；未匹配 URL 不再显示空白内容区，而是展示 404 页面（包含 `/admin/*` 兜底）

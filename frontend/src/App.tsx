@@ -20,6 +20,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SearchPage from './pages/SearchPage';
 import NotificationsPage from './pages/NotificationsPage';
+import NotFoundPage from './pages/NotFoundPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import CategoryManage from './pages/admin/CategoryManage';
 import ContentModeration from './pages/admin/ContentModeration';
@@ -98,6 +99,9 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* 404 */}
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
 
             {/* 管理后台路由 */}
@@ -110,6 +114,9 @@ function App() {
               <Route path="categories" element={<CategoryManage />} />
               <Route path="content" element={<ContentModeration />} />
               <Route path="users" element={<UserManage />} />
+
+              {/* 404 */}
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
         </AuthProvider>
