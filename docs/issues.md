@@ -34,8 +34,12 @@
 ## 已修复
 
 ### F-01 Dashboard "我的帖子" / "我的评论"
-- [x] **文件**: `DashboardPage.tsx`
-- **修复**: 后端增加 `GET /api/users/me/posts`、`GET /api/users/me/comments`；前端 Dashboard 展示“我的帖子/我的评论”独立列表，“我的评论”可点击跳转到对应帖子
+- [x] **文件**: `DashboardPage.tsx`、`MyPostsPage.tsx`、`MyCommentsPage.tsx`
+- **修复**:
+  1. 后端增加 `GET /api/users/me/posts`、`GET /api/users/me/comments`
+  2. Dashboard "我的帖子"/"我的评论"各展示前 5 条，点击 "查看全部帖子" 跳转到独立页面 `/dashboard/posts`，点击 "查看所有评论" 跳转到 `/dashboard/comments`
+  3. 新增 `MyPostsPage.tsx`：展示当前用户全部帖子，点击行跳转到帖子详情
+  4. 新增 `MyCommentsPage.tsx`：展示当前用户全部评论，点击行跳转到对应帖子详情
 
 ### F-05 404 页面
 - [x] **文件**: `App.tsx`
