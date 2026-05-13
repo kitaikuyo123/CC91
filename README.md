@@ -13,7 +13,7 @@
 - **构建**: Maven
 
 ### 前端
-- **框架**: React 18+
+- **框架**: React 19
 - **路由**: React Router 6+
 - **HTTP**: Axios
 - **状态**: Context API / React Query
