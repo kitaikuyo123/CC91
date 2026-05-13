@@ -128,6 +128,9 @@ public class PostService {
             }
             post.setCategoryId(request.getCategoryId());
         }
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+            post.setStatus(request.getStatus().trim());
+        }
 
         post = postRepository.save(post);
 

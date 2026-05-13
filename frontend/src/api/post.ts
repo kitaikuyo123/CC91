@@ -36,6 +36,7 @@ export interface UpdatePostRequest {
   title?: string;
   content?: string;
   categoryId?: number;
+  status?: string;
 }
 
 /**
