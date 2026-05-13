@@ -36,4 +36,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * 统计帖子的已发布评论数（包括子评论）
      */
     long countByPostIdAndStatus(Long postId, String status);
+
+    /**
+     * 查询某用户的评论（按时间倒序）
+     */
+    List<Comment> findByAuthorIdAndStatusOrderByCreatedAtDesc(Long authorId, String status);
 }

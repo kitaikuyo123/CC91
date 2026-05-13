@@ -128,6 +128,9 @@ public class PostService {
             }
             post.setCategoryId(request.getCategoryId());
         }
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+            post.setStatus(request.getStatus().trim());
+        }
 
         post = postRepository.save(post);
 
@@ -171,6 +174,38 @@ public class PostService {
         }
 
         return toPostResponsePage(posts);
+    }
+
+    /**
+     * 获取当前用户已发布的帖子列表（用于 Dashboard "我的帖子"）
+     */
+    @Transactional(readOnly = true)
+    public List<PostResponse> getMyPosts(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        List<Post> posts = postRepository.findByAuthorIdAndStatusOrderByCreatedAtDesc(user.getId(), "PUBLISHED");
+        if (posts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return toPostResponseList(posts);
+    }
+
+    /**
+     * 获取当前用户的草稿列表
+     */
+    @Transactional(readOnly = true)
+    public List<PostResponse> getMyDrafts(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        List<Post> posts = postRepository.findByAuthorIdAndStatusOrderByCreatedAtDesc(user.getId(), "DRAFT");
+        if (posts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return toPostResponseList(posts);
     }
 
     /**
@@ -260,6 +295,69 @@ public class PostService {
             );
         });
     }
+
+        /**
+         * 批量转换 Post List 为 PostResponse List（解决 N+1 查询问题）
+         */
+        private List<PostResponse> toPostResponseList(List<Post> postList) {
+        // 批量收集所有需要的 id
+        Set<Long> authorIds = postList.stream()
+            .map(Post::getAuthorId)
+            .collect(Collectors.toSet());
+
+        Set<Long> categoryIds = postList.stream()
+            .map(Post::getCategoryId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+        Set<Long> postIds = postList.stream()
+            .map(Post::getId)
+            .collect(Collectors.toSet());
+
+        // 批量查询用户
+        Map<Long, User> userMap = userRepository.findAllById(authorIds).stream()
+            .collect(Collectors.toMap(User::getId, u -> u));
+
+        // 批量查询分类
+        Map<Long, Category> categoryMap = categoryIds.isEmpty()
+            ? Collections.emptyMap()
+            : categoryRepository.findAllById(categoryIds).stream()
+                .collect(Collectors.toMap(Category::getId, c -> c));
+
+        // 批量查询评论数
+        Map<Long, Long> commentCountMap = new HashMap<>();
+        for (Long postId : postIds) {
+            commentCountMap.put(postId, commentRepository.countByPostIdAndStatus(postId, "PUBLISHED"));
+        }
+
+        return postList.stream().map(post -> {
+            User author = userMap.get(post.getAuthorId());
+            String authorUsername = author != null ? author.getUsername() : "未知用户";
+
+            String categoryName = null;
+            if (post.getCategoryId() != null) {
+            Category category = categoryMap.get(post.getCategoryId());
+            categoryName = category != null ? category.getName() : null;
+            }
+
+            long commentCount = commentCountMap.getOrDefault(post.getId(), 0L);
+
+            return new PostResponse(
+                post.getId(),
+                post.getTitle(),
+                post.getContent(),
+                post.getAuthorId(),
+                authorUsername,
+                post.getCategoryId(),
+                categoryName,
+                post.getCreatedAt(),
+                post.getUpdatedAt(),
+                post.getViewCount(),
+                post.getStatus(),
+                commentCount
+            );
+        }).collect(Collectors.toList());
+        }
 
     /**
      * 转换单个 Post 为 PostResponse（用于详情等单条查询场景）

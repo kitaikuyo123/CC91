@@ -1,29 +1,53 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { createPost, type CreatePostRequest } from '../api/post';
+import { createPost, updatePost, getPostById, type CreatePostRequest } from '../api/post';
 import { getCategories } from '../api/category';
 import { queryKeys } from '../lib/queryKeys';
 
 /**
- * 创建帖子页面
+ * 创建/编辑帖子页面
+ * 支持 ?draftId= 参数进入草稿编辑模式
  */
 export default function CreatePostPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+
+  const draftId = searchParams.get('draftId');
+  const isDraftMode = !!draftId;
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [error, setError] = useState('');
 
+  // 记录最近一次操作的状态，用于 onSuccess 判断跳转目标
+  const lastStatusRef = useRef<string>('PUBLISHED');
+
   // 获取版块列表
   const { data: categories = [] } = useQuery({
     queryKey: queryKeys.categories.list(),
     queryFn: getCategories,
   });
+
+  // 如果是草稿编辑模式，加载草稿数据
+  const { data: draftPost } = useQuery({
+    queryKey: queryKeys.posts.detail(Number(draftId)),
+    queryFn: () => getPostById(Number(draftId)),
+    enabled: isDraftMode,
+  });
+
+  // 草稿加载完成后填充表单
+  useEffect(() => {
+    if (draftPost) {
+      setTitle(draftPost.title || '');
+      setContent(draftPost.content || '');
+      setCategoryId(draftPost.categoryId);
+    }
+  }, [draftPost]);
 
   // 使用 useEffect 进行导航检查，避免在 hooks 之前 return
   useEffect(() => {
@@ -32,15 +56,24 @@ export default function CreatePostPage() {
     }
   }, [isAuthenticated, navigate]);
 
-  // 创建帖子的 mutation - 必须始终调用，保持 hooks 顺序一致
+  // 创建/编辑帖子的 mutation
   const createMutation = useMutation({
-    mutationFn: createPost,
+    mutationFn: isDraftMode
+      ? (data: CreatePostRequest) => updatePost(Number(draftId), data)
+      : createPost,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
-      navigate(`/posts/${data.id}`);
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.mePosts() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.meDrafts() });
+      // 发布 → 跳帖子详情；保存草稿 → 回 Dashboard
+      if (lastStatusRef.current === 'DRAFT') {
+        navigate('/dashboard');
+      } else {
+        navigate(`/posts/${data.id}`);
+      }
     },
     onError: (err: any) => {
-      setError(err.response?.data?.message || '创建帖子失败');
+      setError(err.response?.data?.message || (isDraftMode ? '更新帖子失败' : '创建帖子失败'));
     },
   });
 
@@ -78,6 +111,7 @@ export default function CreatePostPage() {
     }
 
     setError('');
+    lastStatusRef.current = 'PUBLISHED';
     createMutation.mutate(buildPostData('PUBLISHED'));
   };
 
@@ -96,13 +130,14 @@ export default function CreatePostPage() {
     }
 
     setError('');
+    lastStatusRef.current = 'DRAFT';
     createMutation.mutate(buildPostData('DRAFT'));
   };
 
   return (
     <div className="container" style={{ maxWidth: '800px', padding: '2rem' }}>
       <div className="card" style={{ padding: '2rem' }}>
-        <h1 style={{ marginBottom: '1.5rem' }}>发布新帖</h1>
+        <h1 style={{ marginBottom: '1.5rem' }}>{isDraftMode ? '编辑草稿' : '发布新帖'}</h1>
 
         {error && (
           <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
@@ -197,7 +232,7 @@ export default function CreatePostPage() {
               style={{ flex: 1, padding: '0.75rem' }}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? '发布中...' : '发布帖子'}
+              {createMutation.isPending ? '发布中...' : (isDraftMode ? '更新并发布' : '发布帖子')}
             </button>
             <button
               type="button"
@@ -206,7 +241,7 @@ export default function CreatePostPage() {
               style={{ flex: 1, padding: '0.75rem', background: '#f39c12', color: '#fff' }}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? '保存中...' : '保存草稿'}
+              {createMutation.isPending ? '保存中...' : (isDraftMode ? '更新草稿' : '保存草稿')}
             </button>
             <button
               type="button"

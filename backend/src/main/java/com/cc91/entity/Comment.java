@@ -10,11 +10,11 @@ import java.util.List;
  */
 @Entity
 @Table(name = "comments", indexes = {
-    @Index(name = "idx_post_id", columnList = "post_id"),
-    @Index(name = "idx_author_id", columnList = "author_id"),
-    @Index(name = "idx_parent_id", columnList = "parent_id"),
-    @Index(name = "idx_created_at", columnList = "created_at"),
-    @Index(name = "idx_status", columnList = "status")
+    @Index(name = "idx_comments_post_id", columnList = "post_id"),
+    @Index(name = "idx_comments_author_id", columnList = "author_id"),
+    @Index(name = "idx_comments_parent_id", columnList = "parent_id"),
+    @Index(name = "idx_comments_created_at", columnList = "created_at"),
+    @Index(name = "idx_comments_status", columnList = "status")
 })
 public class Comment {
 

@@ -12,11 +12,6 @@
 
 ## 未完成功能
 
-### F-01 Dashboard "我的帖子" / "我的评论"
-- **文件**: `DashboardPage.tsx:113-128`
-- **状态**: "我的评论"标注"正在开发中"；"我的帖子"只是跳转链接，无独立列表
-- **需要**: 后端 `GET /api/users/me/posts` 和 `GET /api/users/me/comments` 接口 + 前端展示
-
 ### F-02 管理后台评论审核 UI
 - **文件**: `ContentModeration.tsx`
 - **状态**: `adminDeleteComment` API 已存在但 UI 未使用，评论审核界面未实现
@@ -36,7 +31,15 @@
 
 ---
 
-## 已修复
+## 已完成功能
+
+### F-01 Dashboard "我的帖子" / "我的评论"
+- [x] **文件**: `DashboardPage.tsx`、`MyPostsPage.tsx`、`MyCommentsPage.tsx`
+- **修复**:
+  1. 后端增加 `GET /api/users/me/posts`、`GET /api/users/me/comments`
+  2. Dashboard "我的帖子"/"我的评论"各展示前 5 条，点击 "查看全部帖子" 跳转到独立页面 `/dashboard/posts`，点击 "查看所有评论" 跳转到 `/dashboard/comments`
+  3. 新增 `MyPostsPage.tsx`：展示当前用户全部帖子，点击行跳转到帖子详情
+  4. 新增 `MyCommentsPage.tsx`：展示当前用户全部评论，点击行跳转到对应帖子详情
 
 ### F-05 404 页面
 - [x] **文件**: `App.tsx`

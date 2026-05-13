@@ -5,10 +5,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import PostListPage from '../../pages/PostListPage';
 import * as postApi from '../../api/post';
+import * as categoryApi from '../../api/category';
 import { AuthProvider } from '../../context/AuthContext';
 
-// Mock the API
+// Mock the APIs
 vi.mock('../../api/post');
+vi.mock('../../api/category');
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -20,6 +22,8 @@ vi.mock('react-router-dom', async () => ({
 describe('PostListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 默认返回空版块列表
+    vi.mocked(categoryApi.getCategories).mockResolvedValue([]);
   });
 
   // 每次调用创建新的 wrapper 和 queryClient，避免缓存污染
@@ -415,6 +419,96 @@ describe('PostListPage', () => {
       await waitFor(() => {
         expect(screen.queryByText('上一页')).not.toBeInTheDocument();
         expect(screen.queryByText('下一页')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('版块筛选', () => {
+    const mockCategories = [
+      { id: 1, name: '技术交流', description: 'tech', sortOrder: 1, createdAt: '2024-01-01T00:00:00' },
+      { id: 2, name: '生活杂谈', description: 'life', sortOrder: 2, createdAt: '2024-01-01T00:00:00' },
+    ];
+
+    const mockCategoryPosts = [
+      {
+        id: 10,
+        title: 'Tech Post',
+        content: 'tech content',
+        authorId: 1,
+        authorUsername: 'user1',
+        categoryId: 1,
+        categoryName: '技术交流',
+        createdAt: '2024-01-01T10:00:00',
+        updatedAt: '2024-01-01T10:00:00',
+        viewCount: 5,
+        commentCount: 0,
+      },
+    ];
+
+    it('应该显示版块筛选按钮', async () => {
+      vi.mocked(categoryApi.getCategories).mockResolvedValue(mockCategories);
+      vi.mocked(postApi.getPostList).mockResolvedValue({
+        content: [],
+        pageable: { pageNumber: 0, pageSize: 10 },
+        totalElements: 0,
+        totalPages: 1,
+        last: true,
+        first: true,
+        empty: true,
+      });
+
+      render(<PostListPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText('全部版块')).toBeInTheDocument();
+        expect(screen.getByText('技术交流')).toBeInTheDocument();
+        expect(screen.getByText('生活杂谈')).toBeInTheDocument();
+      });
+    });
+
+    it('默认应选中"全部版块"并调用 getPostList', async () => {
+      vi.mocked(categoryApi.getCategories).mockResolvedValue(mockCategories);
+      vi.mocked(postApi.getPostList).mockResolvedValue({
+        content: [],
+        pageable: { pageNumber: 0, pageSize: 10 },
+        totalElements: 0,
+        totalPages: 1,
+        last: true,
+        first: true,
+        empty: true,
+      });
+
+      render(<PostListPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(postApi.getPostList).toHaveBeenCalledWith(0, 10, 'PUBLISHED');
+      });
+    });
+
+    it('点击版块应调用 getPostsByCategory', async () => {
+      const user = userEvent.setup();
+      vi.mocked(categoryApi.getCategories).mockResolvedValue(mockCategories);
+      vi.mocked(postApi.getPostsByCategory).mockResolvedValue({
+        content: mockCategoryPosts,
+        pageable: { pageNumber: 0, pageSize: 10 },
+        totalElements: 1,
+        totalPages: 1,
+        last: true,
+        first: true,
+        empty: false,
+      });
+
+      render(<PostListPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText('技术交流')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('技术交流'));
+
+      await waitFor(() => {
+        expect(postApi.getPostsByCategory).toHaveBeenCalledWith(1, 0, 10);
+        expect(screen.getByText('Tech Post')).toBeInTheDocument();
       });
     });
   });

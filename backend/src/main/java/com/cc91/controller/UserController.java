@@ -1,14 +1,20 @@
 package com.cc91.controller;
 
+import com.cc91.dto.PostResponse;
 import com.cc91.dto.UpdateUserProfileRequest;
+import com.cc91.dto.UserCommentResponse;
 import com.cc91.dto.UserProfileDTO;
 import com.cc91.exception.UnauthorizedException;
+import com.cc91.service.CommentService;
+import com.cc91.service.PostService;
 import com.cc91.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 用户控制器
@@ -19,9 +25,13 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final PostService postService;
+    private final CommentService commentService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, PostService postService, CommentService commentService) {
         this.userService = userService;
+        this.postService = postService;
+        this.commentService = commentService;
     }
 
     /**
@@ -56,6 +66,36 @@ public class UserController {
         String username = getCurrentUsername();
         UserProfileDTO profile = userService.updateProfile(username, request);
         return ResponseEntity.ok(profile);
+    }
+
+    /**
+     * 获取当前用户帖子列表（仅已发布）
+     * GET /api/users/me/posts
+     */
+    @GetMapping("/me/posts")
+    public ResponseEntity<List<PostResponse>> getMyPosts() {
+        String username = getCurrentUsername();
+        return ResponseEntity.ok(postService.getMyPosts(username));
+    }
+
+    /**
+     * 获取当前用户草稿列表
+     * GET /api/users/me/drafts
+     */
+    @GetMapping("/me/drafts")
+    public ResponseEntity<List<PostResponse>> getMyDrafts() {
+        String username = getCurrentUsername();
+        return ResponseEntity.ok(postService.getMyDrafts(username));
+    }
+
+    /**
+     * 获取当前用户评论列表
+     * GET /api/users/me/comments
+     */
+    @GetMapping("/me/comments")
+    public ResponseEntity<List<UserCommentResponse>> getMyComments() {
+        String username = getCurrentUsername();
+        return ResponseEntity.ok(commentService.getMyComments(username));
     }
 
     /**

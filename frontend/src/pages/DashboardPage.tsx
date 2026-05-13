@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { getNotifications, type Notification } from '../api/notification';
+import { getNotifications, getUnreadCount } from '../api/notification';
+import { getMyComments, getMyPosts, getMyDrafts } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
+import { formatDate } from '../utils/formatDate';
 
 /**
  * 用户 Dashboard 页面 - 展示我的帖子、我的评论、我的通知
@@ -21,7 +23,36 @@ export default function DashboardPage() {
   // 获取未读数
   const { data: unreadCount = 0 } = useQuery({
     queryKey: queryKeys.notifications.unreadCount(),
-    queryFn: () => import('../api/notification').then(m => m.getUnreadCount()),
+    queryFn: () => getUnreadCount(),
+    enabled: !!user,
+  });
+
+  // 获取我的帖子
+  const {
+    data: myPosts = [],
+    isLoading: myPostsLoading,
+    error: myPostsError,
+  } = useQuery({
+    queryKey: queryKeys.users.mePosts(),
+    queryFn: () => getMyPosts(),
+    enabled: !!user,
+  });
+
+  // 获取我的评论
+  const {
+    data: myComments = [],
+    isLoading: myCommentsLoading,
+    error: myCommentsError,
+  } = useQuery({
+    queryKey: queryKeys.users.meComments(),
+    queryFn: () => getMyComments(),
+    enabled: !!user,
+  });
+
+  // 获取我的草稿（仅最新一条）
+  const { data: myDrafts = [] } = useQuery({
+    queryKey: queryKeys.users.meDrafts(),
+    queryFn: () => getMyDrafts(),
     enabled: !!user,
   });
 
@@ -110,22 +141,110 @@ export default function DashboardPage() {
         <div>
           <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
             <h2 style={{ marginBottom: '1rem' }}>📝 我的帖子</h2>
-            <p style={{ color: '#666' }}>查看和管理您发布的所有帖子</p>
+
+            {myPostsLoading ? (
+              <div style={{ textAlign: 'center', padding: '1rem', color: '#999' }}>加载中...</div>
+            ) : myPostsError ? (
+              <div className="error-message" role="alert">
+                {(myPostsError as any)?.response?.data?.message || '加载失败'}
+              </div>
+            ) : myPosts.length === 0 ? (
+              <div className="empty-state">你还没有发布帖子</div>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {myPosts.slice(0, 5).map((post) => (
+                  <li
+                    key={post.id}
+                    className="post-item"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/posts/${post.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/posts/${post.id}`);
+                      }
+                    }}
+                    style={{
+                      padding: '0.75rem 0',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer'
+                    }}
+                    aria-label={`查看帖子：${post.title}`}
+                  >
+                    <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {post.title}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#999', display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
+                      <span><time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time></span>
+                      <span>评论 {post.commentCount ?? 0}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             <button
-              className="btn btn-primary"
-              onClick={() => navigate('/posts')}
-              style={{ marginTop: '1rem' }}
+              className="btn"
+              onClick={() => navigate('/dashboard/posts')}
+              style={{ width: '100%', marginTop: '1rem' }}
             >
-              查看帖子列表
+              查看全部帖子
             </button>
           </div>
 
           <div className="card" style={{ padding: '1.5rem' }}>
             <h2 style={{ marginBottom: '1rem' }}>💬 我的评论</h2>
-            <p style={{ color: '#666' }}>查看您发表的评论和回复</p>
-            <p style={{ fontSize: '0.9rem', color: '#999', marginTop: '1rem' }}>
-              此功能正在开发中...
-            </p>
+            {myCommentsLoading ? (
+              <div style={{ textAlign: 'center', padding: '1rem', color: '#999' }}>加载中...</div>
+            ) : myCommentsError ? (
+              <div className="error-message" role="alert">
+                {(myCommentsError as any)?.response?.data?.message || '加载失败'}
+              </div>
+            ) : myComments.length === 0 ? (
+              <div className="empty-state">你还没有发表过评论</div>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {myComments.slice(0, 5).map((c) => (
+                  <li
+                    key={c.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/posts/${c.postId}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/posts/${c.postId}`);
+                      }
+                    }}
+                    style={{
+                      padding: '0.75rem 0',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer'
+                    }}
+                    aria-label={`查看评论对应帖子：${c.postTitle}`}
+                  >
+                    <div style={{ fontSize: '0.9rem', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.content}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ marginRight: '0.5rem' }}>
+                        <time dateTime={c.createdAt}>{formatDate(c.createdAt)}</time>
+                      </span>
+                      <span>来自：{c.postTitle}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              className="btn"
+              onClick={() => navigate('/dashboard/comments')}
+              style={{ width: '100%', marginTop: '1rem' }}
+            >
+              查看所有评论
+            </button>
           </div>
         </div>
 
@@ -203,6 +322,54 @@ export default function DashboardPage() {
               style={{ width: '100%', marginTop: '1rem' }}
             >
               查看全部通知
+            </button>
+          </div>
+
+          {/* 草稿 */}
+          <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
+            <h2 style={{ marginBottom: '1rem' }}>📄 草稿</h2>
+
+            {myDrafts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '1rem', color: '#999' }}>暂无草稿</div>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {myDrafts.slice(0, 1).map((draft) => (
+                  <li
+                    key={draft.id}
+                    className="post-item"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/posts/new?draftId=${draft.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/posts/new?draftId=${draft.id}`);
+                      }
+                    }}
+                    style={{
+                      padding: '0.75rem 0',
+                      cursor: 'pointer'
+                    }}
+                    aria-label={`编辑草稿：${draft.title}`}
+                  >
+                    <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span className="badge badge-warning" style={{ marginRight: '0.5rem', fontSize: '0.75rem' }}>草稿</span>
+                      {draft.title || '(无标题)'}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
+                      <time dateTime={draft.createdAt}>{formatDate(draft.createdAt)}</time>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              className="btn"
+              onClick={() => navigate('/dashboard/drafts')}
+              style={{ width: '100%', marginTop: '1rem' }}
+            >
+              查看所有草稿
             </button>
           </div>
         </div>

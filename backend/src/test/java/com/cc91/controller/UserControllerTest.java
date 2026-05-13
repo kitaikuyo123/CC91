@@ -15,6 +15,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.time.LocalDateTime;
+
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -45,6 +47,12 @@ class UserControllerTest {
     @Autowired
     private com.cc91.repository.UserProfileRepository userProfileRepository;
 
+    @Autowired
+    private com.cc91.repository.PostRepository postRepository;
+
+    @Autowired
+    private com.cc91.repository.CommentRepository commentRepository;
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
@@ -56,6 +64,8 @@ class UserControllerTest {
     @BeforeEach
     @Transactional
     void cleanDatabase() {
+        commentRepository.deleteAll();
+        postRepository.deleteAll();
         userProfileRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -281,4 +291,96 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.message").value("输入验证失败"))
                 .andExpect(jsonPath("$.data.location").value("所在地不能超过100字符"));
     }
+
+            // ==================== GET /api/users/me/posts 测试 ====================
+
+            @Test
+            @WithMockUser(username = "testuser")
+            @Transactional
+            void getMyPosts_Authenticated_ReturnsOnlyMyPostsInDescOrder() throws Exception {
+            // Arrange
+            com.cc91.entity.User me = new com.cc91.entity.User(
+                "testuser",
+                "test@example.com",
+                passwordEncoder.encode("password123")
+            );
+            userRepository.saveAndFlush(me);
+
+            com.cc91.entity.User other = new com.cc91.entity.User(
+                "other",
+                "other@example.com",
+                passwordEncoder.encode("password123")
+            );
+            userRepository.saveAndFlush(other);
+
+            com.cc91.entity.Post oldPost = new com.cc91.entity.Post("Old Title", "Old Content", me.getId());
+            oldPost.setCreatedAt(LocalDateTime.now().minusDays(2));
+            postRepository.saveAndFlush(oldPost);
+
+            com.cc91.entity.Post newPost = new com.cc91.entity.Post("New Title", "New Content", me.getId());
+            newPost.setCreatedAt(LocalDateTime.now().minusDays(1));
+            postRepository.saveAndFlush(newPost);
+
+            com.cc91.entity.Post otherPost = new com.cc91.entity.Post("Other Title", "Other Content", other.getId());
+            otherPost.setCreatedAt(LocalDateTime.now());
+            postRepository.saveAndFlush(otherPost);
+
+            // Act & Assert
+            mockMvc.perform(get("/api/users/me/posts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].title").value("New Title"))
+                .andExpect(jsonPath("$[0].authorUsername").value("testuser"))
+                .andExpect(jsonPath("$[1].title").value("Old Title"))
+                .andExpect(jsonPath("$[1].authorUsername").value("testuser"));
+            }
+
+            // ==================== GET /api/users/me/comments 测试 ====================
+
+            @Test
+            @WithMockUser(username = "testuser")
+            @Transactional
+            void getMyComments_Authenticated_ReturnsMyCommentsWithPostTitle() throws Exception {
+            // Arrange
+            com.cc91.entity.User me = new com.cc91.entity.User(
+                "testuser",
+                "test@example.com",
+                passwordEncoder.encode("password123")
+            );
+            userRepository.saveAndFlush(me);
+
+            com.cc91.entity.User other = new com.cc91.entity.User(
+                "other",
+                "other@example.com",
+                passwordEncoder.encode("password123")
+            );
+            userRepository.saveAndFlush(other);
+
+            com.cc91.entity.Post post = new com.cc91.entity.Post("Post Title", "Post Content", other.getId());
+            post.setCreatedAt(LocalDateTime.now().minusDays(3));
+            postRepository.saveAndFlush(post);
+
+            com.cc91.entity.Comment older = new com.cc91.entity.Comment(post.getId(), me.getId(), "Older Comment", null);
+            older.setCreatedAt(LocalDateTime.now().minusDays(2));
+            commentRepository.saveAndFlush(older);
+
+            com.cc91.entity.Comment newer = new com.cc91.entity.Comment(post.getId(), me.getId(), "Newer Comment", null);
+            newer.setCreatedAt(LocalDateTime.now().minusDays(1));
+            commentRepository.saveAndFlush(newer);
+
+            com.cc91.entity.Comment otherUsersComment = new com.cc91.entity.Comment(post.getId(), other.getId(), "Other Comment", null);
+            otherUsersComment.setCreatedAt(LocalDateTime.now());
+            commentRepository.saveAndFlush(otherUsersComment);
+
+            // Act & Assert
+            mockMvc.perform(get("/api/users/me/comments"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].content").value("Newer Comment"))
+                .andExpect(jsonPath("$[0].postId").value(post.getId()))
+                .andExpect(jsonPath("$[0].postTitle").value("Post Title"))
+                .andExpect(jsonPath("$[1].content").value("Older Comment"))
+                .andExpect(jsonPath("$[1].postId").value(post.getId()))
+                .andExpect(jsonPath("$[1].postTitle").value("Post Title"));
+            }
 }
