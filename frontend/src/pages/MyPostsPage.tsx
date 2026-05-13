@@ -6,7 +6,7 @@ import { queryKeys } from '../lib/queryKeys';
 import { formatDate } from '../utils/formatDate';
 
 /**
- * 我的帖子页面
+ * 我的帖子页面 - 展示当前用户全部帖子（含已发布与草稿）
  */
 export default function MyPostsPage() {
   const { user } = useAuth();
@@ -18,58 +18,101 @@ export default function MyPostsPage() {
     enabled: !!user,
   });
 
+  if (isLoading) {
+    return (
+      <div className="container" style={{ maxWidth: '900px', padding: '2rem' }}>
+        <div className="loading-container">
+          <div className="spinner spinner-lg"></div>
+          <span>加载中...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    const errorMessage = (error as any)?.response?.data?.message || '加载失败';
+    return (
+      <div className="container" style={{ maxWidth: '900px', padding: '2rem' }}>
+        <div className="error-message" role="alert">{errorMessage}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container" style={{ maxWidth: '900px', padding: '2rem' }}>
       <button onClick={() => navigate('/dashboard')} className="btn" style={{ marginBottom: '1rem' }}>
         &larr; 返回 Dashboard
       </button>
 
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <h1 style={{ marginBottom: '1rem' }}>📝 我的帖子</h1>
-
-        {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '1rem', color: '#999' }}>加载中...</div>
-        ) : error ? (
-          <div className="error-message" role="alert">
-            {(error as any)?.response?.data?.message || '加载失败'}
-          </div>
-        ) : myPosts.length === 0 ? (
-          <div className="empty-state">你还没有发布帖子</div>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {myPosts.map((post) => (
-              <li
-                key={post.id}
-                className="post-item"
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/posts/${post.id}`)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    navigate(`/posts/${post.id}`);
-                  }
-                }}
-                style={{
-                  padding: '0.75rem 0',
-                  borderBottom: '1px solid #eee',
-                  cursor: 'pointer'
-                }}
-                aria-label={`查看帖子：${post.title}`}
-              >
-                <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {post.title}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: '#999', display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
-                  <span><time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time></span>
-                  {post.status && <span>{post.status}</span>}
-                  <span>评论 {post.commentCount ?? 0}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+      {/* 页面标题 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h1>📝 我的帖子</h1>
       </div>
+
+      {/* 帖子统计 */}
+      <div style={{ marginBottom: '1.5rem', color: 'var(--color-text-muted)' }}>
+        共 {myPosts.length} 篇帖子
+      </div>
+
+      {myPosts.length === 0 ? (
+        <div className="card empty-state">
+          <p>你还没有发布帖子</p>
+        </div>
+      ) : (
+        <div className="posts-list">
+          {myPosts.map((post) => (
+            <div
+              key={post.id}
+              className="card post-item"
+              role="link"
+              tabIndex={0}
+              onClick={() => navigate(`/posts/${post.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/posts/${post.id}`);
+                }
+              }}
+              aria-label={`帖子: ${post.title}`}
+            >
+              {/* 帖子标题 */}
+              <h2 style={{ marginBottom: '0.75rem', fontSize: '1.3rem' }}>
+                {post.title}
+                <span
+                  className={`badge ${post.status === 'DRAFT' ? 'badge-warning' : 'badge-success'}`}
+                  style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}
+                >
+                  {post.status === 'DRAFT' ? '草稿' : '已发布'}
+                </span>
+              </h2>
+
+              {/* 帖子元信息 */}
+              <div className="post-meta" style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>
+                {post.categoryName && (
+                  <span>版块: {post.categoryName}</span>
+                )}
+                <span>浏览: {post.viewCount}</span>
+                <span>评论: {post.commentCount}</span>
+                <span><time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time></span>
+              </div>
+
+              {/* 帖子摘要 */}
+              <p style={{
+                color: 'var(--color-text-secondary)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                lineHeight: '1.5',
+                margin: 0,
+              }}>
+                {post.content}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

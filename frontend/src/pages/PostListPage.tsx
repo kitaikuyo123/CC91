@@ -1,27 +1,36 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getPostList, type Post } from '../api/post';
+import { getPostList, getPostsByCategory } from '../api/post';
+import { getCategories } from '../api/category';
 import { queryKeys } from '../lib/queryKeys';
-import { useAuth } from '../context/AuthContext';
 import { formatDate } from '../utils/formatDate';
 
 /**
- * 帖子列表页面 - 支持状态筛选
+ * 帖子列表页面 - 显示已发布帖子，支持板块筛选
  */
 export default function PostListPage() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
   const [currentPage, setCurrentPage] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('PUBLISHED');
+  const [categoryFilter, setCategoryFilter] = useState<number | undefined>(undefined);
   const pageSize = 10;
 
-  // 使用 React Query 获取帖子列表
-  const statusParam = statusFilter === 'ALL' ? undefined : statusFilter;
+  // 获取版块列表
+  const { data: categories = [] } = useQuery({
+    queryKey: queryKeys.categories.list(),
+    queryFn: getCategories,
+  });
 
+  // 根据是否选中版块调用不同接口
   const { data: postsData, isLoading, error } = useQuery({
-    queryKey: queryKeys.posts.list({ page: currentPage, size: pageSize, status: statusParam }),
-    queryFn: () => getPostList(currentPage, pageSize, statusParam),
+    queryKey:
+      categoryFilter != null
+        ? queryKeys.posts.byCategory(categoryFilter, currentPage, pageSize)
+        : queryKeys.posts.list({ page: currentPage, size: pageSize, status: 'PUBLISHED' }),
+    queryFn: () =>
+      categoryFilter != null
+        ? getPostsByCategory(categoryFilter, currentPage, pageSize)
+        : getPostList(currentPage, pageSize, 'PUBLISHED'),
   });
 
   const posts = postsData?.content || [];
@@ -35,8 +44,8 @@ export default function PostListPage() {
     }
   };
 
-  const handleStatusFilterChange = (newStatus: 'ALL' | 'PUBLISHED' | 'DRAFT') => {
-    setStatusFilter(newStatus);
+  const handleCategoryFilterChange = (categoryId: number | undefined) => {
+    setCategoryFilter(categoryId);
     setCurrentPage(0);
   };
 
@@ -71,30 +80,25 @@ export default function PostListPage() {
         </button>
       </div>
 
-      {/* 状态筛选器 */}
+      {/* 版块筛选器 */}
       <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        <div className="filter-bar">
-          <span>状态筛选：</span>
+        <div className="filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 500 }}>版块筛选：</span>
           <button
-            className={`filter-btn ${statusFilter === 'ALL' ? 'filter-active' : ''}`}
-            onClick={() => handleStatusFilterChange('ALL')}
+            className={`filter-btn ${categoryFilter === undefined ? 'filter-active' : ''}`}
+            onClick={() => handleCategoryFilterChange(undefined)}
           >
-            全部
+            全部版块
           </button>
-          <button
-            className={`filter-btn ${statusFilter === 'PUBLISHED' ? 'filter-active' : ''}`}
-            onClick={() => handleStatusFilterChange('PUBLISHED')}
-          >
-            已发布
-          </button>
-          {isAuthenticated && (
+          {categories.map((cat) => (
             <button
-              className={`filter-btn ${statusFilter === 'DRAFT' ? 'filter-active' : ''}`}
-              onClick={() => handleStatusFilterChange('DRAFT')}
+              key={cat.id}
+              className={`filter-btn ${categoryFilter === cat.id ? 'filter-active' : ''}`}
+              onClick={() => handleCategoryFilterChange(cat.id)}
             >
-              草稿
+              {cat.name}
             </button>
-          )}
+          ))}
         </div>
       </div>
 
@@ -131,9 +135,6 @@ export default function PostListPage() {
                 {/* 帖子标题 */}
                 <h2 style={{ marginBottom: '0.75rem', fontSize: '1.3rem' }}>
                   {post.title}
-                  <span className={`badge ${post.status === 'DRAFT' ? 'badge-warning' : 'badge-success'}`} style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}>
-                    {post.status === 'DRAFT' ? '草稿' : '已发布'}
-                  </span>
                 </h2>
 
                 {/* 帖子元信息 */}

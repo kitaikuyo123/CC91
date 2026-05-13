@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,6 +14,33 @@ vi.mock('react-router-dom', async () => ({
   ...(await vi.importActual('react-router-dom')),
   useNavigate: () => mockNavigate,
 }));
+
+const mockPost = {
+  id: 1,
+  title: 'My Post 1',
+  content: 'This is the content of my post.',
+  authorId: 1,
+  authorUsername: 'testuser',
+  categoryName: '技术交流',
+  createdAt: '2024-01-02T10:00:00',
+  updatedAt: '2024-01-02T10:00:00',
+  viewCount: 100,
+  commentCount: 5,
+  status: 'PUBLISHED',
+};
+
+const mockDraftPost = {
+  id: 2,
+  title: 'Draft Post',
+  content: 'Draft content here.',
+  authorId: 1,
+  authorUsername: 'testuser',
+  createdAt: '2024-01-03T10:00:00',
+  updatedAt: '2024-01-03T10:00:00',
+  viewCount: 0,
+  commentCount: 0,
+  status: 'DRAFT',
+};
 
 describe('MyPostsPage', () => {
   beforeEach(() => {
@@ -42,51 +69,62 @@ describe('MyPostsPage', () => {
     };
   };
 
-  it('应该渲染我的帖子列表', async () => {
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([
-      {
-        id: 1,
-        title: 'My Post 1',
-        content: 'content',
-        authorId: 1,
-        authorUsername: 'testuser',
-        createdAt: '2024-01-02T10:00:00',
-        updatedAt: '2024-01-02T10:00:00',
-        viewCount: 0,
-        commentCount: 2,
-        status: 'PUBLISHED',
-      },
-    ]);
+  it('应该渲染我的帖子列表（含统计和摘要）', async () => {
+    vi.mocked(userApi.getMyPosts).mockResolvedValue([mockPost]);
 
     render(<MyPostsPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText('My Post 1')).toBeInTheDocument();
+      expect(screen.getByText('This is the content of my post.')).toBeInTheDocument();
     });
+    expect(screen.getByText('共 1 篇帖子')).toBeInTheDocument();
+  });
+
+  it('已发布帖子应显示"已发布"徽章', async () => {
+    vi.mocked(userApi.getMyPosts).mockResolvedValue([mockPost]);
+
+    render(<MyPostsPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('已发布')).toBeInTheDocument();
+    });
+  });
+
+  it('草稿帖子应显示"草稿"徽章', async () => {
+    vi.mocked(userApi.getMyPosts).mockResolvedValue([mockDraftPost]);
+
+    render(<MyPostsPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('草稿')).toBeInTheDocument();
+    });
+  });
+
+  it('应同时显示已发布和草稿帖子', async () => {
+    vi.mocked(userApi.getMyPosts).mockResolvedValue([mockPost, mockDraftPost]);
+
+    render(<MyPostsPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('已发布')).toBeInTheDocument();
+      expect(screen.getByText('草稿')).toBeInTheDocument();
+      expect(screen.getByText('My Post 1')).toBeInTheDocument();
+      expect(screen.getByText('Draft Post')).toBeInTheDocument();
+    });
+    expect(screen.getByText('共 2 篇帖子')).toBeInTheDocument();
   });
 
   it('点击帖子应跳转到帖子详情页', async () => {
     const user = userEvent.setup();
 
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([
-      {
-        id: 123,
-        title: 'Target Post',
-        content: 'content',
-        authorId: 1,
-        authorUsername: 'testuser',
-        createdAt: '2024-01-02T10:00:00',
-        updatedAt: '2024-01-02T10:00:00',
-        viewCount: 0,
-        commentCount: 0,
-        status: 'PUBLISHED',
-      },
-    ]);
+    vi.mocked(userApi.getMyPosts).mockResolvedValue([{ ...mockPost, id: 123, title: 'Target Post' }]);
 
     render(<MyPostsPage />, { wrapper: createWrapper() });
 
-    const row = await screen.findByText('Target Post');
-    await user.click(row);
+    const title = await screen.findByText('Target Post');
+    const card = title.closest('.card');
+    await user.click(card!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/posts/123');
   });
@@ -101,5 +139,15 @@ describe('MyPostsPage', () => {
     await user.click(btn);
 
     expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+  });
+
+  it('空列表应显示空状态提示', async () => {
+    vi.mocked(userApi.getMyPosts).mockResolvedValue([]);
+
+    render(<MyPostsPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('你还没有发布帖子')).toBeInTheDocument();
+    });
   });
 });

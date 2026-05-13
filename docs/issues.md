@@ -31,7 +31,7 @@
 
 ---
 
-## 已修复
+## 已完成功能
 
 ### F-01 Dashboard "我的帖子" / "我的评论"
 - [x] **文件**: `DashboardPage.tsx`、`MyPostsPage.tsx`、`MyCommentsPage.tsx`
