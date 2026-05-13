@@ -9,6 +9,8 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import MyPostsPage from './pages/MyPostsPage';
+import MyCommentsPage from './pages/MyCommentsPage';
 import ProfilePage from './pages/ProfilePage';
 import ProfileEditPage from './pages/ProfileEditPage';
 import PostListPage from './pages/PostListPage';
@@ -62,6 +64,24 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="dashboard/posts"
+                element={
+                  <ProtectedRoute>
+                    <MyPostsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="dashboard/comments"
+                element={
+                  <ProtectedRoute>
+                    <MyCommentsPage />
                   </ProtectedRoute>
                 }
               />

@@ -145,7 +145,7 @@ export default function DashboardPage() {
               <div className="empty-state">你还没有发布帖子</div>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {myPosts.map((post) => (
+                {myPosts.slice(0, 5).map((post) => (
                   <li
                     key={post.id}
                     className="post-item"
@@ -180,7 +180,7 @@ export default function DashboardPage() {
 
             <button
               className="btn"
-              onClick={() => navigate('/posts')}
+              onClick={() => navigate('/dashboard/posts')}
               style={{ width: '100%', marginTop: '1rem' }}
             >
               查看全部帖子
@@ -199,7 +199,7 @@ export default function DashboardPage() {
               <div className="empty-state">你还没有发表过评论</div>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {myComments.map((c) => (
+                {myComments.slice(0, 5).map((c) => (
                   <li
                     key={c.id}
                     role="button"
@@ -231,6 +231,14 @@ export default function DashboardPage() {
                 ))}
               </ul>
             )}
+
+            <button
+              className="btn"
+              onClick={() => navigate('/dashboard/comments')}
+              style={{ width: '100%', marginTop: '1rem' }}
+            >
+              查看所有评论
+            </button>
           </div>
         </div>
 

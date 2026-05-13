@@ -109,4 +109,36 @@ describe('DashboardPage', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/posts/123');
   });
+
+  it('点击查看全部帖子应跳转到我的帖子页面', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(notificationApi.getNotifications).mockResolvedValue([]);
+    vi.mocked(notificationApi.getUnreadCount).mockResolvedValue(0);
+    vi.mocked(userApi.getMyPosts).mockResolvedValue([]);
+    vi.mocked(userApi.getMyComments).mockResolvedValue([]);
+
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    const btn = await screen.findByRole('button', { name: '查看全部帖子' });
+    await user.click(btn);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/dashboard/posts');
+  });
+
+  it('点击查看所有评论应跳转到我的评论页面', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(notificationApi.getNotifications).mockResolvedValue([]);
+    vi.mocked(notificationApi.getUnreadCount).mockResolvedValue(0);
+    vi.mocked(userApi.getMyPosts).mockResolvedValue([]);
+    vi.mocked(userApi.getMyComments).mockResolvedValue([]);
+
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    const btn = await screen.findByRole('button', { name: '查看所有评论' });
+    await user.click(btn);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/dashboard/comments');
+  });
 });
