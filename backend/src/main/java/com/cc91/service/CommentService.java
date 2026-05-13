@@ -2,6 +2,7 @@ package com.cc91.service;
 
 import com.cc91.dto.CommentResponse;
 import com.cc91.dto.CreateCommentRequest;
+import com.cc91.dto.UserCommentResponse;
 import com.cc91.entity.Comment;
 import com.cc91.entity.Post;
 import com.cc91.entity.User;
@@ -162,6 +163,39 @@ public class CommentService {
         // 构建树形结构
         return buildCommentTree(comments, userMap);
     }
+
+        /**
+         * 获取当前用户的评论列表（用于 Dashboard "我的评论"）
+         */
+        @Transactional(readOnly = true)
+        public List<UserCommentResponse> getMyComments(String username) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        List<Comment> comments = commentRepository.findByAuthorIdAndStatusOrderByCreatedAtDesc(user.getId(), "PUBLISHED");
+        if (comments.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> postIds = comments.stream()
+            .map(Comment::getPostId)
+            .collect(Collectors.toSet());
+
+        Map<Long, String> postTitleMap = postRepository.findAllById(postIds).stream()
+            .collect(Collectors.toMap(Post::getId, Post::getTitle));
+
+        return comments.stream()
+            .map(c -> new UserCommentResponse(
+                c.getId(),
+                c.getPostId(),
+                postTitleMap.getOrDefault(c.getPostId(), "未知帖子"),
+                c.getContent(),
+                c.getParentId(),
+                c.getCreatedAt(),
+                c.getStatus()
+            ))
+            .collect(Collectors.toList());
+        }
 
     /**
      * 构建评论树形结构

@@ -20,6 +20,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findByAuthorId(Long authorId);
 
     /**
+     * 按作者ID查询帖子列表（按时间倒序）
+     */
+    List<Post> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+
+    /**
      * 按作者ID分页查询帖子
      */
     Page<Post> findByAuthorId(Long authorId, Pageable pageable);
