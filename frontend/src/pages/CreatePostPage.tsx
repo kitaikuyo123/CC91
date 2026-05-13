@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +23,9 @@ export default function CreatePostPage() {
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [error, setError] = useState('');
+
+  // 记录最近一次操作的状态，用于 onSuccess 判断跳转目标
+  const lastStatusRef = useRef<string>('PUBLISHED');
 
   // 获取版块列表
   const { data: categories = [] } = useQuery({
@@ -62,7 +65,12 @@ export default function CreatePostPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.mePosts() });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.meDrafts() });
-      navigate(`/posts/${data.id}`);
+      // 发布 → 跳帖子详情；保存草稿 → 回 Dashboard
+      if (lastStatusRef.current === 'DRAFT') {
+        navigate('/dashboard');
+      } else {
+        navigate(`/posts/${data.id}`);
+      }
     },
     onError: (err: any) => {
       setError(err.response?.data?.message || (isDraftMode ? '更新帖子失败' : '创建帖子失败'));
@@ -103,6 +111,7 @@ export default function CreatePostPage() {
     }
 
     setError('');
+    lastStatusRef.current = 'PUBLISHED';
     createMutation.mutate(buildPostData('PUBLISHED'));
   };
 
@@ -121,6 +130,7 @@ export default function CreatePostPage() {
     }
 
     setError('');
+    lastStatusRef.current = 'DRAFT';
     createMutation.mutate(buildPostData('DRAFT'));
   };
 
