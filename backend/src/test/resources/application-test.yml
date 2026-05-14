@@ -23,3 +23,7 @@ account:
   lock:
     max-attempts: 5
     lock-duration-minutes: 30
+
+app:
+  dev-data:
+    enabled: false

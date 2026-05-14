@@ -1,14 +1,14 @@
 package com.cc91.dto;
 
-/**
- * 用户登录响应 DTO
- */
 public class LoginResponse {
 
     private String accessToken;
     private String refreshToken;
     private String tokenType = "Bearer";
     private Long expiresIn;
+    private String username;
+    private String email;
+    private String role;
 
     public LoginResponse() {}
 
@@ -23,7 +23,15 @@ public class LoginResponse {
         this.expiresIn = expiresIn;
     }
 
-    // Getters and Setters
+    public LoginResponse(String accessToken, String refreshToken, Long expiresIn, String username, String email, String role) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.expiresIn = expiresIn;
+        this.username = username;
+        this.email = email;
+        this.role = role;
+    }
+
     public String getAccessToken() { return accessToken; }
     public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
 
@@ -35,4 +43,13 @@ public class LoginResponse {
 
     public Long getExpiresIn() { return expiresIn; }
     public void setExpiresIn(Long expiresIn) { this.expiresIn = expiresIn; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 }

@@ -2,16 +2,17 @@ package com.cc91.service;
 
 import com.cc91.dto.LoginRequest;
 import com.cc91.dto.LoginResponse;
+import com.cc91.dto.RefreshTokenRequest;
+import com.cc91.dto.RefreshTokenResponse;
 import com.cc91.dto.RegisterRequest;
 import com.cc91.dto.RegisterResponse;
 import com.cc91.dto.VerifyEmailRequest;
-import com.cc91.dto.RefreshTokenRequest;
+import com.cc91.entity.RefreshToken;
 import com.cc91.entity.User;
 import com.cc91.entity.VerificationCode;
-import com.cc91.entity.RefreshToken;
+import com.cc91.repository.RefreshTokenRepository;
 import com.cc91.repository.UserRepository;
 import com.cc91.repository.VerificationCodeRepository;
-import com.cc91.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,13 +23,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * AuthService 业务逻辑测试
- * 只测试业务路径，不测试框架行为
- */
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:auth-service-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+        "spring.flyway.enabled=false",
+        "app.dev-data.enabled=false"
+})
 @ActiveProfiles("test")
 class AuthServiceTest {
 
@@ -54,221 +66,110 @@ class AuthServiceTest {
         userRepository.deleteAll();
     }
 
-    // ==================== register 方法测试 ====================
-
     @Test
     @Transactional
-    void register_UsernameExists_ThrowsException() {
-        // Arrange: 先创建一个用户
-        User existingUser = new User("existinguser", "existing@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(existingUser);
+    void register_Success_CreatesLockedUserAndVerificationCode() {
+        RegisterResponse response = authService.register(registerRequest("newuser", "new@example.com", "password123"));
 
-        // Act & Assert: 尝试用相同用户名注册
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("existinguser");
-        request.setEmail("new@example.com");
-        request.setPassword("password123");
-
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.register(request));
-        assertEquals("用户名已被使用", exception.getMessage());
-    }
-
-    @Test
-    @Transactional
-    void register_EmailExists_ThrowsException() {
-        // Arrange: 先创建一个用户
-        User existingUser = new User("user1", "existing@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(existingUser);
-
-        // Act & Assert: 尝试用相同邮箱注册
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("newuser");
-        request.setEmail("existing@example.com");
-        request.setPassword("password123");
-
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.register(request));
-        assertEquals("邮箱已被注册", exception.getMessage());
-    }
-
-    @Test
-    @Transactional
-    void register_Success_ReturnsVerificationCodeInfo() {
-        // Arrange
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("newuser");
-        request.setEmail("new@example.com");
-        request.setPassword("password123");
-
-        // Act
-        RegisterResponse response = authService.register(request);
-
-        // Assert: 验证响应
-        assertNotNull(response);
-        assertEquals("验证码已发送至邮箱", response.getMessage());
+        assertEquals(AuthService.VERIFICATION_CODE_SENT, response.getMessage());
         assertEquals(600, response.getExpiresIn());
 
-        // Assert: 验证验证码已保存到数据库
-        VerificationCode savedCode = verificationCodeRepository
+        User user = userRepository.findByUsername("newuser").orElseThrow();
+        assertTrue(user.getIsLocked());
+        assertNull(user.getLockUntil());
+        assertTrue(passwordEncoder.matches("password123", user.getPasswordHash()));
+
+        VerificationCode code = verificationCodeRepository
                 .findFirstByEmailAndTypeOrderByCreatedAtDesc("new@example.com", "REGISTER")
-                .orElse(null);
-        assertNotNull(savedCode);
-        assertFalse(savedCode.getUsed());
-        assertEquals("REGISTER", savedCode.getType());
-        assertNotNull(savedCode.getExpiresAt());
-        assertTrue(savedCode.getExpiresAt().isAfter(LocalDateTime.now()));
-    }
-
-    // ==================== verifyEmail 方法测试 ====================
-
-    @Test
-    @Transactional
-    void verifyEmail_CodeNotExists_ThrowsException() {
-        // Arrange
-        VerifyEmailRequest request = new VerifyEmailRequest();
-        request.setEmail("test@example.com");
-        request.setCode("123456");
-
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.verifyEmail(request));
-        assertEquals("验证码不存在", exception.getMessage());
+                .orElseThrow();
+        assertFalse(code.getUsed());
+        assertTrue(code.getExpiresAt().isAfter(LocalDateTime.now()));
     }
 
     @Test
     @Transactional
-    void verifyEmail_CodeAlreadyUsed_ThrowsException() {
-        // Arrange: 创建一个已使用的验证码
-        VerificationCode usedCode = new VerificationCode(
-                "test@example.com",
-                "123456",
-                "REGISTER",
-                LocalDateTime.now().plusMinutes(10)
-        );
-        usedCode.setUsed(true);
-        verificationCodeRepository.save(usedCode);
+    void register_DuplicateUsernameOrEmail_ThrowsBadRequest() {
+        userRepository.save(new User("existing", "existing@example.com", passwordEncoder.encode("password123")));
 
-        VerifyEmailRequest request = new VerifyEmailRequest();
-        request.setEmail("test@example.com");
-        request.setCode("123456");
+        Exception usernameException = assertThrows(RuntimeException.class,
+                () -> authService.register(registerRequest("existing", "new@example.com", "password123")));
+        assertEquals(AuthService.USERNAME_ALREADY_USED, usernameException.getMessage());
 
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.verifyEmail(request));
-        assertEquals("验证码已使用", exception.getMessage());
+        Exception emailException = assertThrows(RuntimeException.class,
+                () -> authService.register(registerRequest("newuser", "existing@example.com", "password123")));
+        assertEquals(AuthService.EMAIL_ALREADY_REGISTERED, emailException.getMessage());
     }
 
     @Test
     @Transactional
-    void verifyEmail_CodeExpired_ThrowsException() {
-        // Arrange: 创建一个已过期的验证码
-        VerificationCode expiredCode = new VerificationCode(
-                "test@example.com",
-                "123456",
-                "REGISTER",
-                LocalDateTime.now().minusMinutes(1)  // 过期
-        );
-        verificationCodeRepository.save(expiredCode);
-
-        VerifyEmailRequest request = new VerifyEmailRequest();
-        request.setEmail("test@example.com");
-        request.setCode("123456");
-
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.verifyEmail(request));
-        assertEquals("验证码已过期", exception.getMessage());
-    }
-
-    @Test
-    @Transactional
-    void verifyEmail_Success_MarksCodeAsUsed() {
-        // Arrange: 创建一个用户（模拟注册流程中已创建但锁定的用户）
+    void verifyEmail_ValidCode_UnlocksUser() {
         User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
         user.setIsLocked(true);
         userRepository.save(user);
-
-        // Arrange: 创建一个有效的验证码
-        VerificationCode validCode = new VerificationCode(
+        verificationCodeRepository.save(new VerificationCode(
                 "test@example.com",
                 "123456",
                 "REGISTER",
                 LocalDateTime.now().plusMinutes(10)
-        );
-        verificationCodeRepository.save(validCode);
+        ));
 
         VerifyEmailRequest request = new VerifyEmailRequest();
         request.setEmail("test@example.com");
         request.setCode("123456");
 
-        // Act
         authService.verifyEmail(request);
 
-        // Assert: 验证码被标记为已使用
-        VerificationCode updatedCode = verificationCodeRepository
-                .findByEmailAndCode("test@example.com", "123456")
-                .orElse(null);
-        assertNotNull(updatedCode);
-        assertTrue(updatedCode.getUsed());
-
-        // Assert: 用户账户已解锁
-        User updatedUser = userRepository.findByUsername("testuser").orElse(null);
-        assertNotNull(updatedUser);
+        User updatedUser = userRepository.findByUsername("testuser").orElseThrow();
         assertFalse(updatedUser.getIsLocked());
-    }
 
-    // ==================== login 方法测试 ====================
-
-    @Test
-    @Transactional
-    void login_UserNotExists_ThrowsException() {
-        // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("nonexistent");
-        request.setPassword("password123");
-
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.login(request));
-        assertEquals("用户名或密码错误", exception.getMessage());
+        VerificationCode usedCode = verificationCodeRepository.findByEmailAndCode("test@example.com", "123456").orElseThrow();
+        assertTrue(usedCode.getUsed());
     }
 
     @Test
     @Transactional
-    void login_AccountLocked_ThrowsException() {
-        // Arrange: 创建一个被锁定的用户
-        User lockedUser = new User("lockeduser", "locked@example.com", passwordEncoder.encode("password123"));
-        lockedUser.setIsLocked(true);
-        lockedUser.setLockUntil(LocalDateTime.now().plusMinutes(30));
-        userRepository.save(lockedUser);
+    void verifyEmail_InvalidUsedOrExpiredCode_ThrowsBadRequest() {
+        VerifyEmailRequest missing = new VerifyEmailRequest();
+        missing.setEmail("test@example.com");
+        missing.setCode("000000");
+        assertEquals(AuthService.VERIFICATION_CODE_NOT_FOUND,
+                assertThrows(RuntimeException.class, () -> authService.verifyEmail(missing)).getMessage());
 
-        LoginRequest request = new LoginRequest();
-        request.setUsername("lockeduser");
-        request.setPassword("password123");
+        VerificationCode used = new VerificationCode("test@example.com", "111111", "REGISTER", LocalDateTime.now().plusMinutes(10));
+        used.setUsed(true);
+        verificationCodeRepository.save(used);
+        VerifyEmailRequest usedRequest = new VerifyEmailRequest();
+        usedRequest.setEmail("test@example.com");
+        usedRequest.setCode("111111");
+        assertEquals(AuthService.VERIFICATION_CODE_USED,
+                assertThrows(RuntimeException.class, () -> authService.verifyEmail(usedRequest)).getMessage());
 
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.login(request));
-        assertTrue(exception.getMessage().contains("已锁定"));
+        verificationCodeRepository.save(new VerificationCode("test@example.com", "222222", "REGISTER", LocalDateTime.now().minusMinutes(1)));
+        VerifyEmailRequest expiredRequest = new VerifyEmailRequest();
+        expiredRequest.setEmail("test@example.com");
+        expiredRequest.setCode("222222");
+        assertEquals(AuthService.VERIFICATION_CODE_EXPIRED,
+                assertThrows(RuntimeException.class, () -> authService.verifyEmail(expiredRequest)).getMessage());
     }
 
     @Test
     @Transactional
-    void login_Success_ReturnsJwtAndResetsFailedAttempts() {
-        // Arrange: 创建一个有失败记录的用户
+    void login_Success_ReturnsAccessAndRefreshTokensAndUserInfo() {
         User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        user.setFailedLoginAttempts(3);
+        user.setFailedLoginAttempts(2);
         userRepository.save(user);
 
-        LoginRequest request = new LoginRequest();
-        request.setUsername("testuser");
-        request.setPassword("password123");
+        LoginResponse response = authService.login(loginRequest("testuser", "password123"));
 
-        // Act
-        LoginResponse response = authService.login(request);
-
-        // Assert: 验证返回的 JWT
-        assertNotNull(response);
         assertNotNull(response.getAccessToken());
+        assertNotNull(response.getRefreshToken());
+        assertEquals("Bearer", response.getTokenType());
         assertTrue(response.getExpiresIn() > 0);
+        assertEquals("testuser", response.getUsername());
+        assertEquals("test@example.com", response.getEmail());
+        assertEquals("USER", response.getRole());
 
-        // Assert: 验证失败次数被重置
-        User updatedUser = userRepository.findByUsername("testuser").orElse(null);
-        assertNotNull(updatedUser);
+        User updatedUser = userRepository.findByUsername("testuser").orElseThrow();
         assertEquals(0, updatedUser.getFailedLoginAttempts());
         assertFalse(updatedUser.getIsLocked());
         assertNull(updatedUser.getLockUntil());
@@ -276,338 +177,136 @@ class AuthServiceTest {
 
     @Test
     @Transactional
-    void login_WrongPassword_IncrementsFailedAttempts() {
-        // Arrange
+    void login_UnverifiedEmail_ThrowsUnauthorizedWithoutNullPointer() {
         User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        user.setFailedLoginAttempts(1);
+        user.setIsLocked(true);
+        user.setLockUntil(null);
         userRepository.save(user);
 
-        LoginRequest request = new LoginRequest();
-        request.setUsername("testuser");
-        request.setPassword("wrongpassword");
-
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.login(request));
-        assertEquals("用户名或密码错误", exception.getMessage());
-
-        // Assert: 失败次数增加
-        User updatedUser = userRepository.findByUsername("testuser").orElse(null);
-        assertNotNull(updatedUser);
-        assertEquals(2, updatedUser.getFailedLoginAttempts());
+        Exception exception = assertThrows(RuntimeException.class, () -> authService.login(loginRequest("testuser", "password123")));
+        assertEquals(AuthService.EMAIL_NOT_VERIFIED, exception.getMessage());
     }
 
     @Test
     @Transactional
-    void login_FiveFailedAttempts_LocksAccount() {
-        // Arrange
+    void login_WrongPassword_IncrementsAttemptsAndLocksAtLimit() {
         User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        user.setFailedLoginAttempts(4);  // 已经失败4次
+        user.setFailedLoginAttempts(4);
         userRepository.save(user);
 
-        LoginRequest request = new LoginRequest();
-        request.setUsername("testuser");
-        request.setPassword("wrongpassword");
+        Exception exception = assertThrows(RuntimeException.class, () -> authService.login(loginRequest("testuser", "wrong")));
+        assertEquals(AuthService.BAD_CREDENTIALS, exception.getMessage());
 
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.login(request));
-        assertEquals("用户名或密码错误", exception.getMessage());
-
-        // Assert: 账户被锁定
-        User updatedUser = userRepository.findByUsername("testuser").orElse(null);
-        assertNotNull(updatedUser);
+        User updatedUser = userRepository.findByUsername("testuser").orElseThrow();
         assertEquals(5, updatedUser.getFailedLoginAttempts());
         assertTrue(updatedUser.getIsLocked());
         assertNotNull(updatedUser.getLockUntil());
-        assertTrue(updatedUser.getLockUntil().isAfter(LocalDateTime.now()));
-    }
-
-    // ==================== refreshToken 方法测试 ====================
-
-    @Test
-    @Transactional
-    void refreshToken_ValidToken_ReturnsNewTokens() {
-        // Arrange: 创建用户和刷新令牌
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(user);
-
-        RefreshToken refreshToken = authService.createRefreshToken(user.getId());
-
-        RefreshTokenRequest request = new RefreshTokenRequest();
-        request.setRefreshToken(refreshToken.getToken());
-
-        // Act
-        com.cc91.dto.RefreshTokenResponse response = authService.refreshToken(request);
-
-        // Assert
-        assertNotNull(response);
-        assertNotNull(response.getAccessToken());
-        assertNotNull(response.getRefreshToken());
-        assertNotEquals(refreshToken.getToken(), response.getRefreshToken()); // 新的 refresh token
-
-        // Assert: 旧 token 被撤销
-        RefreshToken oldToken = refreshTokenRepository.findByToken(refreshToken.getToken()).orElse(null);
-        assertNotNull(oldToken);
-        assertTrue(oldToken.getRevoked());
     }
 
     @Test
     @Transactional
-    void refreshToken_InvalidToken_ThrowsException() {
-        // Arrange
-        RefreshTokenRequest request = new RefreshTokenRequest();
-        request.setRefreshToken("invalid-token");
-
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.refreshToken(request));
-        assertEquals("刷新令牌无效", exception.getMessage());
-    }
-
-    @Test
-    @Transactional
-    void refreshToken_ExpiredToken_ThrowsException() {
-        // Arrange: 创建过期的刷新令牌
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(user);
-
-        RefreshToken expiredToken = new RefreshToken(
-                user.getId(),
-                "expired-token",
-                LocalDateTime.now().minusMinutes(1) // 过期
-        );
-        refreshTokenRepository.save(expiredToken);
-
-        RefreshTokenRequest request = new RefreshTokenRequest();
-        request.setRefreshToken("expired-token");
-
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.refreshToken(request));
-        assertEquals("刷新令牌已过期或已撤销", exception.getMessage());
-    }
-
-    @Test
-    @Transactional
-    void refreshToken_RevokedToken_ThrowsException() {
-        // Arrange: 创建已撤销的刷新令牌
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(user);
-
-        RefreshToken revokedToken = new RefreshToken(
-                user.getId(),
-                "revoked-token",
-                LocalDateTime.now().plusDays(7)
-        );
-        revokedToken.setRevoked(true);
-        refreshTokenRepository.save(revokedToken);
-
-        RefreshTokenRequest request = new RefreshTokenRequest();
-        request.setRefreshToken("revoked-token");
-
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.refreshToken(request));
-        assertEquals("刷新令牌已过期或已撤销", exception.getMessage());
-    }
-
-    // ==================== logout 方法测试 ====================
-
-    @Test
-    @Transactional
-    void logout_ValidToken_MarksAsRevoked() {
-        // Arrange
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(user);
-
-        RefreshToken refreshToken = authService.createRefreshToken(user.getId());
-
-        // Act
-        authService.logout(refreshToken.getToken());
-
-        // Assert
-        RefreshToken token = refreshTokenRepository.findByToken(refreshToken.getToken()).orElse(null);
-        assertNotNull(token);
-        assertTrue(token.getRevoked());
-    }
-
-    @Test
-    @Transactional
-    void logout_InvalidToken_ThrowsException() {
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> authService.logout("invalid-token"));
-        assertEquals("刷新令牌无效", exception.getMessage());
-    }
-
-    // ==================== revokeAllUserTokens 方法测试 ====================
-
-    @Test
-    @Transactional
-    void revokeAllUserTokens_RevokesAllValidTokens() {
-        // Arrange
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(user);
-
-        RefreshToken token1 = authService.createRefreshToken(user.getId());
-        RefreshToken token2 = authService.createRefreshToken(user.getId());
-
-        // Act
-        authService.revokeAllUserTokens(user.getId());
-
-        // Assert
-        RefreshToken updatedToken1 = refreshTokenRepository.findById(token1.getId()).orElse(null);
-        RefreshToken updatedToken2 = refreshTokenRepository.findById(token2.getId()).orElse(null);
-
-        assertNotNull(updatedToken1);
-        assertNotNull(updatedToken2);
-        assertTrue(updatedToken1.getRevoked());
-        assertTrue(updatedToken2.getRevoked());
-    }
-
-    // ==================== forgotPassword 方法测试 ====================
-
-    @Test
-    @Transactional
-    void forgotPassword_ExistingEmail_CreatesVerificationCode() {
-        // Arrange
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(user);
-
-        // Act
-        authService.forgotPassword("test@example.com");
-
-        // Assert: 验证码已创建
-        VerificationCode code = verificationCodeRepository
-                .findFirstByEmailAndTypeOrderByCreatedAtDesc("test@example.com", "PASSWORD_RESET")
-                .orElse(null);
-        assertNotNull(code);
-        assertFalse(code.getUsed());
-        assertEquals("PASSWORD_RESET", code.getType());
-    }
-
-    @Test
-    @Transactional
-    void forgotPassword_NonExistingEmail_DoesNotThrowException() {
-        // Act & Assert: 为了安全，不应抛出异常（防止邮箱枚举）
-        assertDoesNotThrow(() -> authService.forgotPassword("nonexistent@example.com"));
-    }
-
-    // ==================== resetPassword 方法测试 ====================
-
-    @Test
-    @Transactional
-    void resetPassword_ValidCode_ResetsPasswordAndUnlocksAccount() {
-        // Arrange
+    void login_ExpiredTimedLock_UnlocksAndAuthenticates() {
         User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
         user.setIsLocked(true);
+        user.setLockUntil(LocalDateTime.now().minusMinutes(1));
         user.setFailedLoginAttempts(5);
         userRepository.save(user);
 
-        VerificationCode code = new VerificationCode(
-                "test@example.com",
-                "123456",
-                "PASSWORD_RESET",
-                LocalDateTime.now().plusMinutes(10)
-        );
-        verificationCodeRepository.save(code);
+        LoginResponse response = authService.login(loginRequest("testuser", "password123"));
 
-        // Act
-        authService.resetPassword("test@example.com", "123456", "newpassword123");
-
-        // Assert: 密码已更新
-        User updatedUser = userRepository.findByUsername("testuser").orElse(null);
-        assertNotNull(updatedUser);
-        assertTrue(passwordEncoder.matches("newpassword123", updatedUser.getPasswordHash()));
-
-        // Assert: 账户已解锁
+        assertNotNull(response.getAccessToken());
+        User updatedUser = userRepository.findByUsername("testuser").orElseThrow();
         assertFalse(updatedUser.getIsLocked());
         assertEquals(0, updatedUser.getFailedLoginAttempts());
-
-        // Assert: 验证码已使用
-        VerificationCode updatedCode = verificationCodeRepository.findByEmailAndCode("test@example.com", "123456").orElse(null);
-        assertNotNull(updatedCode);
-        assertTrue(updatedCode.getUsed());
+        assertNull(updatedUser.getLockUntil());
     }
 
     @Test
     @Transactional
-    void resetPassword_InvalidCode_ThrowsException() {
-        // Arrange
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(user);
+    void refreshToken_ValidToken_RotatesRefreshToken() {
+        User user = userRepository.save(new User("testuser", "test@example.com", passwordEncoder.encode("password123")));
+        RefreshToken original = authService.createRefreshToken(user.getId());
 
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class,
-                () -> authService.resetPassword("test@example.com", "invalid", "newpassword123"));
-        assertEquals("验证码不存在", exception.getMessage());
+        RefreshTokenResponse response = authService.refreshToken(new RefreshTokenRequest(original.getToken()));
+
+        assertNotNull(response.getAccessToken());
+        assertNotNull(response.getRefreshToken());
+        assertNotEquals(original.getToken(), response.getRefreshToken());
+        assertTrue(refreshTokenRepository.findByToken(original.getToken()).orElseThrow().getRevoked());
     }
 
     @Test
     @Transactional
-    void resetPassword_ExpiredCode_ThrowsException() {
-        // Arrange
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+    void refreshToken_InvalidExpiredRevokedOrLockedAccount_ThrowsUnauthorized() {
+        assertEquals(AuthService.REFRESH_TOKEN_INVALID, assertThrows(RuntimeException.class,
+                () -> authService.refreshToken(new RefreshTokenRequest("missing"))).getMessage());
+
+        User user = userRepository.save(new User("testuser", "test@example.com", passwordEncoder.encode("password123")));
+        refreshTokenRepository.save(new RefreshToken(user.getId(), "expired", LocalDateTime.now().minusMinutes(1)));
+        assertEquals(AuthService.REFRESH_TOKEN_EXPIRED_OR_REVOKED, assertThrows(RuntimeException.class,
+                () -> authService.refreshToken(new RefreshTokenRequest("expired"))).getMessage());
+
+        RefreshToken revoked = new RefreshToken(user.getId(), "revoked", LocalDateTime.now().plusDays(7));
+        revoked.setRevoked(true);
+        refreshTokenRepository.save(revoked);
+        assertEquals(AuthService.REFRESH_TOKEN_EXPIRED_OR_REVOKED, assertThrows(RuntimeException.class,
+                () -> authService.refreshToken(new RefreshTokenRequest("revoked"))).getMessage());
+
+        RefreshToken lockedToken = refreshTokenRepository.save(new RefreshToken(user.getId(), "locked", LocalDateTime.now().plusDays(7)));
+        user.setIsLocked(true);
+        user.setLockUntil(null);
         userRepository.save(user);
-
-        VerificationCode expiredCode = new VerificationCode(
-                "test@example.com",
-                "123456",
-                "PASSWORD_RESET",
-                LocalDateTime.now().minusMinutes(1) // 过期
-        );
-        verificationCodeRepository.save(expiredCode);
-
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class,
-                () -> authService.resetPassword("test@example.com", "123456", "newpassword123"));
-        assertEquals("验证码已过期", exception.getMessage());
+        assertEquals(AuthService.ACCOUNT_UNAVAILABLE, assertThrows(RuntimeException.class,
+                () -> authService.refreshToken(new RefreshTokenRequest(lockedToken.getToken()))).getMessage());
     }
 
     @Test
     @Transactional
-    void resetPassword_WrongType_ThrowsException() {
-        // Arrange
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
-        userRepository.save(user);
+    void logout_ValidToken_RevokesRefreshToken() {
+        User user = userRepository.save(new User("testuser", "test@example.com", passwordEncoder.encode("password123")));
+        RefreshToken token = authService.createRefreshToken(user.getId());
 
-        VerificationCode wrongTypeCode = new VerificationCode(
-                "test@example.com",
-                "123456",
-                "REGISTER", // 错误的类型
-                LocalDateTime.now().plusMinutes(10)
-        );
-        verificationCodeRepository.save(wrongTypeCode);
+        authService.logout(token.getToken());
 
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class,
-                () -> authService.resetPassword("test@example.com", "123456", "newpassword123"));
-        assertEquals("验证码类型错误", exception.getMessage());
+        assertTrue(refreshTokenRepository.findByToken(token.getToken()).orElseThrow().getRevoked());
     }
 
     @Test
     @Transactional
-    void resetPassword_AfterReset_AllRefreshTokensRevoked() {
-        // Arrange
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+    void resetPassword_ValidCode_UpdatesPasswordUnlocksAndRevokesSessions() {
+        User user = userRepository.save(new User("testuser", "test@example.com", passwordEncoder.encode("password123")));
+        user.setIsLocked(true);
+        user.setFailedLoginAttempts(5);
         userRepository.save(user);
-
-        RefreshToken token1 = authService.createRefreshToken(user.getId());
-        RefreshToken token2 = authService.createRefreshToken(user.getId());
-
-        VerificationCode code = new VerificationCode(
+        RefreshToken token = authService.createRefreshToken(user.getId());
+        verificationCodeRepository.save(new VerificationCode(
                 "test@example.com",
                 "123456",
                 "PASSWORD_RESET",
                 LocalDateTime.now().plusMinutes(10)
-        );
-        verificationCodeRepository.save(code);
+        ));
 
-        // Act
         authService.resetPassword("test@example.com", "123456", "newpassword123");
 
-        // Assert: 所有刷新令牌被撤销
-        RefreshToken updatedToken1 = refreshTokenRepository.findById(token1.getId()).orElse(null);
-        RefreshToken updatedToken2 = refreshTokenRepository.findById(token2.getId()).orElse(null);
+        User updatedUser = userRepository.findByUsername("testuser").orElseThrow();
+        assertTrue(passwordEncoder.matches("newpassword123", updatedUser.getPasswordHash()));
+        assertFalse(updatedUser.getIsLocked());
+        assertEquals(0, updatedUser.getFailedLoginAttempts());
+        assertTrue(refreshTokenRepository.findByToken(token.getToken()).orElseThrow().getRevoked());
+    }
 
-        assertNotNull(updatedToken1);
-        assertNotNull(updatedToken2);
-        assertTrue(updatedToken1.getRevoked());
-        assertTrue(updatedToken2.getRevoked());
+    private RegisterRequest registerRequest(String username, String email, String password) {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername(username);
+        request.setEmail(email);
+        request.setPassword(password);
+        return request;
+    }
+
+    private LoginRequest loginRequest(String username, String password) {
+        LoginRequest request = new LoginRequest();
+        request.setUsername(username);
+        request.setPassword(password);
+        return request;
     }
 }

@@ -1,38 +1,60 @@
 package com.cc91.service;
 
-import com.cc91.dto.*;
+import com.cc91.dto.LoginRequest;
+import com.cc91.dto.LoginResponse;
+import com.cc91.dto.RefreshTokenRequest;
+import com.cc91.dto.RefreshTokenResponse;
+import com.cc91.dto.RegisterRequest;
+import com.cc91.dto.RegisterResponse;
+import com.cc91.dto.VerifyEmailRequest;
+import com.cc91.entity.RefreshToken;
 import com.cc91.entity.User;
 import com.cc91.entity.VerificationCode;
-import com.cc91.entity.RefreshToken;
 import com.cc91.exception.BadRequestException;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.exception.UnauthorizedException;
+import com.cc91.repository.RefreshTokenRepository;
 import com.cc91.repository.UserRepository;
 import com.cc91.repository.VerificationCodeRepository;
-import com.cc91.repository.RefreshTokenRepository;
 import com.cc91.security.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * 认证服务
- */
 @Service
 public class AuthService {
 
+    public static final String USERNAME_ALREADY_USED = "Username already exists";
+    public static final String EMAIL_ALREADY_REGISTERED = "Email already registered";
+    public static final String VERIFICATION_CODE_SENT = "Verification code sent";
+    public static final String VERIFICATION_CODE_NOT_FOUND = "Verification code not found";
+    public static final String VERIFICATION_CODE_USED = "Verification code already used";
+    public static final String VERIFICATION_CODE_EXPIRED = "Verification code expired";
+    public static final String VERIFICATION_CODE_TYPE_INVALID = "Verification code type invalid";
+    public static final String USER_NOT_FOUND = "User not found";
+    public static final String BAD_CREDENTIALS = "Invalid username or password";
+    public static final String EMAIL_NOT_VERIFIED = "Please verify your email first";
+    public static final String ACCOUNT_LOCKED_PREFIX = "Account locked, try again in ";
+    public static final String ACCOUNT_UNAVAILABLE = "Account unavailable, please log in again";
+    public static final String REFRESH_TOKEN_INVALID = "Refresh token invalid";
+    public static final String REFRESH_TOKEN_EXPIRED_OR_REVOKED = "Refresh token expired or revoked";
+
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    private static final String REGISTER_CODE_TYPE = "REGISTER";
+    private static final String PASSWORD_RESET_CODE_TYPE = "PASSWORD_RESET";
+    private static final int VERIFICATION_CODE_EXPIRES_IN_SECONDS = 600;
 
     private final UserRepository userRepository;
     private final VerificationCodeRepository verificationCodeRepository;
@@ -40,6 +62,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${account.lock.max-attempts:5}")
     private int maxFailedAttempts;
@@ -66,159 +89,136 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
     }
 
-    /**
-     * 用户注册 - 发送验证码
-     */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        // 检查用户名是否存在
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BadRequestException("用户名已被使用");
+            throw new BadRequestException(USERNAME_ALREADY_USED);
         }
-
-        // 检查邮箱是否存在
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("邮箱已被注册");
+            throw new BadRequestException(EMAIL_ALREADY_REGISTERED);
         }
 
-        // 创建用户，设置 isLocked = true（未验证邮箱不能登录）
         User user = new User(
                 request.getUsername(),
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword())
         );
         user.setIsLocked(true);
+        user.setLockUntil(null);
         userRepository.save(user);
 
-        // 生成 6 位数字验证码
         String code = generateVerificationCode();
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
+        LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(VERIFICATION_CODE_EXPIRES_IN_SECONDS);
+        verificationCodeRepository.save(new VerificationCode(request.getEmail(), code, REGISTER_CODE_TYPE, expiresAt));
 
-        // 保存验证码
-        VerificationCode verificationCode = new VerificationCode(
-                request.getEmail(),
-                code,
-                "REGISTER",
-                expiresAt
-        );
-        verificationCodeRepository.save(verificationCode);
-
-        // 打印验证码到日志（开发环境）
-        logger.info("====== 验证码 =======");
-        logger.info("邮箱: {}", request.getEmail());
-        logger.info("验证码: {}", code);
-        logger.info("过期时间: {}", expiresAt);
-        logger.info("====================");
-
-        return new RegisterResponse("验证码已发送至邮箱", 600);
+        logger.info("Register verification code for {}: {}, expiresAt={}", request.getEmail(), code, expiresAt);
+        return new RegisterResponse(VERIFICATION_CODE_SENT, VERIFICATION_CODE_EXPIRES_IN_SECONDS);
     }
 
-    /**
-     * 验证邮箱验证码并创建用户
-     */
     @Transactional
     public void verifyEmail(VerifyEmailRequest request) {
         VerificationCode verificationCode = verificationCodeRepository
-                .findByEmailAndCodeAndType(request.getEmail(), request.getCode(), "REGISTER")
-                .orElseThrow(() -> new BadRequestException("验证码不存在"));
+                .findByEmailAndCodeAndType(request.getEmail(), request.getCode(), REGISTER_CODE_TYPE)
+                .orElseThrow(() -> new BadRequestException(VERIFICATION_CODE_NOT_FOUND));
 
-        // 检查验证码是否已使用
-        if (verificationCode.getUsed()) {
-            throw new BadRequestException("验证码已使用");
-        }
+        validateVerificationCode(verificationCode);
 
-        // 检查验证码是否过期
-        if (verificationCode.isExpired()) {
-            throw new BadRequestException("验证码已过期");
-        }
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
 
-        // 标记验证码为已使用
         verificationCode.setUsed(true);
         verificationCodeRepository.save(verificationCode);
 
-        // 查找对应邮箱的 User，解锁账户
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
         user.setIsLocked(false);
+        user.setLockUntil(null);
+        user.setFailedLoginAttempts(0);
         userRepository.save(user);
 
-        logger.info("邮箱验证成功，用户已解锁: {}", request.getEmail());
+        logger.info("Email verified and account enabled: {}", request.getEmail());
     }
 
-    /**
-     * 用户登录
-     */
     @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new UnauthorizedException("用户名或密码错误"));
+                .orElseThrow(() -> new UnauthorizedException(BAD_CREDENTIALS));
 
-        // 检查账户是否锁定
-        if (user.isAccountLocked()) {
-            long remainingMinutes = java.time.Duration.between(
-                    LocalDateTime.now(),
-                    user.getLockUntil()
-            ).toMinutes();
-            throw new UnauthorizedException("账户已锁定，请 " + remainingMinutes + " 分钟后重试");
-        }
+        ensureUserCanAttemptLogin(user);
 
         try {
-            // 认证
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getUsername(),
-                            request.getPassword()
-                    )
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
-
-            // 重置失败次数
-            if (user.getFailedLoginAttempts() > 0) {
-                user.setFailedLoginAttempts(0);
-                user.setIsLocked(false);
-                user.setLockUntil(null);
-                userRepository.save(user);
-            }
-
-            // 生成 JWT
-            String accessToken = jwtUtil.generateToken(user.getUsername());
-
-            // 生成 Refresh Token
-            RefreshToken refreshToken = createRefreshToken(user.getId());
-
-            logger.info("用户登录成功: {}", user.getUsername());
-            return new LoginResponse(accessToken, refreshToken.getToken(), jwtUtil.getExpiration());
-
-        } catch (Exception e) {
-            // 增加失败次数
-            int attempts = user.getFailedLoginAttempts() + 1;
-            user.setFailedLoginAttempts(attempts);
-            userRepository.save(user);
-
-            // 检查是否需要锁定
-            if (attempts >= maxFailedAttempts) {
-                user.setIsLocked(true);
-                user.setLockUntil(LocalDateTime.now().plusMinutes(lockDurationMinutes));
-                userRepository.save(user);
-                logger.warn("账户已锁定: {} (失败次数: {})", user.getUsername(), attempts);
-            }
-
-            logger.warn("登录失败: {} (失败次数: {})", user.getUsername(), attempts);
-            throw new UnauthorizedException("用户名或密码错误");
+        } catch (AuthenticationException e) {
+            recordFailedLogin(user);
+            throw new UnauthorizedException(BAD_CREDENTIALS);
         }
+
+        resetFailedLoginState(user);
+
+        String accessToken = jwtUtil.generateToken(user.getUsername());
+        RefreshToken refreshToken = createRefreshToken(user.getId());
+
+        logger.info("User logged in: {}", user.getUsername());
+        return new LoginResponse(
+                accessToken,
+                refreshToken.getToken(),
+                jwtUtil.getExpiration(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getRole()
+        );
     }
 
-    /**
-     * 生成 6 位数字验证码
-     */
+    private void ensureUserCanAttemptLogin(User user) {
+        if (!Boolean.TRUE.equals(user.getIsLocked())) {
+            return;
+        }
+
+        if (user.getLockUntil() == null) {
+            throw new UnauthorizedException(EMAIL_NOT_VERIFIED);
+        }
+
+        if (LocalDateTime.now().isBefore(user.getLockUntil())) {
+            long remainingMinutes = Duration.between(LocalDateTime.now(), user.getLockUntil()).toMinutes();
+            throw new UnauthorizedException(ACCOUNT_LOCKED_PREFIX + Math.max(1, remainingMinutes) + " minute(s)");
+        }
+
+        user.setIsLocked(false);
+        user.setLockUntil(null);
+        user.setFailedLoginAttempts(0);
+        userRepository.save(user);
+    }
+
+    private void recordFailedLogin(User user) {
+        int attempts = user.getFailedLoginAttempts() == null ? 1 : user.getFailedLoginAttempts() + 1;
+        user.setFailedLoginAttempts(attempts);
+
+        if (attempts >= maxFailedAttempts) {
+            user.setIsLocked(true);
+            user.setLockUntil(LocalDateTime.now().plusMinutes(lockDurationMinutes));
+            logger.warn("Account locked after failed login attempts: username={}, attempts={}", user.getUsername(), attempts);
+        }
+
+        userRepository.save(user);
+        logger.warn("Login failed: username={}, attempts={}", user.getUsername(), attempts);
+    }
+
+    private void resetFailedLoginState(User user) {
+        if (user.getFailedLoginAttempts() == null || user.getFailedLoginAttempts() == 0) {
+            return;
+        }
+
+        user.setFailedLoginAttempts(0);
+        user.setIsLocked(false);
+        user.setLockUntil(null);
+        userRepository.save(user);
+    }
+
     private String generateVerificationCode() {
-        SecureRandom secureRandom = new SecureRandom();
         int code = 100000 + secureRandom.nextInt(900000);
         return String.valueOf(code);
     }
 
-    /**
-     * 创建刷新令牌
-     */
     @Transactional
     public RefreshToken createRefreshToken(Long userId) {
         RefreshToken refreshToken = new RefreshToken(
@@ -229,141 +229,97 @@ public class AuthService {
         return refreshTokenRepository.save(refreshToken);
     }
 
-    /**
-     * 刷新访问令牌（令牌轮换）
-     */
     @Transactional
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(request.getRefreshToken())
-                .orElseThrow(() -> new UnauthorizedException("刷新令牌无效"));
+                .orElseThrow(() -> new UnauthorizedException(REFRESH_TOKEN_INVALID));
 
-        // 验证令牌是否有效
         if (!refreshToken.isValid()) {
-            throw new UnauthorizedException("刷新令牌已过期或已撤销");
+            throw new UnauthorizedException(REFRESH_TOKEN_EXPIRED_OR_REVOKED);
         }
 
-        // 获取用户信息
         User user = userRepository.findById(refreshToken.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
+        if (Boolean.TRUE.equals(user.getIsLocked())) {
+            throw new UnauthorizedException(ACCOUNT_UNAVAILABLE);
+        }
 
-        // 撤销旧的刷新令牌（令牌轮换）
         refreshToken.setRevoked(true);
         refreshTokenRepository.save(refreshToken);
 
-        // 生成新的访问令牌
         String newAccessToken = jwtUtil.generateToken(user.getUsername());
-
-        // 生成新的刷新令牌
         RefreshToken newRefreshToken = createRefreshToken(user.getId());
 
-        logger.info("令牌刷新成功: {}", user.getUsername());
+        logger.info("Token refreshed: {}", user.getUsername());
         return new RefreshTokenResponse(newAccessToken, newRefreshToken.getToken(), jwtUtil.getExpiration());
     }
 
-    /**
-     * 撤销刷新令牌（登出）
-     */
     @Transactional
     public void logout(String refreshToken) {
         RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() -> new UnauthorizedException("刷新令牌无效"));
+                .orElseThrow(() -> new UnauthorizedException(REFRESH_TOKEN_INVALID));
 
         token.setRevoked(true);
         refreshTokenRepository.save(token);
 
-        logger.info("用户登出: userId={}", token.getUserId());
+        logger.info("User logged out: userId={}", token.getUserId());
     }
 
-    /**
-     * 撤销用户的所有刷新令牌
-     */
     @Transactional
     public void revokeAllUserTokens(Long userId) {
         List<RefreshToken> tokens = refreshTokenRepository.findByUserIdAndRevokedFalse(userId);
         tokens.forEach(token -> token.setRevoked(true));
         refreshTokenRepository.saveAll(tokens);
-        logger.info("已撤销用户 {} 的所有令牌", userId);
+        logger.info("Revoked all refresh tokens for userId={}", userId);
     }
 
-    /**
-     * 请求密码重置 - 发送验证码
-     */
     @Transactional
     public void forgotPassword(String email) {
-        // 检查邮箱是否存在
         if (!userRepository.existsByEmail(email)) {
-            // 为了安全，即使用户不存在也返回成功（防止邮箱枚举）
-            logger.warn("密码重置请求，邮箱不存在: {}", email);
+            logger.warn("Password reset requested for unknown email: {}", email);
             return;
         }
 
-        // 生成 6 位数字验证码
         String code = generateVerificationCode();
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
+        LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(VERIFICATION_CODE_EXPIRES_IN_SECONDS);
+        verificationCodeRepository.save(new VerificationCode(email, code, PASSWORD_RESET_CODE_TYPE, expiresAt));
 
-        // 保存验证码
-        VerificationCode verificationCode = new VerificationCode(
-                email,
-                code,
-                "PASSWORD_RESET",
-                expiresAt
-        );
-        verificationCodeRepository.save(verificationCode);
-
-        // 打印验证码到日志（开发环境）
-        logger.info("====== 密码重置验证码 =======");
-        logger.info("邮箱: {}", email);
-        logger.info("验证码: {}", code);
-        logger.info("过期时间: {}", expiresAt);
-        logger.info("==========================");
+        logger.info("Password reset verification code for {}: {}, expiresAt={}", email, code, expiresAt);
     }
 
-    /**
-     * 验证码验证 + 重置密码
-     */
     @Transactional
     public void resetPassword(String email, String code, String newPassword) {
-        // 验证验证码
         VerificationCode verificationCode = verificationCodeRepository
                 .findByEmailAndCode(email, code)
-                .orElseThrow(() -> new BadRequestException("验证码不存在"));
+                .orElseThrow(() -> new BadRequestException(VERIFICATION_CODE_NOT_FOUND));
 
-        // 检查验证码是否已使用
-        if (verificationCode.getUsed()) {
-            throw new BadRequestException("验证码已使用");
+        validateVerificationCode(verificationCode);
+        if (!PASSWORD_RESET_CODE_TYPE.equals(verificationCode.getType())) {
+            throw new BadRequestException(VERIFICATION_CODE_TYPE_INVALID);
         }
 
-        // 检查验证码是否过期
-        if (verificationCode.isExpired()) {
-            throw new BadRequestException("验证码已过期");
-        }
-
-        // 检查验证码类型
-        if (!"PASSWORD_RESET".equals(verificationCode.getType())) {
-            throw new BadRequestException("验证码类型错误");
-        }
-
-        // 获取用户
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
 
-        // 更新密码
         user.setPasswordHash(passwordEncoder.encode(newPassword));
-
-        // 清除账户锁定状态和失败计数
         user.setFailedLoginAttempts(0);
         user.setIsLocked(false);
         user.setLockUntil(null);
-
         userRepository.save(user);
 
-        // 标记验证码为已使用
         verificationCode.setUsed(true);
         verificationCodeRepository.save(verificationCode);
 
-        // 撤销用户的所有刷新令牌（强制重新登录）
         revokeAllUserTokens(user.getId());
+        logger.info("Password reset completed: {}", email);
+    }
 
-        logger.info("密码重置成功: {}", email);
+    private void validateVerificationCode(VerificationCode verificationCode) {
+        if (verificationCode.getUsed()) {
+            throw new BadRequestException(VERIFICATION_CODE_USED);
+        }
+        if (verificationCode.isExpired()) {
+            throw new BadRequestException(VERIFICATION_CODE_EXPIRED);
+        }
     }
 }
