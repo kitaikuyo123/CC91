@@ -57,7 +57,7 @@ logging:
 account:
   lock:
     max-attempts: 5
-    lock-duration-minutes: 30
+    duration-seconds: 30
 
 app:
   dev-data:

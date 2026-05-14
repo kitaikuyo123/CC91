@@ -35,11 +35,15 @@ public class DevDataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        // Dev-only seed data keeps local admin/user verification reproducible.
+        // Production does not enable app.dev-data.enabled.
         ensureUser("admin", "admin@cc91.com", "admin123", "ADMIN");
         ensureUser("test", "test@cc91.com", "admin123", "USER");
     }
 
     private void ensureUser(String username, String email, String password, String role) {
+        // Normalize password, role, and lock state on every dev startup so old local
+        // database contents do not break the documented test accounts.
         User user = userRepository.findByUsername(username).orElseGet(() -> {
             User created = new User(username, email, passwordEncoder.encode(password));
             logger.info("Created development user: {}", username);

@@ -65,6 +65,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // JWT is used as the session mechanism, so the backend does not keep
+                // servlet sessions and each protected request must carry a Bearer token.
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -81,11 +83,14 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Auth endpoints must stay public so users can register, verify,
+                        // log in, refresh tokens, and request password resets.
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("GET", "/api/users/{username}").permitAll()
                         .requestMatchers("GET", "/api/posts", "/api/posts/{id}", "/api/posts/search").permitAll()
                         .requestMatchers("GET", "/api/posts/*/comments").permitAll()
                         .requestMatchers("GET", "/api/categories").permitAll()
+                        // Admin APIs are protected by the role stored on the User record.
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

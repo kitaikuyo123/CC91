@@ -32,6 +32,8 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+        // Duplicate username/email are client conflicts, while malformed verification
+        // state is returned as a normal bad request.
         try {
             RegisterResponse response = authService.register(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -57,6 +59,8 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+        // Temporary account lockout uses HTTP 423 so the frontend can distinguish it
+        // from ordinary wrong username/password failures.
         try {
             LoginResponse response = authService.login(request);
             return ResponseEntity.ok(response);
@@ -95,6 +99,7 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        // Always return success here; AuthService deliberately hides whether the email exists.
         authService.forgotPassword(request.getEmail());
         return ResponseEntity.ok(ApiResponse.success("If the email is registered, a verification code has been sent"));
     }

@@ -22,6 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -195,12 +196,38 @@ class AuthServiceTest {
         userRepository.save(user);
 
         Exception exception = assertThrows(RuntimeException.class, () -> authService.login(loginRequest("testuser", "wrong")));
-        assertEquals(AuthService.BAD_CREDENTIALS, exception.getMessage());
+        assertTrue(exception.getMessage().startsWith(AuthService.ACCOUNT_LOCKED_PREFIX));
 
         User updatedUser = userRepository.findByUsername("testuser").orElseThrow();
         assertEquals(5, updatedUser.getFailedLoginAttempts());
         assertTrue(updatedUser.getIsLocked());
         assertNotNull(updatedUser.getLockUntil());
+    }
+
+    @Test
+    void login_FiveWrongPasswords_PersistsLockAndBlocksCorrectPassword() {
+        userRepository.save(new User("testuser", "test@example.com", passwordEncoder.encode("password123")));
+
+        for (int i = 1; i <= 4; i++) {
+            Exception exception = assertThrows(RuntimeException.class,
+                    () -> authService.login(loginRequest("testuser", "wrong")));
+            assertEquals(AuthService.BAD_CREDENTIALS, exception.getMessage());
+        }
+
+        Exception lockException = assertThrows(RuntimeException.class,
+                () -> authService.login(loginRequest("testuser", "wrong")));
+        assertTrue(lockException.getMessage().startsWith(AuthService.ACCOUNT_LOCKED_PREFIX));
+
+        User lockedUser = userRepository.findByUsername("testuser").orElseThrow();
+        assertEquals(5, lockedUser.getFailedLoginAttempts());
+        assertTrue(lockedUser.getIsLocked());
+        assertNotNull(lockedUser.getLockUntil());
+        long remainingSeconds = Duration.between(LocalDateTime.now(), lockedUser.getLockUntil()).toSeconds();
+        assertTrue(remainingSeconds > 0 && remainingSeconds <= 30);
+
+        Exception correctPasswordException = assertThrows(RuntimeException.class,
+                () -> authService.login(loginRequest("testuser", "password123")));
+        assertTrue(correctPasswordException.getMessage().startsWith(AuthService.ACCOUNT_LOCKED_PREFIX));
     }
 
     @Test

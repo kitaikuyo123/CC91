@@ -18,8 +18,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * JWT 认证过滤器
- * 从请求头中提取 JWT 令牌并验证
+ * Reads the Bearer JWT from each request and fills Spring Security's context
+ * before controller authorization rules are evaluated.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -44,6 +44,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = extractJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt) && jwtUtil.validateToken(jwt)) {
+                // JWT only stores the username; authorities are reloaded from the database
+                // so role changes take effect without waiting for the token to expire.
                 String username = jwtUtil.getUsernameFromToken(jwt);
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -66,7 +68,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 从请求头中提取 JWT 令牌
+     * Extracts the raw token from the standard Authorization: Bearer header.
      */
     private String extractJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");

@@ -36,6 +36,8 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
+    // Keep response messages centralized so controllers and tests can assert stable
+    // API behavior.
     public static final String USERNAME_ALREADY_USED = "Username already exists";
     public static final String EMAIL_ALREADY_REGISTERED = "Email already registered";
     public static final String VERIFICATION_CODE_SENT = "Verification code sent";
@@ -67,8 +69,8 @@ public class AuthService {
     @Value("${account.lock.max-attempts:5}")
     private int maxFailedAttempts;
 
-    @Value("${account.lock.duration-minutes:30}")
-    private int lockDurationMinutes;
+    @Value("${account.lock.duration-seconds:30}")
+    private int lockDurationSeconds;
 
     @Value("${jwt.refresh-expiration:604800000}")
     private Long refreshExpiration;
@@ -79,8 +81,7 @@ public class AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
-            AuthenticationManager authenticationManager
-    ) {
+            AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.verificationCodeRepository = verificationCodeRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -91,6 +92,9 @@ public class AuthService {
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
+        // Registration reserves username and email immediately, but keeps the account
+        // locked
+        // until the user proves ownership of the email verification code.
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new BadRequestException(USERNAME_ALREADY_USED);
         }
@@ -101,8 +105,7 @@ public class AuthService {
         User user = new User(
                 request.getUsername(),
                 request.getEmail(),
-                passwordEncoder.encode(request.getPassword())
-        );
+                passwordEncoder.encode(request.getPassword()));
         user.setIsLocked(true);
         user.setLockUntil(null);
         userRepository.save(user);
@@ -117,6 +120,8 @@ public class AuthService {
 
     @Transactional
     public void verifyEmail(VerifyEmailRequest request) {
+        // A valid one-time registration code is the only path that unlocks a new
+        // account.
         VerificationCode verificationCode = verificationCodeRepository
                 .findByEmailAndCodeAndType(request.getEmail(), request.getCode(), REGISTER_CODE_TYPE)
                 .orElseThrow(() -> new BadRequestException(VERIFICATION_CODE_NOT_FOUND));
@@ -137,8 +142,11 @@ public class AuthService {
         logger.info("Email verified and account enabled: {}", request.getEmail());
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public LoginResponse login(LoginRequest request) {
+        // Spring Security performs the password check; this service records lockout
+        // state
+        // around that check and creates the stateless session tokens after success.
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UnauthorizedException(BAD_CREDENTIALS));
 
@@ -146,10 +154,12 @@ public class AuthService {
 
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-            );
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (AuthenticationException e) {
-            recordFailedLogin(user);
+            boolean locked = recordFailedLogin(user);
+            if (locked) {
+                throw new UnauthorizedException(ACCOUNT_LOCKED_PREFIX + lockDurationSeconds + " second(s)");
+            }
             throw new UnauthorizedException(BAD_CREDENTIALS);
         }
 
@@ -165,11 +175,13 @@ public class AuthService {
                 jwtUtil.getExpiration(),
                 user.getUsername(),
                 user.getEmail(),
-                user.getRole()
-        );
+                user.getRole());
     }
 
     private void ensureUserCanAttemptLogin(User user) {
+        // isLocked with null lockUntil means "email not verified"; with a future
+        // lockUntil
+        // means temporary lock caused by repeated failed login attempts.
         if (!Boolean.TRUE.equals(user.getIsLocked())) {
             return;
         }
@@ -179,8 +191,8 @@ public class AuthService {
         }
 
         if (LocalDateTime.now().isBefore(user.getLockUntil())) {
-            long remainingMinutes = Duration.between(LocalDateTime.now(), user.getLockUntil()).toMinutes();
-            throw new UnauthorizedException(ACCOUNT_LOCKED_PREFIX + Math.max(1, remainingMinutes) + " minute(s)");
+            long remainingSeconds = Duration.between(LocalDateTime.now(), user.getLockUntil()).toSeconds();
+            throw new UnauthorizedException(ACCOUNT_LOCKED_PREFIX + Math.max(1, remainingSeconds) + " second(s)");
         }
 
         user.setIsLocked(false);
@@ -189,18 +201,24 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    private void recordFailedLogin(User user) {
+    private boolean recordFailedLogin(User user) {
+        // Failed attempts are stored on the user record so protection survives restarts
+        // and applies consistently across all application instances.
         int attempts = user.getFailedLoginAttempts() == null ? 1 : user.getFailedLoginAttempts() + 1;
         user.setFailedLoginAttempts(attempts);
 
+        boolean locked = false;
         if (attempts >= maxFailedAttempts) {
             user.setIsLocked(true);
-            user.setLockUntil(LocalDateTime.now().plusMinutes(lockDurationMinutes));
-            logger.warn("Account locked after failed login attempts: username={}, attempts={}", user.getUsername(), attempts);
+            user.setLockUntil(LocalDateTime.now().plusSeconds(lockDurationSeconds));
+            locked = true;
+            logger.warn("Account locked after failed login attempts: username={}, attempts={}", user.getUsername(),
+                    attempts);
         }
 
         userRepository.save(user);
         logger.warn("Login failed: username={}, attempts={}", user.getUsername(), attempts);
+        return locked;
     }
 
     private void resetFailedLoginState(User user) {
@@ -224,13 +242,15 @@ public class AuthService {
         RefreshToken refreshToken = new RefreshToken(
                 userId,
                 UUID.randomUUID().toString(),
-                LocalDateTime.now().plusSeconds(refreshExpiration / 1000)
-        );
+                LocalDateTime.now().plusSeconds(refreshExpiration / 1000));
         return refreshTokenRepository.save(refreshToken);
     }
 
     @Transactional
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
+        // Refresh tokens are rotated on every use. The old token is revoked before a
+        // new
+        // token pair is returned, reducing the value of a leaked refresh token.
         RefreshToken refreshToken = refreshTokenRepository.findByToken(request.getRefreshToken())
                 .orElseThrow(() -> new UnauthorizedException(REFRESH_TOKEN_INVALID));
 
@@ -256,6 +276,9 @@ public class AuthService {
 
     @Transactional
     public void logout(String refreshToken) {
+        // Logout only needs the refresh token because access tokens are short-lived
+        // JWTs
+        // and are not stored server-side.
         RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
                 .orElseThrow(() -> new UnauthorizedException(REFRESH_TOKEN_INVALID));
 
@@ -275,6 +298,8 @@ public class AuthService {
 
     @Transactional
     public void forgotPassword(String email) {
+        // Return the same public response whether the email exists or not to avoid
+        // leaking which addresses are registered.
         if (!userRepository.existsByEmail(email)) {
             logger.warn("Password reset requested for unknown email: {}", email);
             return;
@@ -289,6 +314,8 @@ public class AuthService {
 
     @Transactional
     public void resetPassword(String email, String code, String newPassword) {
+        // Password reset consumes a dedicated verification code and revokes existing
+        // sessions so old refresh tokens cannot survive a credential change.
         VerificationCode verificationCode = verificationCodeRepository
                 .findByEmailAndCode(email, code)
                 .orElseThrow(() -> new BadRequestException(VERIFICATION_CODE_NOT_FOUND));
