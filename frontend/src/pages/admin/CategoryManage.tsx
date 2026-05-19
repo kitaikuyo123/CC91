@@ -53,7 +53,7 @@ export default function CategoryManage() {
       if (id) {
         return adminUpdateCategory(id, data as UpdateCategoryRequest);
       } else {
-        return adminCreateCategory(data);
+        return adminCreateCategory(data as CreateCategoryRequest);
       }
     },
     onSuccess: () => {

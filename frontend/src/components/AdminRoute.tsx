@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 
 interface AdminRouteProps {
   children: React.ReactNode;

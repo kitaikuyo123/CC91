@@ -16,7 +16,7 @@ export interface Post {
   createdAt: string;
   updatedAt: string;
   viewCount: number;
-  commentCount: number;
+  commentCount?: number;
 }
 
 /**

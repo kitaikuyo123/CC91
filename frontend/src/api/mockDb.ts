@@ -513,7 +513,7 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
 
       state.comments.push(newComment);
       // Increment comment count
-      state.posts[postIdx].commentCount++;
+      state.posts[postIdx].commentCount = (state.posts[postIdx].commentCount ?? 0) + 1;
       
       // If replying, maybe create notification for post author
       const postAuthor = state.posts[postIdx].authorId;
@@ -567,7 +567,7 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       };
 
       state.comments.push(newComment);
-      state.posts[postIdx].commentCount++;
+      state.posts[postIdx].commentCount = (state.posts[postIdx].commentCount ?? 0) + 1;
 
       // Create notification for comment author
       if (parentComment.authorId !== currentUser.id) {
@@ -608,7 +608,7 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       // Decrement comment count on post
       const postIdx = state.posts.findIndex(p => p.id === comment.postId);
       if (postIdx !== -1) {
-        state.posts[postIdx].commentCount = Math.max(0, state.posts[postIdx].commentCount - 1);
+        state.posts[postIdx].commentCount = Math.max(0, (state.posts[postIdx].commentCount ?? 0) - 1);
       }
 
       // Mark as deleted/moderated rather than hard delete to prevent UI broke, or hard delete
@@ -799,7 +799,7 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       if (comment) {
         const postIdx = state.posts.findIndex(p => p.id === comment.postId);
         if (postIdx !== -1) {
-          state.posts[postIdx].commentCount = Math.max(0, state.posts[postIdx].commentCount - 1);
+          state.posts[postIdx].commentCount = Math.max(0, (state.posts[postIdx].commentCount ?? 0) - 1);
         }
         state.comments = state.comments.filter(c => c.id !== commentId);
         saveDbState(state);

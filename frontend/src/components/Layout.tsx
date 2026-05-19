@@ -2,8 +2,6 @@ import { useState, useEffect, type ReactNode } from 'react';
 import Header from './Header';
 import Footer from './Footer';
 import MockBanner from './MockBanner';
-import { useAuth } from '../context/AuthContext';
-
 interface LayoutProps {
   children: ReactNode;
 }
@@ -12,7 +10,6 @@ interface LayoutProps {
  * 主布局组件 - 包含头部、内容区、底部，支持全局主题切换和动态 Font Awesome 加载
  */
 export default function Layout({ children }: LayoutProps) {
-  const { isAuthenticated } = useAuth();
   const [theme, setTheme] = useState(() => localStorage.getItem('cc98-theme') || 'classic');
 
   // 1. 动态加载 Font Awesome 4.7.0

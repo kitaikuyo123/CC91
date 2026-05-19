@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getMyDrafts } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
-import { formatDate } from '../utils/formatDate';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 /**
- * 我的草稿页面 - 展示当前用户全部草稿
+ * CC98 风格我的草稿箱页面
  */
 export default function MyDraftsPage() {
   const { user } = useAuth();
@@ -18,89 +18,219 @@ export default function MyDraftsPage() {
     enabled: !!user,
   });
 
+  const formatTime = (timeStr: string) => {
+    return timeStr.replace('T', ' ').split('.')[0] || timeStr;
+  };
+
   if (isLoading) {
     return (
-      <div className="container" style={{ maxWidth: '900px', padding: '2rem' }}>
-        <div className="loading-container">
-          <div className="spinner spinner-lg"></div>
-          <span>加载中...</span>
-        </div>
+      <div style={{ textAlign: 'center', padding: '5rem 0' }}>
+        <div className="spinner"></div>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入您的草稿箱...</p>
       </div>
     );
   }
 
   if (error) {
-    const errorMessage = (error as any)?.response?.data?.message || '加载失败';
+    const errorMessage = (error as any)?.response?.data?.message || '加载草稿失败';
     return (
-      <div className="container" style={{ maxWidth: '900px', padding: '2rem' }}>
-        <div className="error-message" role="alert">{errorMessage}</div>
+      <div className="container" style={{ marginTop: '2rem' }}>
+        <div className="cc98-editor-card" style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+          <i className="fa fa-exclamation-triangle" style={{ fontSize: '2.5rem', color: '#fb6165', marginBottom: '1rem' }}></i>
+          <h2>获取草稿数据失败</h2>
+          <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>{errorMessage}</p>
+          <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
+            返回个人中心
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container" style={{ maxWidth: '900px', padding: '2rem' }}>
-      <button onClick={() => navigate('/dashboard')} className="btn" style={{ marginBottom: '1rem' }}>
-        &larr; 返回 Dashboard
-      </button>
+    <div className="cc98-my-drafts-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
+      {/* 1. 面包屑 */}
+      <Breadcrumbs 
+        items={[
+          { label: '首页', href: '/' },
+          { label: '个人中心', href: '/dashboard' },
+          { label: '我的草稿箱' }
+        ]} 
+      />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1>📄 我的草稿</h1>
-      </div>
-
-      <div style={{ marginBottom: '1.5rem', color: 'var(--color-text-muted)' }}>
-        共 {myDrafts.length} 篇草稿
+      {/* 2. 统计与发帖 */}
+      <div className="cc98-list-meta-row">
+        <div className="summary-info">
+          <i className="fa fa-folder-open-o"></i> 您的草稿箱里共有 <strong>{myDrafts.length}</strong> 篇暂存草稿
+        </div>
+        <button
+          onClick={() => navigate('/posts/new')}
+          className="cc98-new-post-btn"
+        >
+          <i className="fa fa-plus"></i> 新建主题草稿
+        </button>
       </div>
 
       {myDrafts.length === 0 ? (
-        <div className="card empty-state">
-          <p>暂无草稿</p>
+        <div className="cc98-my-drafts-empty">
+          <i className="fa fa-sticky-note-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>
+          您的草稿箱空空如也，这里可以用来保存写到一半的帖子。
         </div>
       ) : (
-        <div className="posts-list">
+        <div className="cc98-drafts-grid">
           {myDrafts.map((draft) => (
             <div
               key={draft.id}
-              className="card post-item"
-              role="link"
-              tabIndex={0}
+              className="cc98-draft-card"
               onClick={() => navigate(`/posts/new?draftId=${draft.id}`)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate(`/posts/new?draftId=${draft.id}`);
-                }
-              }}
-              aria-label={`编辑草稿: ${draft.title}`}
             >
-              <h2 style={{ marginBottom: '0.75rem', fontSize: '1.3rem' }}>
-                {draft.title || '(无标题)'}
-                <span className="badge badge-warning" style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}>
-                  草稿
-                </span>
-              </h2>
-
-              <div className="post-meta" style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>
-                {draft.categoryName && <span>版块: {draft.categoryName}</span>}
-                <span><time dateTime={draft.createdAt}>{formatDate(draft.createdAt)}</time></span>
+              <div className="draft-card-header">
+                <span className="draft-tag">草稿</span>
+                <span className="draft-time">{formatTime(draft.createdAt)}</span>
               </div>
-
-              <p style={{
-                color: 'var(--color-text-secondary)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                lineHeight: '1.5',
-                margin: 0,
-              }}>
-                {draft.content || '(空内容)'}
-              </p>
+              <h3 className="draft-card-title">{draft.title || '(无标题)'}</h3>
+              <p className="draft-card-body">{draft.content || '(无正文内容)'}</p>
+              <div className="draft-card-footer">
+                <span>版块: {draft.categoryName || '未指定'}</span>
+                <span className="edit-action"><i className="fa fa-edit"></i> 继续编辑</span>
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      <style>{`
+        .cc98-list-meta-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.25rem;
+          gap: 1.5rem;
+        }
+
+        .summary-info {
+          font-size: 0.9rem;
+          color: var(--text-muted);
+        }
+
+        .summary-info strong {
+          color: var(--primary-text);
+        }
+
+        .cc98-new-post-btn {
+          background-color: var(--primary-color);
+          color: white;
+          border: none;
+          padding: 0.55rem 1.25rem;
+          border-radius: var(--cc98-radius-pill);
+          font-weight: bold;
+          font-size: 0.88rem;
+          cursor: pointer;
+          transition: var(--cc98-transition);
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .cc98-new-post-btn:hover {
+          background-color: var(--accent-color);
+          color: #333;
+          transform: translateY(-1px);
+        }
+
+        .cc98-my-drafts-empty {
+          background-color: var(--card-bg);
+          border: 1px dashed var(--border-color);
+          border-radius: var(--cc98-radius);
+          padding: 3.5rem 1.5rem;
+          text-align: center;
+          color: var(--text-muted);
+          font-size: 0.92rem;
+        }
+
+        .cc98-drafts-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 1.25rem;
+        }
+
+        .cc98-draft-card {
+          background-color: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-top: 4px solid #f39c12;
+          border-radius: var(--cc98-radius);
+          padding: 1.25rem;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          box-shadow: var(--cc98-shadow);
+          transition: var(--cc98-transition);
+        }
+
+        .cc98-draft-card:hover {
+          transform: translateY(-3px);
+          border-color: #f39c12;
+        }
+
+        .draft-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .draft-tag {
+          background-color: #f39c12;
+          color: white;
+          font-size: 0.72rem;
+          font-weight: bold;
+          padding: 0.1rem 0.4rem;
+          border-radius: 3px;
+        }
+
+        .draft-time {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+        }
+
+        .draft-card-title {
+          font-size: 1rem;
+          font-weight: bold;
+          color: var(--text-main);
+          margin: 0 0 0.5rem 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .draft-card-body {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          margin: 0 0 1rem 0;
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          flex-grow: 1;
+        }
+
+        .draft-card-footer {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.78rem;
+          color: var(--text-muted);
+          border-top: 1px dashed var(--border-color);
+          padding-top: 0.75rem;
+          margin-top: auto;
+        }
+
+        .edit-action {
+          color: #f39c12;
+          font-weight: bold;
+        }
+      `}</style>
     </div>
   );
 }

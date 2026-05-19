@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { adminGetUsers, adminGetPosts, type AdminUser } from '../../api/admin';
+import { adminGetUsers, adminGetPosts } from '../../api/admin';
 import { getCategories } from '../../api/category';
 import { queryKeys } from '../../lib/queryKeys';
 

@@ -4,16 +4,18 @@ import { useQuery } from '@tanstack/react-query';
 import { getPostList, getPostsByCategory } from '../api/post';
 import { getCategories } from '../api/category';
 import { queryKeys } from '../lib/queryKeys';
-import { formatDate } from '../utils/formatDate';
+import Breadcrumbs from '../components/Breadcrumbs';
+import TopicTable from '../components/TopicTable';
+import Pagination from '../components/Pagination';
 
 /**
- * 帖子列表页面 - 显示已发布帖子，支持板块筛选
+ * CC98 风格全站帖子列表页面 - 支持版块筛选
  */
 export default function PostListPage() {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<number | undefined>(undefined);
-  const pageSize = 10;
+  const pageSize = 12;
 
   // 获取版块列表
   const { data: categories = [] } = useQuery({
@@ -21,7 +23,7 @@ export default function PostListPage() {
     queryFn: getCategories,
   });
 
-  // 根据是否选中版块调用不同接口
+  // 根据是否选中版块调用不同接口获取帖子
   const { data: postsData, isLoading, error } = useQuery({
     queryKey:
       categoryFilter != null
@@ -40,7 +42,7 @@ export default function PostListPage() {
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages) {
       setCurrentPage(newPage);
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -51,9 +53,9 @@ export default function PostListPage() {
 
   if (isLoading) {
     return (
-      <div className="loading-container">
-        <div className="spinner spinner-lg"></div>
-        <span>加载中...</span>
+      <div style={{ textAlign: 'center', padding: '5rem 0' }}>
+        <div className="spinner"></div>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入全站主题帖列表...</p>
       </div>
     );
   }
@@ -61,39 +63,45 @@ export default function PostListPage() {
   if (error) {
     const errorMessage = (error as any)?.response?.data?.message || '加载帖子列表失败';
     return (
-      <div className="container" style={{ padding: '2rem' }}>
-        <div className="error-message" role="alert">{errorMessage}</div>
+      <div className="container" style={{ marginTop: '2rem' }}>
+        <div className="cc98-editor-card" style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+          <i className="fa fa-exclamation-triangle" style={{ fontSize: '2.5rem', color: '#fb6165', marginBottom: '1rem' }}></i>
+          <h2>加载帖子列表出错</h2>
+          <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>{errorMessage}</p>
+          <button className="btn btn-primary" onClick={() => navigate('/')}>
+            返回首页
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container" style={{ maxWidth: '900px', padding: '2rem' }}>
-      {/* 页面标题 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1>帖子列表</h1>
-        <button
-          onClick={() => navigate('/posts/new')}
-          className="btn btn-primary"
-        >
-          发布新帖
-        </button>
-      </div>
+    <div className="cc98-post-list-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
+      {/* 1. 面包屑 */}
+      <Breadcrumbs 
+        items={[
+          { label: '论坛首页', href: '/' },
+          { label: '全站主题帖浏览' }
+        ]} 
+      />
 
-      {/* 版块筛选器 */}
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        <div className="filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 500 }}>版块筛选：</span>
+      {/* 2. 筛选版块导航 */}
+      <div className="cc98-filter-card">
+        <div className="filter-header">
+          <i className="fa fa-filter"></i> 按版面筛选主题
+        </div>
+        <div className="filter-button-bar">
           <button
-            className={`filter-btn ${categoryFilter === undefined ? 'filter-active' : ''}`}
+            className={`cc98-filter-btn ${categoryFilter === undefined ? 'active' : ''}`}
             onClick={() => handleCategoryFilterChange(undefined)}
           >
-            全部版块
+            全部主题帖
           </button>
           {categories.map((cat) => (
             <button
               key={cat.id}
-              className={`filter-btn ${categoryFilter === cat.id ? 'filter-active' : ''}`}
+              className={`cc98-filter-btn ${categoryFilter === cat.id ? 'active' : ''}`}
               onClick={() => handleCategoryFilterChange(cat.id)}
             >
               {cat.name}
@@ -102,122 +110,149 @@ export default function PostListPage() {
         </div>
       </div>
 
-      {/* 帖子统计 */}
-      <div style={{ marginBottom: '1.5rem', color: 'var(--color-text-muted)' }}>
-        共 {totalElements} 篇帖子
+      {/* 3. 统计与发帖按钮 */}
+      <div className="cc98-list-meta-row">
+        <div className="summary-info">
+          <i className="fa fa-info-circle"></i> 当前版面共计 <strong>{totalElements}</strong> 篇公开主题帖
+        </div>
+        <button
+          onClick={() => navigate('/posts/new', { state: { categoryId: categoryFilter } })}
+          className="cc98-new-post-btn"
+        >
+          <i className="fa fa-pencil"></i> 发表新主题贴
+        </button>
       </div>
 
-      {/* 帖子列表 */}
-      {posts.length === 0 ? (
-        <div className="card empty-state">
-          <p>暂无符合条件的帖子</p>
-          <button
-            onClick={() => navigate('/posts/new')}
-            className="btn btn-primary"
-            style={{ marginTop: '1rem' }}
-          >
-            发布第一篇帖子
-          </button>
+      {/* 4. 分页器 (顶) */}
+      {totalPages > 1 && (
+        <div style={{ margin: '0.5rem 0' }}>
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
-      ) : (
-        <>
-          <div className="posts-list">
-            {posts.map((post) => (
-              <div
-                key={post.id}
-                className="card post-item"
-                role="link"
-                tabIndex={0}
-                onClick={() => navigate(`/posts/${post.id}`)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/posts/${post.id}`); } }}
-                aria-label={`帖子: ${post.title}`}
-              >
-                {/* 帖子标题 */}
-                <h2 style={{ marginBottom: '0.75rem', fontSize: '1.3rem' }}>
-                  {post.title}
-                </h2>
-
-                {/* 帖子元信息 */}
-                <div className="post-meta" style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>
-                  <span>
-                    作者: <strong style={{ color: 'var(--color-text-primary)' }}>{post.authorUsername}</strong>
-                  </span>
-                  {post.categoryName && (
-                    <span>版块: {post.categoryName}</span>
-                  )}
-                  <span>浏览: {post.viewCount}</span>
-                    <span>评论: {post.commentCount}</span>
-                  <span><time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time></span>
-                </div>
-
-                {/* 帖子摘要 */}
-                <p style={{
-                  color: 'var(--color-text-secondary)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  lineHeight: '1.5'
-                }}>
-                  {post.content}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* 分页 */}
-          {totalPages > 1 && (
-            <nav className="pagination" aria-label="帖子分页">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 0}
-                className="btn"
-                aria-label="上一页"
-              >
-                上一页
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                {Array.from({ length: totalPages }, (_, i) => {
-                  if (
-                    i === 0 ||
-                    i === totalPages - 1 ||
-                    (i >= currentPage - 1 && i <= currentPage + 1)
-                  ) {
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => handlePageChange(i)}
-                        className={`btn ${i === currentPage ? 'btn-active' : ''}`}
-                        aria-label={`第 ${i + 1} 页`}
-                        aria-current={i === currentPage ? 'page' : undefined}
-                      >
-                        {i + 1}
-                      </button>
-                    );
-                  } else if (
-                    i === currentPage - 2 ||
-                    i === currentPage + 2
-                  ) {
-                    return <span key={i} className="pagination-info" aria-hidden="true">...</span>;
-                  }
-                  return null;
-                })}
-              </div>
-
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages - 1}
-                className="btn"
-                aria-label="下一页"
-              >
-                下一页
-              </button>
-            </nav>
-          )}
-        </>
       )}
+
+      {/* 5. 帖子列表 (TopicTable) */}
+      <div style={{ marginTop: '0.5rem' }}>
+        <TopicTable posts={posts} />
+      </div>
+
+      {/* 6. 分页器 (底) */}
+      {totalPages > 1 && (
+        <div style={{ margin: '0.5rem 0' }}>
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
+      )}
+
+      <style>{`
+        .cc98-filter-card {
+          background-color: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-top: 6px solid var(--primary-color);
+          border-radius: var(--cc98-radius);
+          box-shadow: var(--cc98-shadow);
+          overflow: hidden;
+          margin-bottom: 1.5rem;
+        }
+
+        .filter-header {
+          background-color: var(--quote-bg);
+          border-bottom: 1px solid var(--border-color);
+          padding: 0.75rem 1.25rem;
+          font-weight: bold;
+          font-size: 0.92rem;
+          color: var(--text-main);
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .filter-button-bar {
+          padding: 1.25rem;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .cc98-filter-btn {
+          background-color: transparent;
+          color: var(--text-muted);
+          border: 1px solid var(--border-color);
+          padding: 0.4rem 1rem;
+          border-radius: var(--cc98-radius-pill);
+          cursor: pointer;
+          font-size: 0.85rem;
+          font-weight: bold;
+          transition: var(--cc98-transition);
+        }
+
+        .cc98-filter-btn:hover {
+          color: var(--primary-color);
+          border-color: var(--primary-color);
+          background-color: var(--quote-bg);
+        }
+
+        .cc98-filter-btn.active {
+          background-color: var(--primary-color);
+          color: white;
+          border-color: var(--primary-color);
+        }
+
+        .cc98-list-meta-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.25rem;
+          gap: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+          .cc98-list-meta-row {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .cc98-new-post-btn {
+            width: 100%;
+          }
+        }
+
+        .summary-info {
+          font-size: 0.9rem;
+          color: var(--text-muted);
+        }
+
+        .summary-info strong {
+          color: var(--primary-text);
+        }
+
+        .cc98-new-post-btn {
+          background-color: var(--primary-color);
+          color: white;
+          border: none;
+          padding: 0.55rem 1.25rem;
+          border-radius: var(--cc98-radius-pill);
+          font-weight: bold;
+          font-size: 0.88rem;
+          cursor: pointer;
+          transition: var(--cc98-transition);
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .cc98-new-post-btn:hover {
+          background-color: var(--accent-color);
+          color: #333;
+          transform: translateY(-1px);
+        }
+      `}</style>
     </div>
   );
 }

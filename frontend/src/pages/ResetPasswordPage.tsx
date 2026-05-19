@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { resetPassword } from '../api/auth';
 
 /**
- * 重置密码页面组件
+ * CC98 风格重置密码页面组件
  */
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ export default function ResetPasswordPage() {
     }
 
     if (newPassword.length < 6) {
-      setError('密码长度至少为6位');
+      setError('密码长度至少为 6 位');
       return;
     }
 
@@ -53,47 +53,106 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="container" style={{ maxWidth: '400px', marginTop: '2rem' }}>
-        <div className="card">
-          <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }} aria-hidden="true">&#x2705;</div>
-            <h2>密码重置成功</h2>
-            <p style={{ color: 'var(--color-text-muted)', marginTop: '1rem' }}>
-              您的密码已成功重置，现在可以使用新密码登录。
+      <div className="cc98-auth-page container">
+        <div className="cc98-auth-card">
+          <div className="cc98-auth-header">
+            <i className="fa fa-check-circle-o"></i> 重置密码成功
+          </div>
+          <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
+            <div style={{ fontSize: '3rem', color: '#2ecc71', marginBottom: '1rem' }} aria-hidden="true">
+              <i className="fa fa-smile-o"></i>
+            </div>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-main)' }}>您的密码已成功重置</h2>
+            <p style={{ color: 'var(--text-muted)', marginTop: '0.75rem', fontSize: '0.9rem', lineHeight: '1.6' }}>
+              重置成功，您现在可以使用刚才设置的新密码重新登录论坛。
             </p>
             <button
-              className="btn btn-primary"
+              className="cc98-btn btn-publish"
               onClick={() => navigate('/login')}
-              style={{ marginTop: '1.5rem' }}
+              style={{ marginTop: '1.75rem', width: '100%' }}
             >
-              前往登录
+              立刻前往登录
             </button>
           </div>
         </div>
+        <style>{`
+          .cc98-auth-page {
+            max-width: 420px;
+            margin-top: 4rem;
+            margin-bottom: 4rem;
+          }
+          .cc98-auth-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--cc98-radius);
+            box-shadow: var(--cc98-shadow);
+            overflow: hidden;
+          }
+          .cc98-auth-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 1.5rem;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-align: center;
+            border-bottom: 2px solid var(--accent-color);
+          }
+          .cc98-btn {
+            padding: 0.7rem 1.5rem;
+            font-size: 0.92rem;
+            font-weight: bold;
+            border-radius: var(--cc98-radius-pill);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+          }
+          .btn-publish {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+          }
+          .btn-publish:hover {
+            background-color: var(--accent-color);
+            color: #333;
+          }
+        `}</style>
       </div>
     );
   }
 
   return (
-    <div className="container" style={{ maxWidth: '400px', marginTop: '2rem' }}>
-      <div className="card">
-        <h1 style={{ marginBottom: '1.5rem' }}>重置密码</h1>
+    <div className="cc98-auth-page container">
+      <div className="cc98-auth-card">
+        <div className="cc98-auth-header">
+          <i className="fa fa-key"></i> 重置账户密码
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">邮箱</label>
+        {error && (
+          <div className="cc98-error-box" style={{ margin: '1.25rem 1.5rem 0 1.5rem' }}>
+            <i className="fa fa-exclamation-circle"></i> {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="cc98-auth-form">
+          {/* 邮箱 */}
+          <div className="cc98-form-group">
+            <label htmlFor="email">注册邮箱</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
-              placeholder="请输入注册邮箱"
+              placeholder="请输入您的账号绑定邮箱"
+              className="cc98-form-control"
               required
             />
           </div>
 
-          <div className="form-group">
+          {/* 验证码 */}
+          <div className="cc98-form-group">
             <label htmlFor="code">验证码</label>
             <input
               id="code"
@@ -101,12 +160,14 @@ export default function ResetPasswordPage() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               disabled={isLoading}
-              placeholder="请输入邮件中的验证码"
+              placeholder="请输入您收到的邮箱验证码"
+              className="cc98-form-control"
               required
             />
           </div>
 
-          <div className="form-group">
+          {/* 新密码 */}
+          <div className="cc98-form-group">
             <label htmlFor="newPassword">新密码</label>
             <input
               id="newPassword"
@@ -114,46 +175,164 @@ export default function ResetPasswordPage() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               disabled={isLoading}
-              placeholder="请输入新密码（至少6位）"
+              placeholder="请输入新密码 (至少 6 位)"
+              className="cc98-form-control"
               required
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">确认密码</label>
+          {/* 确认密码 */}
+          <div className="cc98-form-group">
+            <label htmlFor="confirmPassword">确认新密码</label>
             <input
               id="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={isLoading}
-              placeholder="请再次输入新密码"
+              placeholder="请再次输入您的新密码"
+              className="cc98-form-control"
               required
             />
           </div>
 
-          {error && (
-            <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
-              {error}
-            </div>
-          )}
-
           <button
             type="submit"
-            className="btn btn-primary btn-block"
+            className="cc98-btn btn-publish btn-block"
             disabled={isLoading}
-            aria-busy={isLoading}
+            style={{ width: '100%', marginTop: '1.5rem' }}
           >
-            {isLoading ? <span className="spinner" aria-hidden="true"></span> : '重置密码'}
+            {isLoading ? <i className="fa fa-spinner fa-spin"></i> : '确认修改并保存新密码'}
           </button>
         </form>
 
-        <p style={{ marginTop: '1rem', textAlign: 'center' }}>
-          <Link to="/login">
-            返回登录
-          </Link>
-        </p>
+        <div className="cc98-auth-footer">
+          <Link to="/login" className="auth-link">返回登录</Link>
+        </div>
       </div>
+
+      <style>{`
+        .cc98-auth-page {
+          max-width: 420px;
+          margin-top: 4rem;
+          margin-bottom: 4rem;
+        }
+
+        .cc98-auth-card {
+          background-color: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-radius: var(--cc98-radius);
+          box-shadow: var(--cc98-shadow);
+          overflow: hidden;
+        }
+
+        .cc98-auth-header {
+          background-color: var(--primary-color);
+          color: white;
+          padding: 1rem 1.5rem;
+          font-weight: bold;
+          font-size: 1.1rem;
+          text-align: center;
+          border-bottom: 2px solid var(--accent-color);
+        }
+
+        .theme-dark .cc98-auth-header {
+          border-bottom-color: var(--border-color);
+        }
+
+        .cc98-auth-form {
+          padding: 1.75rem 1.5rem 1rem 1.5rem;
+        }
+
+        .cc98-form-group {
+          margin-bottom: 1.25rem;
+        }
+
+        .cc98-form-group label {
+          display: block;
+          margin-bottom: 0.4rem;
+          font-weight: bold;
+          font-size: 0.88rem;
+          color: var(--text-main);
+        }
+
+        .cc98-form-control {
+          width: 100%;
+          padding: 0.7rem 0.85rem;
+          border: 1px solid var(--border-color);
+          background-color: var(--card-bg);
+          color: var(--text-main);
+          border-radius: 4px;
+          font-size: 0.92rem;
+          font-family: inherit;
+          transition: var(--cc98-transition);
+        }
+
+        .cc98-form-control:focus {
+          border-color: var(--primary-color);
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(84, 110, 122, 0.15);
+        }
+
+        .cc98-btn {
+          padding: 0.7rem 1.5rem;
+          font-size: 0.92rem;
+          font-weight: bold;
+          border-radius: var(--cc98-radius-pill);
+          cursor: pointer;
+          transition: var(--cc98-transition);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          border: none;
+        }
+
+        .btn-publish {
+          background-color: var(--primary-color);
+          color: white;
+          box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-publish:hover:not(:disabled) {
+          background-color: var(--accent-color);
+          color: #333;
+          transform: translateY(-1px);
+        }
+
+        .btn-publish:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .cc98-error-box {
+          background-color: rgba(251, 97, 101, 0.1);
+          color: #fb6165;
+          padding: 0.7rem 1rem;
+          border-radius: 4px;
+          border: 1px solid rgba(251, 97, 101, 0.2);
+          font-size: 0.85rem;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+
+        .cc98-auth-footer {
+          padding: 0.5rem 1.5rem 1.75rem 1.5rem;
+          text-align: center;
+          font-size: 0.85rem;
+        }
+
+        .auth-link {
+          color: var(--primary-color);
+          font-weight: bold;
+          text-decoration: none;
+        }
+
+        .auth-link:hover {
+          text-decoration: underline;
+        }
+      `}</style>
     </div>
   );
 }
