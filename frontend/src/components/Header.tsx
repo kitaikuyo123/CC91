@@ -51,7 +51,7 @@ export default function Header() {
           <div className="cc98-nav-left-group">
             {/* Logo and text */}
             <div className="cc98-logo-wrap">
-              <img src={catAvatar} alt="CC91 Logo" className="cc98-cat-icon" />
+              {/*<img src={catAvatar} alt="CC91 Logo" className="cc98-cat-icon" />*/}
               <Link to="/" className="cc98-nav-link site-title">
                 CC91 论坛
               </Link>

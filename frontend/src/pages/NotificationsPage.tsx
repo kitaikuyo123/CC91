@@ -67,7 +67,7 @@ export default function NotificationsPage() {
       <div className="container" style={{ marginTop: '3rem', maxWidth: '600px' }}>
         <div className="cc98-login-prompt">
           <i className="fa fa-lock" style={{ fontSize: '3rem', color: 'var(--primary-color)', marginBottom: '1rem' }}></i>
-          <h2>请先登录论坛</h2>
+          <h2>请先登录查看通知</h2>
           <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>查看回帖通知与提及消息，请先验证您的身份。</p>
           <button className="btn btn-primary" onClick={() => navigate('/login')}>
             前往登录
@@ -91,7 +91,7 @@ export default function NotificationsPage() {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 0' }}>
         <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入消息通知列表...</p>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>加载中...</p>
       </div>
     );
   }
@@ -111,7 +111,7 @@ export default function NotificationsPage() {
       <div className="cc98-panel-classic col-red">
         <div className="cc98-panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>
-            <i className="fa fa-bell-o"></i> 论坛通知消息中心
+            <i className="fa fa-bell-o"></i> 通知
             {unreadCount > 0 && <span className="title-unread-badge" style={{ marginLeft: '0.5rem' }}>{unreadCount} 条新未读</span>}
           </span>
           {unreadCount > 0 && (
@@ -120,7 +120,7 @@ export default function NotificationsPage() {
               onClick={handleMarkAllRead}
               disabled={markAllAsReadMutation.isPending}
             >
-              <i className="fa fa-check-square-o"></i> {markAllAsReadMutation.isPending ? '标记中...' : '标记所有为已读'}
+              <i className="fa fa-check-square-o"></i> {markAllAsReadMutation.isPending ? '标记中...' : '全部标记为已读'}
             </button>
           )}
         </div>
@@ -128,8 +128,7 @@ export default function NotificationsPage() {
         <div className="cc98-panel-body" style={{ padding: 0 }}>
           {notifications.length === 0 ? (
             <div className="cc98-notif-empty">
-              <i className="fa fa-smile-o" style={{ fontSize: '3rem', opacity: 0.3, display: 'block', marginBottom: '0.8rem' }}></i>
-              您的通知箱是空的，暂无任何回复或提醒消息。
+              暂无通知
             </div>
           ) : (
             <ul className="cc98-notif-list">

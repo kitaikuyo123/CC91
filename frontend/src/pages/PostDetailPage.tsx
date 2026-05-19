@@ -35,11 +35,7 @@ export default function PostDetailPage() {
     mutationFn: deletePost,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
-      if (post?.categoryId) {
-        navigate(`/category/${post.categoryId}`);
-      } else {
-        navigate('/');
-      }
+      navigate('/posts');
     },
     onError: (err: any) => {
       setIsDeleting(false);
@@ -49,7 +45,7 @@ export default function PostDetailPage() {
 
   const handleDelete = async () => {
     if (!post) return;
-    if (!confirm('确定要删除这篇主题帖吗？此操作不可恢复。')) return;
+    if (!confirm('确定要删除这篇帖子吗？此操作不可恢复。')) return;
 
     setIsDeleting(true);
     deleteMutation.mutate(post.id);
@@ -70,22 +66,23 @@ export default function PostDetailPage() {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 0' }}>
         <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入主题帖与楼层回复...</p>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>加载中...</p>
       </div>
     );
   }
 
   if (error || !post) {
+    const errorMessage = (error as any)?.response?.data?.message || '帖子不存在';
     return (
       <div className="container" style={{ marginTop: '2rem' }}>
         <div className="cc98-detail-error">
           <i className="fa fa-exclamation-triangle" style={{ fontSize: '2.5rem', color: '#fb6165', marginBottom: '1rem' }}></i>
-          <h2>主题不存在</h2>
+          <h2>{errorMessage}</h2>
           <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>
-            {(error as any)?.response?.data?.message || '该主题帖不存在或已被管理员删除。'}
+            请确认主题帖ID正确或稍后再试。
           </p>
-          <button className="btn btn-primary" onClick={() => navigate('/')}>
-            返回首页
+          <button className="btn btn-primary" onClick={() => navigate('/posts')}>
+            返回列表
           </button>
         </div>
         <style>{`
@@ -109,17 +106,27 @@ export default function PostDetailPage() {
         items={[
           { label: '版面列表', href: '/' },
           { label: post.categoryName || '讨论板块', href: post.categoryId ? `/category/${post.categoryId}` : undefined },
-          { label: post.title }
+          { label: `阅读: ${post.title}` }
         ]} 
       />
 
       {/* 2. 主题标题卡片 */}
       <div className="cc98-topic-header-title-box">
-        <div className="title-area">
+        <div className="title-area" style={{ display: 'flex', alignItems: 'center' }}>
           <h1>{post.title}</h1>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '1rem' }}>
+            浏览: {post.viewCount}
+          </span>
         </div>
 
-        <div className="action-area">
+        <div className="action-area" style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            className="cc98-fav-toggle-btn"
+            onClick={() => navigate('/posts')}
+            title="返回帖子列表"
+          >
+            <i className="fa fa-arrow-left"></i> 返回列表
+          </button>
           <button 
             className={`cc98-fav-toggle-btn ${isFavorited ? 'favorited' : ''}`}
             onClick={handleFavoriteToggle}
@@ -145,6 +152,7 @@ export default function PostDetailPage() {
           floor="楼主"
           content={post.content}
           createdAt={post.createdAt}
+          updatedAt={post.updatedAt}
           isTopicAuthor={true}
           currentUserCanModify={isAuthor}
           onEdit={handleEdit}

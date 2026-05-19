@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Post } from '../api/post';
 
 interface TopicTableProps {
@@ -9,12 +9,27 @@ interface TopicTableProps {
  * CC98 经典主题帖列表表格组件 (绑定目标项目的 Post 实体数据)
  */
 export default function TopicTable({ posts = [] }: TopicTableProps) {
+  const navigate = useNavigate();
   const safePosts = posts || [];
+
+  const handleRowClick = (postId: number, e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    // Don't trigger row navigation if clicking on specific links (like author profile or category)
+    if (
+      target.closest('.cc98-author-link') ||
+      target.closest('.cc98-last-author') ||
+      target.closest('.cc98-topic-table-category')
+    ) {
+      return;
+    }
+    navigate(`/posts/${postId}`);
+  };
+
   if (safePosts.length === 0) {
     return (
       <div className="cc98-empty-table">
-        <i className="fa fa-folder-open-o" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem', opacity: 0.5 }}></i>
-        暂无主题帖
+        <i className="fa fa-folder-open-o" style={{ fontSize: '2.5rem', display: 'block', marginBottom: '1rem', color: 'var(--text-muted)' }}></i>
+        暂无帖子
       </div>
     );
   }
@@ -57,7 +72,12 @@ export default function TopicTable({ posts = [] }: TopicTableProps) {
           const viewCount = post.viewCount;
 
           return (
-            <tr key={post.id} className={`cc98-tl-row ${isSticky ? 'sticky-row' : ''}`}>
+            <tr 
+              key={post.id} 
+              className={`cc98-tl-row ${isSticky ? 'sticky-row' : ''} card`}
+              onClick={(e) => handleRowClick(post.id, e)}
+              style={{ cursor: 'pointer' }}
+            >
               {/* 1. Status Icon */}
               <td className="cc98-tl-cell cc98-tl-status">
                 {isSticky ? (
@@ -95,6 +115,7 @@ export default function TopicTable({ posts = [] }: TopicTableProps) {
 
               {/* 3. Author info */}
               <td className="cc98-tl-cell cc98-tl-author">
+                <span>作者:</span>
                 <Link to={`/profile/${post.authorUsername}`} className="cc98-author-link">
                   {post.authorUsername}
                 </Link>
@@ -110,7 +131,7 @@ export default function TopicTable({ posts = [] }: TopicTableProps) {
                 </span>
                 <span className="cc98-stat-divider">/</span>
                 <span className="cc98-stat-badge cc98-stat-views" title="阅读量">
-                  {viewCount}
+                  <span>浏览: {viewCount}</span>
                 </span>
               </td>
 
@@ -118,7 +139,7 @@ export default function TopicTable({ posts = [] }: TopicTableProps) {
               <td className="cc98-tl-cell cc98-tl-last">
                 <div className="cc98-last-by">
                   <Link to={`/profile/${post.authorUsername}`} className="cc98-last-author">
-                    {post.authorUsername}
+                    {post.authorUsername + '\u200B'}
                   </Link>
                 </div>
                 <div className="cc98-last-time">

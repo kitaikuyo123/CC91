@@ -79,10 +79,10 @@ export default function NotificationBell() {
 
       {showDropdown && (
         <>
-          <div className="cc98-bell-overlay" onClick={() => setShowDropdown(false)} />
+          <div className="cc98-bell-overlay" style={{ position: 'fixed' }} onClick={() => setShowDropdown(false)} />
           <div className="cc98-bell-dropdown">
             <div className="cc98-bell-header">
-              <span className="title">我的通知</span>
+              <span className="title">通知</span>
               <button
                 onClick={() => {
                   setShowDropdown(false);
@@ -97,7 +97,7 @@ export default function NotificationBell() {
             <div className="cc98-bell-list">
               {recentNotifications.length === 0 ? (
                 <div className="cc98-bell-empty">
-                  暂无未读通知
+                  暂无通知
                 </div>
               ) : (
                 recentNotifications.map((notif) => (

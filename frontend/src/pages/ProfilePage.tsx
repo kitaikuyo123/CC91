@@ -36,18 +36,19 @@ export default function ProfilePage() {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 0' }}>
         <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入用户资料数据...</p>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>加载中...</p>
       </div>
     );
   }
 
   if (error || !profile) {
+    const errorMessage = (error as any)?.response?.data?.message || '用户不存在';
     return (
       <div className="container" style={{ marginTop: '2rem' }}>
         <div className="cc98-profile-error">
           <i className="fa fa-exclamation-triangle" style={{ fontSize: '2.5rem', color: '#fb6165', marginBottom: '1rem' }}></i>
-          <h2>查找用户出错</h2>
-          <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>该用户不存在，或者论坛系统资料损坏。</p>
+          <h2>{errorMessage}</h2>
+          <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>请检查用户名是否输入正确或稍后再试。</p>
           <button className="btn btn-primary" onClick={() => navigate('/')}>
             返回首页
           </button>
@@ -90,11 +91,17 @@ export default function ProfilePage() {
           {/* 左侧头像与威望级别 */}
           <div className="profile-left-col">
             <div className="profile-avatar-container">
-              <img
-                src={avatar}
-                alt={`${profile.username} 的头像`}
-                className="profile-large-avatar"
-              />
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={`${profile.username} 的头像`}
+                  className="profile-large-avatar"
+                />
+              ) : (
+                <div className="profile-avatar-placeholder">
+                  {profile.username.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
             <div className="profile-user-level">{level}</div>
             <div className="profile-meta-stats">
@@ -114,7 +121,7 @@ export default function ProfilePage() {
                   onClick={() => navigate('/profile/edit')}
                   className="cc98-profile-edit-btn"
                 >
-                  <i className="fa fa-pencil-square-o"></i> 编辑我的资料
+                  <i className="fa fa-pencil-square-o"></i> 编辑资料
                 </button>
               )}
             </div>
@@ -149,7 +156,7 @@ export default function ProfilePage() {
             <div className="profile-bio-box">
               <div className="bio-title"><i className="fa fa-quote-left"></i> 个人签名档：</div>
               <div className="bio-content">
-                {profile.bio || '这家伙很懒，什么都没有留下。'}
+                {profile.bio || '暂无详细信息'}
               </div>
             </div>
           </div>
@@ -218,6 +225,18 @@ export default function ProfilePage() {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          border-radius: 50%;
+        }
+        .profile-avatar-placeholder {
+          width: 100%;
+          height: 100%;
+          background-color: var(--primary-color);
+          color: white;
+          font-size: 2.5rem;
+          font-weight: bold;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           border-radius: 50%;
         }
 

@@ -59,29 +59,30 @@ export default function MyDraftsPage() {
       />
 
       {/* 2. 统计与发帖 */}
-      <div className="cc98-list-meta-row">
-        <div className="summary-info">
-          <i className="fa fa-folder-open-o"></i> 您的草稿箱里共有 <strong>{myDrafts.length}</strong> 篇暂存草稿
-        </div>
+      <div className="cc98-list-meta-row" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.25rem' }}>
         <button
-          onClick={() => navigate('/posts/new')}
-          className="cc98-new-post-btn"
+          onClick={() => navigate('/dashboard')}
+          className="cc98-btn btn-publish"
+          style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
         >
-          <i className="fa fa-plus"></i> 新建主题草稿
+          <i className="fa fa-chevron-left"></i> 返回 Dashboard
         </button>
+        <div className="summary-info">
+          共 {myDrafts.length} 篇草稿
+        </div>
       </div>
 
       {myDrafts.length === 0 ? (
-        <div className="cc98-my-drafts-empty">
+        <div className="cc98-my-drafts-empty" style={{ padding: '3.5rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', border: '1px dashed var(--border-color)', borderRadius: '4px', color: 'var(--text-muted)' }}>
           <i className="fa fa-sticky-note-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>
-          您的草稿箱空空如也，这里可以用来保存写到一半的帖子。
+          暂无草稿
         </div>
       ) : (
         <div className="cc98-drafts-grid">
           {myDrafts.map((draft) => (
             <div
               key={draft.id}
-              className="cc98-draft-card"
+              className="card cc98-draft-card"
               onClick={() => navigate(`/posts/new?draftId=${draft.id}`)}
             >
               <div className="draft-card-header">
@@ -89,7 +90,7 @@ export default function MyDraftsPage() {
                 <span className="draft-time">{formatTime(draft.createdAt)}</span>
               </div>
               <h3 className="draft-card-title">{draft.title || '(无标题)'}</h3>
-              <p className="draft-card-body">{draft.content || '(无正文内容)'}</p>
+              <p className="draft-card-body">{draft.content || '(空内容)'}</p>
               <div className="draft-card-footer">
                 <span>版块: {draft.categoryName || '未指定'}</span>
                 <span className="edit-action"><i className="fa fa-edit"></i> 继续编辑</span>

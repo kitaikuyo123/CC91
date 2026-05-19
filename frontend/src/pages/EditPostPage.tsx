@@ -63,7 +63,7 @@ export default function EditPostPage() {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 0' }}>
         <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入主题帖数据...</p>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>加载中...</p>
       </div>
     );
   }
@@ -77,8 +77,8 @@ export default function EditPostPage() {
           <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>
             {(fetchError as any)?.response?.data?.message || '帖子不存在或您没有权限查看。'}
           </p>
-          <button className="btn btn-primary" onClick={() => navigate('/')}>
-            返回首页
+          <button className="cc98-btn btn-cancel" onClick={() => navigate('/posts')}>
+            返回列表
           </button>
         </div>
       </div>
@@ -92,7 +92,7 @@ export default function EditPostPage() {
         <div className="cc98-editor-card" style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
           <i className="fa fa-ban" style={{ fontSize: '2.5rem', color: '#fb6165', marginBottom: '1rem' }}></i>
           <h2>越权访问警告</h2>
-          <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>你没有权限编辑这篇帖子，只有原作者可以编辑。</p>
+          <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>你没有权限编辑这篇帖子</p>
           <button className="btn btn-primary" onClick={() => navigate(`/posts/${postId}`)}>
             返回帖子
           </button>
@@ -105,7 +105,7 @@ export default function EditPostPage() {
     e.preventDefault();
 
     if (!title.trim()) {
-      setError('主题标题不能为空');
+      setError('标题不能为空');
       return;
     }
     if (title.length > 200) {
@@ -113,7 +113,7 @@ export default function EditPostPage() {
       return;
     }
     if (!content.trim()) {
-      setError('主题正文不能为空');
+      setError('内容不能为空');
       return;
     }
 
@@ -141,7 +141,7 @@ export default function EditPostPage() {
       {/* 2. 编辑卡片 */}
       <div className="cc98-editor-card">
         <div className="cc98-editor-title-bar">
-          <i className="fa fa-pencil-square-o"></i> 修改主题帖内容
+          <i className="fa fa-pencil-square-o"></i> 编辑帖子
         </div>
 
         {error && (
@@ -163,7 +163,7 @@ export default function EditPostPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={updateMutation.isPending}
-              placeholder="请输入新的标题..."
+              placeholder="请输入帖子标题"
               className="cc98-form-control"
               maxLength={200}
               autoFocus
@@ -180,7 +180,7 @@ export default function EditPostPage() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               disabled={updateMutation.isPending}
-              placeholder="请输入新的正文内容..."
+              placeholder="请输入帖子内容..."
               className="cc98-form-control text-area"
             />
           </div>
@@ -192,7 +192,7 @@ export default function EditPostPage() {
               className="cc98-btn btn-publish"
               disabled={updateMutation.isPending}
             >
-              <i className="fa fa-check"></i> {updateMutation.isPending ? '正在保存...' : '保存修改内容'}
+              <i className="fa fa-check"></i> {updateMutation.isPending ? '保存中...' : '保存修改'}
             </button>
             <button
               type="button"

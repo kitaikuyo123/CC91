@@ -15,7 +15,7 @@ export default function PostListPage() {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<number | undefined>(undefined);
-  const pageSize = 12;
+  const pageSize = 10;
 
   // 获取版块列表
   const { data: categories = [] } = useQuery({
@@ -55,7 +55,7 @@ export default function PostListPage() {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 0' }}>
         <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入全站主题帖列表...</p>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>加载中...</p>
       </div>
     );
   }
@@ -96,7 +96,7 @@ export default function PostListPage() {
             className={`cc98-filter-btn ${categoryFilter === undefined ? 'active' : ''}`}
             onClick={() => handleCategoryFilterChange(undefined)}
           >
-            全部主题帖
+            全部版块
           </button>
           {categories.map((cat) => (
             <button
@@ -113,31 +113,32 @@ export default function PostListPage() {
       {/* 3. 统计与发帖按钮 */}
       <div className="cc98-list-meta-row">
         <div className="summary-info">
-          <i className="fa fa-info-circle"></i> 当前版面共计 <strong>{totalElements}</strong> 篇公开主题帖
+          <i className="fa fa-info-circle"></i>共 {totalElements} 篇帖子
         </div>
         <button
-          onClick={() => navigate('/posts/new', { state: { categoryId: categoryFilter } })}
+          onClick={() => categoryFilter != null ? navigate('/posts/new', { state: { categoryId: categoryFilter } }) : navigate('/posts/new')}
           className="cc98-new-post-btn"
         >
-          <i className="fa fa-pencil"></i> 发表新主题贴
+          <i className="fa fa-pencil"></i> 发布新帖
         </button>
       </div>
 
-      {/* 4. 分页器 (顶) */}
-      {totalPages > 1 && (
-        <div style={{ margin: '0.5rem 0' }}>
-          <Pagination 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
+
+
+      {/* 5. 帖子列表 (TopicTable) 或空状态 */}
+      {posts.length === 0 ? (
+        <div className="cc98-empty-state card" style={{ padding: '4rem 1.5rem', textAlign: 'center', border: '1px solid var(--border-color)', borderRadius: 'var(--cc98-radius)', backgroundColor: 'var(--card-bg)', marginTop: '0.5rem', boxShadow: 'var(--cc98-shadow)' }}>
+          <i className="fa fa-folder-open-o" style={{ fontSize: '3rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'block', opacity: 0.6 }}></i>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>暂无符合条件的帖子</p>
+          <button className="cc98-new-post-btn" onClick={() => categoryFilter != null ? navigate('/posts/new', { state: { categoryId: categoryFilter } }) : navigate('/posts/new')}>
+            <i className="fa fa-pencil"></i> 发布第一篇帖子
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginTop: '0.5rem' }}>
+          <TopicTable posts={posts} />
         </div>
       )}
-
-      {/* 5. 帖子列表 (TopicTable) */}
-      <div style={{ marginTop: '0.5rem' }}>
-        <TopicTable posts={posts} />
-      </div>
 
       {/* 6. 分页器 (底) */}
       {totalPages > 1 && (

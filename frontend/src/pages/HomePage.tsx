@@ -33,8 +33,8 @@ export default function HomePage() {
 
   // 获取更多帖子用于热门排序
   const { data: morePostsData } = useQuery({
-    queryKey: queryKeys.posts.list({ page: 0, size: 40 }),
-    queryFn: () => getPostList(0, 40),
+    queryKey: queryKeys.posts.list({ page: 0, size: 50 }),
+    queryFn: () => getPostList(0, 50),
   });
 
   // 计算热门帖子（按浏览量排序）
@@ -48,15 +48,46 @@ export default function HomePage() {
 
   if (isLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '5rem 0' }}>
-        <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入 CC91 社区，请稍候...</p>
+      <div className="cc98-home-page container">
+        {/* Welcome Banner */}
+        <div className="cc98-welcome-hero" style={{ 
+          marginBottom: '1.5rem', 
+          border: '1px solid var(--border-color)', 
+          borderRadius: 'var(--cc98-radius)', 
+          padding: '1.5rem', 
+          backgroundColor: 'var(--card-bg)', 
+          backgroundImage: 'linear-gradient(to right, var(--primary-color), var(--cc98-alt-color-a))', 
+          color: 'white',
+          boxShadow: 'var(--cc98-shadow)'
+        }}>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>CC91 论坛</h1>
+          <p style={{ margin: '0.5rem 0 0 0', opacity: 0.9, fontSize: '0.9rem' }}>一个现代化的技术交流社区</p>
+        </div>
+        <div style={{ textAlign: 'center', padding: '5rem 0' }}>
+          <div className="spinner"></div>
+          <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入 CC91 社区，请稍候...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="cc98-home-page container">
+      {/* Welcome Banner */}
+      <div className="cc98-welcome-hero" style={{ 
+        marginBottom: '1.5rem', 
+        border: '1px solid var(--border-color)', 
+        borderRadius: 'var(--cc98-radius)', 
+        padding: '1.5rem', 
+        backgroundColor: 'var(--card-bg)', 
+        backgroundImage: 'linear-gradient(to right, var(--primary-color), var(--cc98-alt-color-a))', 
+        color: 'white',
+        boxShadow: 'var(--cc98-shadow)'
+      }}>
+        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>CC91 论坛</h1>
+        <p style={{ margin: '0.5rem 0 0 0', opacity: 0.9, fontSize: '0.9rem' }}>一个现代化的技术交流社区</p>
+      </div>
+
       {/* 1. 全站公告 */}
       <AnnouncementPanel announcements={mockAnnouncements} />
 
@@ -66,7 +97,7 @@ export default function HomePage() {
           {/* 版块区域 */}
           <section style={{ marginBottom: '2.5rem' }}>
             <div className="cc98-section-title-external">
-              <i className="fa fa-th-large" style={{ color: 'var(--cc98-alt-color-b)' }}></i> 热门讨论板块
+              <i className="fa fa-th-large" style={{ color: 'var(--cc98-alt-color-b)' }}></i> 讨论版块
             </div>
             <div className="cc98-board-grid">
               {categories.map((category) => (
@@ -82,7 +113,7 @@ export default function HomePage() {
           {/* 最新主题帖区域 */}
           <section>
             <div className="cc98-section-title-external">
-              <i className="fa fa-clock-o" style={{ color: 'var(--cc98-alt-color-a)' }}></i> 最新发表主题帖
+              <i className="fa fa-clock-o" style={{ color: 'var(--cc98-alt-color-a)' }}></i> 最新帖子
             </div>
             <TopicTable posts={recentPosts} />
           </section>
@@ -92,7 +123,7 @@ export default function HomePage() {
         <div className="cc98-home-sidebar-col">
           <div className="cc98-sidebar-wrapper">
             <div className="cc98-sidebar-title-external">
-              <i className="fa fa-fire" style={{ color: '#fb6165' }}></i> 今日热门推荐
+              <i className="fa fa-fire" style={{ color: '#fb6165' }}></i> 热门帖子
             </div>
             <div className="cc98-sidebar-box-classic">
               <div className="cc98-sidebar-hot-list">

@@ -71,7 +71,7 @@ export default function ProfileEditPage() {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 0' }}>
         <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入您的个人设置...</p>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>加载中...</p>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export default function ProfileEditPage() {
           {/* 头像 URL */}
           <div className="cc98-form-group">
             <label htmlFor="avatarUrl">
-              个性头像 URL
+              头像 URL
             </label>
             <input
               id="avatarUrl"
@@ -142,11 +142,11 @@ export default function ProfileEditPage() {
           )}
 
           {/* 个人签名 bio */}
-          <div className="cc98-form-group">
-            <label htmlFor="bio">
-              个性签名档
-              <span className="count-hint">({bio.length}/500)</span>
-            </label>
+          <div className="cc98-form-group" style={{ position: 'relative' }}>
+            <label htmlFor="bio">个人签名</label>
+            <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              (<span className="count-hint">{bio.length}/500</span>)
+            </span>
             <textarea
               id="bio"
               value={bio}
@@ -195,7 +195,7 @@ export default function ProfileEditPage() {
               className="cc98-btn btn-publish"
               disabled={updateMutation.isPending}
             >
-              <i className="fa fa-check"></i> {updateMutation.isPending ? '保存中...' : '确认修改并保存'}
+              <i className="fa fa-check"></i> {updateMutation.isPending ? '保存中...' : '保存'}
             </button>
             <button
               type="button"

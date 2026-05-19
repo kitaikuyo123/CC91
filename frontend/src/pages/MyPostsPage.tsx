@@ -55,78 +55,65 @@ export default function MyPostsPage() {
         ]} 
       />
 
-      {/* 2. 统计与发帖按钮 */}
-      <div className="cc98-list-meta-row">
-        <div className="summary-info">
-          <i className="fa fa-file-text-o"></i> 您一共发表了 <strong>{myPosts.length}</strong> 篇主题帖子
-        </div>
+      <div style={{ marginBottom: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <button
-          onClick={() => navigate('/posts/new')}
-          className="cc98-new-post-btn"
+          onClick={() => navigate('/dashboard')}
+          className="cc98-btn btn-publish"
+          style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
         >
-          <i className="fa fa-pencil"></i> 发表新主题贴
+          <i className="fa fa-chevron-left"></i> 返回 Dashboard
         </button>
+        <span className="summary-info" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          共 {myPosts.length} 篇帖子
+        </span>
       </div>
 
       {myPosts.length === 0 ? (
-        <div className="cc98-my-posts-empty">
+        <div className="cc98-my-posts-empty" style={{ padding: '3.5rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', border: '1px dashed var(--border-color)', borderRadius: '4px', color: 'var(--text-muted)' }}>
           <i className="fa fa-pencil-square-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>
-          您还没有在论坛发表过任何主题帖。现在去发个帖吧！
+          你还没有发布帖子
         </div>
       ) : (
-        <TopicTable posts={myPosts} />
+        <div className="cc98-posts-card-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {myPosts.map((post) => (
+            <div
+              key={post.id}
+              className="card cc98-post-card-item"
+              onClick={() => navigate(`/posts/${post.id}`)}
+              style={{
+                cursor: 'pointer',
+                backgroundColor: 'var(--card-bg)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '4px',
+                padding: '1.25rem',
+                transition: 'var(--cc98-transition)',
+                boxShadow: 'var(--cc98-shadow)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--quote-bg)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <h3 className="card-title" style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)', fontWeight: 'bold' }}>
+                  {post.categoryName && <span style={{ color: 'var(--primary-color)', marginRight: '0.5rem' }}>[{post.categoryName}]</span>}
+                  {post.title}
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{post.createdAt.split('T')[0]}</span>
+              </div>
+              <p className="card-content" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0.5rem 0 1rem 0', lineBreak: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {post.content}
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <span><i className="fa fa-eye"></i> 阅读量: {post.viewCount}</span>
+                <span><i className="fa fa-comments"></i> 回复数: {post.commentCount ?? 0}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
-
-      <style>{`
-        .cc98-list-meta-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.25rem;
-          gap: 1.5rem;
-        }
-
-        .summary-info {
-          font-size: 0.9rem;
-          color: var(--text-muted);
-        }
-
-        .summary-info strong {
-          color: var(--primary-text);
-        }
-
-        .cc98-new-post-btn {
-          background-color: var(--primary-color);
-          color: white;
-          border: none;
-          padding: 0.55rem 1.25rem;
-          border-radius: var(--cc98-radius-pill);
-          font-weight: bold;
-          font-size: 0.88rem;
-          cursor: pointer;
-          transition: var(--cc98-transition);
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .cc98-new-post-btn:hover {
-          background-color: var(--accent-color);
-          color: #333;
-          transform: translateY(-1px);
-        }
-
-        .cc98-my-posts-empty {
-          background-color: var(--card-bg);
-          border: 1px dashed var(--border-color);
-          border-radius: var(--cc98-radius);
-          padding: 3.5rem 1.5rem;
-          text-align: center;
-          color: var(--text-muted);
-          font-size: 0.92rem;
-        }
-      `}</style>
     </div>
   );
 }

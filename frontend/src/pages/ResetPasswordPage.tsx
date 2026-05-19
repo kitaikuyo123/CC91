@@ -34,7 +34,7 @@ export default function ResetPasswordPage() {
     }
 
     if (newPassword.length < 6) {
-      setError('密码长度至少为 6 位');
+      setError('密码长度至少为6位');
       return;
     }
 
@@ -55,9 +55,9 @@ export default function ResetPasswordPage() {
     return (
       <div className="cc98-auth-page container">
         <div className="cc98-auth-card">
-          <div className="cc98-auth-header">
-            <i className="fa fa-check-circle-o"></i> 重置密码成功
-          </div>
+          <h2 className="cc98-auth-header">
+            <i className="fa fa-check-circle-o"></i> 密码重置成功
+          </h2>
           <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
             <div style={{ fontSize: '3rem', color: '#2ecc71', marginBottom: '1rem' }} aria-hidden="true">
               <i className="fa fa-smile-o"></i>
@@ -71,7 +71,7 @@ export default function ResetPasswordPage() {
               onClick={() => navigate('/login')}
               style={{ marginTop: '1.75rem', width: '100%' }}
             >
-              立刻前往登录
+              前往登录
             </button>
           </div>
         </div>
@@ -125,9 +125,9 @@ export default function ResetPasswordPage() {
   return (
     <div className="cc98-auth-page container">
       <div className="cc98-auth-card">
-        <div className="cc98-auth-header">
-          <i className="fa fa-key"></i> 重置账户密码
-        </div>
+        <h2 className="cc98-auth-header">
+          <i className="fa fa-key"></i> 重置密码
+        </h2>
 
         {error && (
           <div className="cc98-error-box" style={{ margin: '1.25rem 1.5rem 0 1.5rem' }}>
@@ -138,7 +138,7 @@ export default function ResetPasswordPage() {
         <form onSubmit={handleSubmit} className="cc98-auth-form">
           {/* 邮箱 */}
           <div className="cc98-form-group">
-            <label htmlFor="email">注册邮箱</label>
+            <label htmlFor="email">邮箱</label>
             <input
               id="email"
               type="email"
@@ -183,7 +183,7 @@ export default function ResetPasswordPage() {
 
           {/* 确认密码 */}
           <div className="cc98-form-group">
-            <label htmlFor="confirmPassword">确认新密码</label>
+            <label htmlFor="confirmPassword">确认密码</label>
             <input
               id="confirmPassword"
               type="password"
@@ -202,7 +202,7 @@ export default function ResetPasswordPage() {
             disabled={isLoading}
             style={{ width: '100%', marginTop: '1.5rem' }}
           >
-            {isLoading ? <i className="fa fa-spinner fa-spin"></i> : '确认修改并保存新密码'}
+            {isLoading ? <i className="fa fa-spinner fa-spin"></i> : '重置密码'}
           </button>
         </form>
 

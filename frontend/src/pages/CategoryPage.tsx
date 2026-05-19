@@ -48,20 +48,19 @@ export default function CategoryPage() {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 0' }}>
         <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入版块主题帖...</p>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>加载中...</p>
       </div>
     );
   }
 
   if (error || !category) {
+    const errorMessage = (error as any)?.response?.data?.message || '加载失败';
     return (
       <div className="container" style={{ marginTop: '2rem' }}>
         <div className="cc98-category-error">
           <i className="fa fa-exclamation-triangle" style={{ fontSize: '2.5rem', color: '#fb6165', marginBottom: '1rem' }}></i>
-          <h2>加载版块出错</h2>
-          <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>
-            {(error as any)?.response?.data?.message || '版块不存在或已被删除。'}
-          </p>
+          <h2>{errorMessage}</h2>
+          <p style={{ color: 'var(--text-muted)', margin: '1rem 0' }}>请确认版块ID正确或稍候重试。</p>
           <button className="btn btn-primary" onClick={() => navigate('/')}>
             返回首页
           </button>
@@ -94,8 +93,7 @@ export default function CategoryPage() {
       {/* 1. 面包屑导航 */}
       <Breadcrumbs 
         items={[
-          { label: '讨论板块' },
-          { label: category.name }
+          { label: `板块: ${category.name}` }
         ]} 
       />
 
@@ -121,16 +119,7 @@ export default function CategoryPage() {
         </div>
       </div>
 
-      {/* 3. 顶部翻页器 */}
-      {totalPages > 1 && (
-        <div className="cc98-page-row-container">
-          <Pagination 
-            currentPage={page}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
-        </div>
-      )}
+
 
       {/* 4. 帖子列表 (TopicTable) */}
       <div style={{ marginTop: '1rem' }}>

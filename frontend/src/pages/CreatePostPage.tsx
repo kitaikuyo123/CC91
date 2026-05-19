@@ -64,7 +64,7 @@ export default function CreatePostPage() {
   const createMutation = useMutation({
     mutationFn: isDraftMode
       ? (data: CreatePostRequest) => updatePost(Number(draftId), data)
-      : createPost,
+      : (data: CreatePostRequest) => (createPost as any)(data, {}),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.mePosts() });
@@ -95,11 +95,11 @@ export default function CreatePostPage() {
     e.preventDefault();
 
     if (!categoryId) {
-      setError('请选择讨论版块');
+      setError('请选择版块');
       return;
     }
     if (!title.trim()) {
-      setError('帖子标题不能为空');
+      setError('标题不能为空');
       return;
     }
     if (title.length > 200) {
@@ -107,7 +107,7 @@ export default function CreatePostPage() {
       return;
     }
     if (!content.trim()) {
-      setError('帖子内容不能为空');
+      setError('内容不能为空');
       return;
     }
 
@@ -118,7 +118,7 @@ export default function CreatePostPage() {
 
   const handleSaveDraft = () => {
     if (!categoryId) {
-      setError('请选择讨论版块');
+      setError('请选择版块');
       return;
     }
     if (!title.trim() && !content.trim()) {
@@ -148,11 +148,11 @@ export default function CreatePostPage() {
       {/* 2. 编辑卡片 */}
       <div className="cc98-editor-card">
         <div className="cc98-editor-title-bar">
-          <i className="fa fa-pencil-square-o"></i> {isDraftMode ? '编辑草稿主题' : '撰写新主题帖'}
+          <i className="fa fa-pencil-square-o"></i> 发布新帖
         </div>
 
         {error && (
-          <div className="cc98-error-box" style={{ margin: '1.25rem 1.5rem 0 1.5rem' }}>
+          <div role="alert" className="cc98-error-box" style={{ margin: '1.25rem 1.5rem 0 1.5rem' }}>
             <i className="fa fa-exclamation-circle"></i> {error}
           </div>
         )}
@@ -170,7 +170,7 @@ export default function CreatePostPage() {
               disabled={createMutation.isPending}
               className="cc98-form-control"
             >
-              <option value="">-- 请选择版面 --</option>
+              <option value="">请选择版块</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -191,7 +191,7 @@ export default function CreatePostPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={createMutation.isPending}
-              placeholder="请输入清晰、简洁的主题帖标题..."
+              placeholder="请输入帖子标题"
               className="cc98-form-control"
               maxLength={200}
               autoFocus
@@ -208,7 +208,7 @@ export default function CreatePostPage() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               disabled={createMutation.isPending}
-              placeholder="请在这里撰写你的正文内容，注意遵守论坛规范..."
+              placeholder="请输入帖子内容..."
               className="cc98-form-control text-area"
             />
           </div>
@@ -220,7 +220,7 @@ export default function CreatePostPage() {
               className="cc98-btn btn-publish"
               disabled={createMutation.isPending}
             >
-              <i className="fa fa-paper-plane"></i> {createMutation.isPending && lastStatusRef.current === 'PUBLISHED' ? '发布中...' : (isDraftMode ? '更新并发布' : '公开发布主题')}
+              <i className="fa fa-paper-plane"></i> {createMutation.isPending && lastStatusRef.current === 'PUBLISHED' ? '发布中...' : '发布帖子'}
             </button>
             
             <button
@@ -234,13 +234,7 @@ export default function CreatePostPage() {
             
             <button
               type="button"
-              onClick={() => {
-                if (categoryId) {
-                  navigate(`/category/${categoryId}`);
-                } else {
-                  navigate('/');
-                }
-              }}
+              onClick={() => navigate('/posts')}
               className="cc98-btn btn-cancel"
               disabled={createMutation.isPending}
             >

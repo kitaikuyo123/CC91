@@ -152,7 +152,7 @@ export default function DashboardPage() {
                 </ul>
               )}
               <button className="cc98-panel-btn" onClick={() => navigate('/dashboard/posts')}>
-                查看全部我的帖子
+                查看全部帖子
               </button>
             </div>
           </div>
@@ -177,14 +177,14 @@ export default function DashboardPage() {
                       <div className="item-meta">
                         <span>回复于 {formatTime(comment.createdAt)}</span>
                         <span>·</span>
-                        <span className="source-topic">来自主题：{comment.postTitle}</span>
+                        <span className="source-topic">来自：{comment.postTitle}</span>
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
               <button className="cc98-panel-btn" onClick={() => navigate('/dashboard/comments')}>
-                查看所有我的回复
+                查看所有评论
               </button>
             </div>
           </div>

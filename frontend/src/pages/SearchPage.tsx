@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { searchPosts } from '../api/post';
 import { queryKeys } from '../lib/queryKeys';
@@ -55,6 +55,8 @@ export default function SearchPage() {
     }
   };
 
+  const navigate = useNavigate();
+
   return (
     <div className="cc98-search-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
       {/* 1. 面包屑 */}
@@ -78,12 +80,12 @@ export default function SearchPage() {
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="请输入您想查找的帖子标题或正文关键字..."
+              placeholder="输入关键词搜索标题或内容..."
               className="cc98-search-control"
               autoFocus
             />
             <button type="submit" className="cc98-search-submit-btn" disabled={isLoading}>
-              {isLoading ? <i className="fa fa-spinner fa-spin"></i> : <><i className="fa fa-search"></i> 开始搜索</>}
+              搜索
             </button>
           </div>
         </form>
@@ -92,44 +94,76 @@ export default function SearchPage() {
       {/* 3. 搜索结果展示 */}
       {searched && (
         <div style={{ marginTop: '2rem' }}>
-          <div className="cc98-search-summary">
-            <i className="fa fa-info-circle"></i> 共检索到 <strong>{searchResults?.totalElements || 0}</strong> 个匹配的主题帖子
-          </div>
+          <div className="cc98-search-summary">找到 {searchResults?.totalElements || 0} 条结果</div>
 
           {isLoading ? (
             <div style={{ textAlign: 'center', padding: '3rem 0' }}>
               <div className="spinner"></div>
-              <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>正在检索匹配帖...</p>
+              <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>搜索中...</p>
             </div>
           ) : results.length === 0 ? (
-            <div className="cc98-search-empty">
-              <i className="fa fa-folder-open-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>
-              抱歉，未找到与 “{keyword}” 相关的任何帖子。请尝试更改关键词。
+            <div className="cc98-search-empty" style={{ padding: '3.5rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', border: '1px dashed var(--border-color)', borderRadius: '4px', color: 'var(--text-muted)' }}>
+              <i className="fa fa-folder-open-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>没有找到匹配的帖子
             </div>
           ) : (
             <>
-              {/* 分页 */}
-              {totalPages > 1 && (
-                <div style={{ margin: '0.5rem 0' }}>
-                  <Pagination 
-                    currentPage={page}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                  />
-                </div>
-              )}
-
-              {/* 结果表格 */}
-              <TopicTable posts={results} />
+              {/* 结果列表 */}
+              <div className="cc98-posts-card-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {results.map((post) => (
+                  <div
+                    key={post.id}
+                    className="card cc98-post-card-item"
+                    onClick={() => navigate(`/posts/${post.id}`)}
+                    style={{
+                      cursor: 'pointer',
+                      backgroundColor: 'var(--card-bg)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      padding: '1.25rem',
+                      transition: 'var(--cc98-transition)',
+                      boxShadow: 'var(--cc98-shadow)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--quote-bg)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                      <h3 className="card-title" style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)', fontWeight: 'bold' }}>
+                        {post.categoryName && <span style={{ color: 'var(--primary-color)', marginRight: '0.5rem' }}>[{post.categoryName}]</span>}
+                        {post.title}
+                      </h3>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{post.createdAt.split('T')[0]}</span>
+                    </div>
+                    <p className="card-content" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0.5rem 0 1rem 0', lineBreak: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {post.content}
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      <span><i className="fa fa-eye"></i> 阅读量: {post.viewCount}</span>
+                      <span><i className="fa fa-comments"></i> 回复数: {post.commentCount ?? 0}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {/* 底部分页 */}
               {totalPages > 1 && (
-                <div style={{ margin: '0.5rem 0' }}>
-                  <Pagination 
-                    currentPage={page}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                  />
+                <div style={{ margin: '1rem 0', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page === 0}
+                    className="cc98-btn btn-publish"
+                    style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+                  >上一页</button>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{`第 ${page + 1} / ${totalPages} 页`}</span>
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page === totalPages - 1}
+                    className="cc98-btn btn-publish"
+                    style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+                  >下一页</button>
                 </div>
               )}
             </>

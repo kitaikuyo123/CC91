@@ -56,7 +56,7 @@ export default function LoginPage() {
     <div className="cc98-auth-page container">
       <div className="cc98-auth-card">
         <div className="cc98-auth-header">
-          <i className="fa fa-sign-in"></i> 登录 CC91 论坛
+          <i className="fa fa-sign-in"></i> User Login
         </div>
 
         {error && (
@@ -66,9 +66,9 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="cc98-auth-form">
-          {/* 用户名 */}
+          {/* Username */}
           <div className="cc98-form-group">
-            <label htmlFor="username">用户名</label>
+            <label htmlFor="username">Username</label>
             <input
               id="username"
               type="text"
@@ -82,9 +82,9 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* 密码 */}
+          {/* Password */}
           <div className="cc98-form-group">
-            <label htmlFor="password">密码</label>
+            <label htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
@@ -97,14 +97,14 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* 登录按钮 */}
+          {/* Login Button */}
           <button
             type="submit"
             className="cc98-btn btn-publish btn-block"
             disabled={isLoading}
             style={{ width: '100%', marginTop: '1.5rem' }}
           >
-            {isLoading ? <i className="fa fa-spinner fa-spin"></i> : '立即登录'}
+            {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Login'}
           </button>
         </form>
 

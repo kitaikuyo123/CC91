@@ -60,7 +60,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
         disabled={currentPage === 0}
         title="上一页"
       >
-        <i className="fa fa-angle-left"></i>
+        上一页
       </button>
 
       {/* 页码 */}
@@ -87,7 +87,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
         disabled={currentPage === totalPages - 1}
         title="下一页"
       >
-        <i className="fa fa-angle-right"></i>
+        下一页
       </button>
 
       {/* 末页 */}
@@ -101,7 +101,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       </button>
 
       <span className="cc98-page-info">
-        共 {totalPages} 页
+        第 {currentPage + 1} / {totalPages} 页
       </span>
 
       <style>{`

@@ -25,7 +25,7 @@ export default function BoardCard({ category, onClick }: BoardCardProps) {
   const replyCount = topicCount * 3 + Math.floor((id * 29) % 50);
 
   return (
-    <div className="cc98-board-card" onClick={() => onClick && onClick(id)}>
+    <div className="cc98-board-card card" onClick={() => onClick && onClick(id)}>
       {/* 1. Icon Container */}
       <div className="cc98-board-icon">
         <i className={`fa ${icon}`}></i>

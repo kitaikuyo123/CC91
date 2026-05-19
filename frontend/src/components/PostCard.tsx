@@ -9,6 +9,7 @@ interface PostCardProps {
   floor: number | string;
   content: string;
   createdAt: string;
+  updatedAt?: string;
   isTopicAuthor?: boolean;
   onQuote?: (username: string, content: string) => void;
   onDelete?: () => void;
@@ -36,6 +37,7 @@ export default function PostCard({
   floor,
   content,
   createdAt,
+  updatedAt,
   isTopicAuthor = false,
   onQuote,
   onDelete,
@@ -189,7 +191,10 @@ export default function PostCard({
         {/* Meta Row (Floor, Time, Modify/Delete actions) */}
         <div className="cc98-post-meta-row">
           <div className="cc98-post-time">
-            发表于 {new Date(createdAt).toLocaleString('zh-CN')}
+            <span>发布于 {new Date(createdAt).toLocaleString('zh-CN')}</span>
+            {updatedAt && updatedAt !== createdAt && (
+              <span style={{ marginLeft: '1rem' }}>更新于 {new Date(updatedAt).toLocaleString('zh-CN')}</span>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             {isTopicAuthor && (

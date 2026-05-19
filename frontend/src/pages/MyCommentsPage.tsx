@@ -33,6 +33,16 @@ export default function MyCommentsPage() {
         ]} 
       />
 
+      <div style={{ marginBottom: '1.25rem' }}>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="cc98-btn btn-publish"
+          style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+        >
+          <i className="fa fa-chevron-left"></i> 返回 Dashboard
+        </button>
+      </div>
+
       {/* 2. 主体 Panel */}
       <div className="cc98-panel-classic col-a">
         <div className="cc98-panel-title">
@@ -53,7 +63,7 @@ export default function MyCommentsPage() {
                   <div className="item-meta">
                     <span>回复时间: {formatTime(c.createdAt)}</span>
                     <span>·</span>
-                    <span className="source-topic">所属主题帖: {c.postTitle}</span>
+                    <span className="source-topic">来自：{c.postTitle}</span>
                   </div>
                 </li>
               ))}
