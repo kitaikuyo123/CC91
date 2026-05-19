@@ -1,6 +1,4 @@
 import client from './client';
-import type { ApiResponse } from './types';
-import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from './category';
 import type { Post } from './post';
 
 /**
@@ -21,34 +19,6 @@ export interface AdminUser {
  */
 export interface UpdatePostStatusRequest {
   status: string;
-}
-
-// ============ Category Management ============
-
-/**
- * Create category (admin)
- * POST /api/admin/categories - backend wraps in ApiResponse
- */
-export async function adminCreateCategory(data: CreateCategoryRequest): Promise<Category> {
-  const response = await client.post<ApiResponse<Category>>('/admin/categories', data);
-  return response.data.data!;
-}
-
-/**
- * Update category (admin)
- * PUT /api/admin/categories/{id} - backend wraps in ApiResponse
- */
-export async function adminUpdateCategory(id: number, data: UpdateCategoryRequest): Promise<Category> {
-  const response = await client.put<ApiResponse<Category>>(`/admin/categories/${id}`, data);
-  return response.data.data!;
-}
-
-/**
- * Delete category (admin)
- * DELETE /api/admin/categories/{id}
- */
-export async function adminDeleteCategory(id: number): Promise<void> {
-  await client.delete(`/admin/categories/${id}`);
 }
 
 // ============ Content Moderation ============
@@ -80,6 +50,30 @@ export async function adminDeletePost(id: number): Promise<void> {
 }
 
 /**
+ * Admin comment type
+ */
+export interface AdminComment {
+  id: number;
+  postId: number;
+  postTitle: string;
+  authorId: number;
+  authorUsername: string;
+  content: string;
+  parentId: number | null;
+  status: string;
+  createdAt: string;
+}
+
+/**
+ * Get all comments (admin)
+ * GET /api/admin/comments
+ */
+export async function adminGetComments(): Promise<AdminComment[]> {
+  const response = await client.get<AdminComment[]>('/admin/comments');
+  return response.data;
+}
+
+/**
  * Force delete comment
  * DELETE /api/admin/comments/{id}
  */
@@ -96,6 +90,14 @@ export async function adminDeleteComment(id: number): Promise<void> {
 export async function adminGetUsers(): Promise<AdminUser[]> {
   const response = await client.get<AdminUser[]>('/admin/users');
   return response.data;
+}
+
+/**
+ * Update user role
+ * PUT /api/admin/users/{id}/role - backend wraps in ApiResponse
+ */
+export async function adminUpdateUserRole(id: number, role: string): Promise<void> {
+  await client.put(`/admin/users/${id}/role`, { role });
 }
 
 /**

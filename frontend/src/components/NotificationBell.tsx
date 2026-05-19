@@ -33,8 +33,8 @@ export default function NotificationBell() {
   const markAsReadMutation = useMutation({
     mutationFn: markAsRead,
     onSuccess: () => {
-      // 使未读数缓存失效
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.lists() });
     },
   });
 

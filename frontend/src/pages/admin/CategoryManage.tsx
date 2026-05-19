@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCategories, type Category } from '../../api/category';
-import { adminCreateCategory, adminUpdateCategory, adminDeleteCategory } from '../../api/admin';
-import type { CreateCategoryRequest, UpdateCategoryRequest } from '../../api/category';
+import {
+  getCategories, createCategory, updateCategory, deleteCategory,
+  type Category, type CreateCategoryRequest, type UpdateCategoryRequest
+} from '../../api/category';
+import ErrorMessage from '../../components/ErrorMessage';
 import { queryKeys } from '../../lib/queryKeys';
 
 /**
@@ -51,9 +53,9 @@ export default function CategoryManage() {
   const saveMutation = useMutation({
     mutationFn: ({ id, data }: { id?: number; data: CreateCategoryRequest | UpdateCategoryRequest }) => {
       if (id) {
-        return adminUpdateCategory(id, data as UpdateCategoryRequest);
+        return updateCategory(id, data as UpdateCategoryRequest);
       } else {
-        return adminCreateCategory(data);
+        return createCategory(data);
       }
     },
     onSuccess: () => {
@@ -69,7 +71,7 @@ export default function CategoryManage() {
 
   // 删除版块的 mutation
   const deleteMutation = useMutation({
-    mutationFn: adminDeleteCategory,
+    mutationFn: deleteCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.list() });
       setSuccess('版块删除成功');
@@ -114,17 +116,8 @@ export default function CategoryManage() {
         </button>
       </div>
 
-      {error && (
-        <div className="error-message" style={{ marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="success-message" style={{ marginBottom: '1rem' }}>
-          {success}
-        </div>
-      )}
+      {error && <ErrorMessage message={error} onDismiss={() => setError('')} />}
+      {success && <ErrorMessage type="success" message={success} onDismiss={() => setSuccess('')} />}
 
       {showForm && (
         <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>

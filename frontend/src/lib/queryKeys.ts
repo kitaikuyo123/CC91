@@ -58,7 +58,9 @@ export const queryKeys = {
 
   // 管理员相关
   admin: {
-    posts: (status?: string) => ['admin', 'posts', status] as const,
+    posts: (status?: string) => status
+      ? ['admin', 'posts', status] as const
+      : ['admin', 'posts', 'all'] as const,
     users: () => ['admin', 'users'] as const,
     stats: () => ['admin', 'stats'] as const,
   },

@@ -1,13 +1,16 @@
 package com.cc91.service;
 
+import com.cc91.dto.ChangePasswordRequest;
 import com.cc91.dto.UpdateUserProfileRequest;
 import com.cc91.dto.UserProfileDTO;
 import com.cc91.entity.User;
 import com.cc91.entity.UserProfile;
+import com.cc91.exception.BadRequestException;
 import com.cc91.repository.UserRepository;
 import com.cc91.repository.UserProfileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,13 +24,16 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public UserService(
             UserRepository userRepository,
-            UserProfileRepository userProfileRepository
+            UserProfileRepository userProfileRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -104,5 +110,23 @@ public class UserService {
                 user.getCreatedAt(),
                 user.getRole()
         );
+    }
+
+    /**
+     * 修改密码
+     */
+    @Transactional
+    public void changePassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("旧密码不正确");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        logger.info("密码修改成功: {}", username);
     }
 }

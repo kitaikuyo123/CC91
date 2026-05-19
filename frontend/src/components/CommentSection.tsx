@@ -153,6 +153,7 @@ export default function CommentSection({ postId, commentCount }: CommentSectionP
       createComment(postId, { content }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.byPost(postId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) });
       setNewComment('');
     },
     onError: (err: any) => {
@@ -166,6 +167,7 @@ export default function CommentSection({ postId, commentCount }: CommentSectionP
       replyToComment(commentId, { content }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.byPost(postId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) });
     },
     onError: (err: any) => {
       setError(err.response?.data?.message || '回复失败');
@@ -177,6 +179,7 @@ export default function CommentSection({ postId, commentCount }: CommentSectionP
     mutationFn: deleteComment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.byPost(postId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) });
     },
     onError: (err: any) => {
       setError(err.response?.data?.message || '删除评论失败');
