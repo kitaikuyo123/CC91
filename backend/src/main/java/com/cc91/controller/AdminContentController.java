@@ -1,8 +1,10 @@
 package com.cc91.controller;
 
+import com.cc91.dto.AdminCommentDTO;
 import com.cc91.dto.ApiResponse;
 import com.cc91.dto.PostResponse;
 import com.cc91.dto.UpdatePostStatusRequest;
+import com.cc91.entity.Comment;
 import com.cc91.entity.Post;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.repository.CommentRepository;
@@ -12,6 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -85,6 +90,26 @@ public class AdminContentController {
         logger.info("管理员强制删除帖子: id={}", id);
 
         return ResponseEntity.ok(ApiResponse.success("帖子已删除"));
+    }
+
+    /**
+     * 查看所有评论（按时间倒序）
+     * GET /api/admin/comments
+     */
+    @GetMapping("/comments")
+    public ResponseEntity<List<AdminCommentDTO>> getAllComments() {
+        List<Comment> comments = commentRepository.findAllByOrderByCreatedAtDesc();
+        List<AdminCommentDTO> dtos = comments.stream().map(c -> {
+            String postTitle = c.getPost() != null ? c.getPost().getTitle() : "已删除";
+            return new AdminCommentDTO(
+                    c.getId(), c.getPostId(), postTitle,
+                    c.getAuthorId(),
+                    c.getAuthor() != null ? c.getAuthor().getUsername() : "已删除",
+                    c.getContent(), c.getParentId(),
+                    c.getStatus(), c.getCreatedAt()
+            );
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     /**

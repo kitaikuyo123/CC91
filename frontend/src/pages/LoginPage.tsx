@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ErrorMessage from '../components/ErrorMessage';
 import client from '../api/client';
 
 /**
@@ -40,7 +41,6 @@ export default function LoginPage() {
         userRole = userResponse.data.role || 'USER';
       } catch (err) {
         // If user info fetch fails, default to regular user
-        console.error('Failed to fetch user role', err);
       }
 
       login(username, accessToken, userRole);
@@ -85,11 +85,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && (
-            <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
-              {error}
-            </div>
-          )}
+          {error && <ErrorMessage message={error} onDismiss={() => setError('')} />}
 
           <button
             type="submit"

@@ -41,4 +41,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * 查询某用户的评论（按时间倒序）
      */
     List<Comment> findByAuthorIdAndStatusOrderByCreatedAtDesc(Long authorId, String status);
+
+    /**
+     * 查询所有评论（按时间倒序，用于管理员审核）
+     */
+    List<Comment> findAllByOrderByCreatedAtDesc();
 }

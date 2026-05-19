@@ -38,10 +38,18 @@ export interface MyComment {
 }
 
 /**
+ * 修改密码请求
+ */
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+
+/**
  * 获取当前用户资料
  */
 export async function getMyProfile(): Promise<UserProfile> {
-  const response = await client.get('/users/me');
+  const response = await client.get<UserProfile>('/users/me');
   return response.data;
 }
 
@@ -49,7 +57,7 @@ export async function getMyProfile(): Promise<UserProfile> {
  * 获取指定用户资料
  */
 export async function getUserProfile(username: string): Promise<UserProfile> {
-  const response = await client.get(`/users/${username}`);
+  const response = await client.get<UserProfile>(`/users/${username}`);
   return response.data;
 }
 
@@ -57,7 +65,7 @@ export async function getUserProfile(username: string): Promise<UserProfile> {
  * 更新当前用户资料
  */
 export async function updateProfile(data: UpdateUserProfileRequest): Promise<UserProfile> {
-  const response = await client.put('/users/me/profile', data);
+  const response = await client.put<UserProfile>('/users/me/profile', data);
   return response.data;
 }
 
@@ -83,4 +91,12 @@ export async function getMyDrafts(): Promise<Post[]> {
 export async function getMyComments(): Promise<MyComment[]> {
   const response = await client.get<MyComment[]>('/users/me/comments');
   return response.data;
+}
+
+/**
+ * 修改当前用户密码
+ * PUT /api/users/me/password
+ */
+export async function changePassword(data: ChangePasswordRequest): Promise<void> {
+  await client.put('/users/me/password', data);
 }

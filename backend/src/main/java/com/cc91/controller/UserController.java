@@ -1,5 +1,7 @@
 package com.cc91.controller;
 
+import com.cc91.dto.ApiResponse;
+import com.cc91.dto.ChangePasswordRequest;
 import com.cc91.dto.PostResponse;
 import com.cc91.dto.UpdateUserProfileRequest;
 import com.cc91.dto.UserCommentResponse;
@@ -96,6 +98,19 @@ public class UserController {
     public ResponseEntity<List<UserCommentResponse>> getMyComments() {
         String username = getCurrentUsername();
         return ResponseEntity.ok(commentService.getMyComments(username));
+    }
+
+    /**
+     * 修改当前用户密码
+     * PUT /api/users/me/password
+     */
+    @PutMapping("/me/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        String username = getCurrentUsername();
+        userService.changePassword(username, request);
+        return ResponseEntity.ok(ApiResponse.success("密码修改成功"));
     }
 
     /**

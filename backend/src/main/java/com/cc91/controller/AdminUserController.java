@@ -2,9 +2,11 @@ package com.cc91.controller;
 
 import com.cc91.dto.AdminUserDTO;
 import com.cc91.dto.ApiResponse;
+import com.cc91.dto.UpdateUserRoleRequest;
 import com.cc91.entity.User;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.repository.UserRepository;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -16,7 +18,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -85,6 +86,26 @@ public class AdminUserController {
         logger.info("管理员解封用户: id={}, username={}", id, user.getUsername());
 
         return ResponseEntity.ok(ApiResponse.success("用户已解封"));
+    }
+
+    /**
+     * 修改用户角色
+     * PUT /api/admin/users/{id}/role
+     */
+    @PutMapping("/{id}/role")
+    public ResponseEntity<ApiResponse<Void>> updateUserRole(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRoleRequest request
+    ) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        user.setRole(request.getRole());
+        userRepository.save(user);
+
+        logger.info("管理员修改用户角色: userId={}, newRole={}", id, request.getRole());
+
+        return ResponseEntity.ok(ApiResponse.success("用户角色已更新为 " + request.getRole()));
     }
 
     /**
