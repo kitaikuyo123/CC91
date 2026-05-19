@@ -6,7 +6,7 @@ import { getUnreadCount, getNotifications, markAsRead, type Notification } from 
 import { queryKeys } from '../lib/queryKeys';
 
 /**
- * 通知铃铛组件 - 显示在 Header 中
+ * 通知铃铛组件 - 显示在 Header 中，重塑为 CC98 视觉风格
  */
 export default function NotificationBell() {
   const navigate = useNavigate();
@@ -33,12 +33,12 @@ export default function NotificationBell() {
   const markAsReadMutation = useMutation({
     mutationFn: markAsRead,
     onSuccess: () => {
-      // 使未读数缓存失效
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
     },
   });
 
-  const handleBellClick = () => {
+  const handleBellClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -61,33 +61,17 @@ export default function NotificationBell() {
   }
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
+    <div className="cc98-bell-wrapper">
       <button
         onClick={handleBellClick}
-        style={{
-          background: 'none',
-          border: 'none',
-          fontSize: '1.2rem',
-          cursor: 'pointer',
-          padding: '0.25rem',
-          position: 'relative',
-          color: 'inherit'
-        }}
+        className="cc98-bell-trigger"
         aria-label={`通知${unreadCount > 0 ? `，${unreadCount}条未读` : ''}`}
         aria-expanded={showDropdown}
         aria-haspopup="true"
       >
-        <span aria-hidden="true">&#x1F514;</span>
+        <i className="fa fa-bell-o"></i>
         {unreadCount > 0 && (
-          <span className="badge badge-danger" style={{
-            position: 'absolute',
-            top: '-2px',
-            right: '-2px',
-            fontSize: '0.7rem',
-            borderRadius: '10px',
-            minWidth: '16px',
-            textAlign: 'center'
-          }}>
+          <span className="cc98-bell-dot">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -95,63 +79,24 @@ export default function NotificationBell() {
 
       {showDropdown && (
         <>
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 998
-            }}
-            onClick={() => setShowDropdown(false)}
-          />
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            width: '300px',
-            maxHeight: '400px',
-            background: '#fff',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            zIndex: 999,
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              padding: '0.75rem 1rem',
-              borderBottom: '1px solid #eee',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span style={{ fontWeight: '600' }}>通知</span>
+          <div className="cc98-bell-overlay" style={{ position: 'fixed' }} onClick={() => setShowDropdown(false)} />
+          <div className="cc98-bell-dropdown">
+            <div className="cc98-bell-header">
+              <span className="title">通知</span>
               <button
                 onClick={() => {
                   setShowDropdown(false);
                   navigate('/notifications');
                 }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3498db',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem'
-                }}
+                className="view-all-btn"
               >
                 查看全部
               </button>
             </div>
 
-            <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+            <div className="cc98-bell-list">
               {recentNotifications.length === 0 ? (
-                <div style={{
-                  padding: '2rem 1rem',
-                  textAlign: 'center',
-                  color: '#999',
-                  fontSize: '0.9rem'
-                }}>
+                <div className="cc98-bell-empty">
                   暂无通知
                 </div>
               ) : (
@@ -159,51 +104,20 @@ export default function NotificationBell() {
                   <div
                     key={notif.id}
                     onClick={() => handleNotificationClick(notif)}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      borderBottom: '1px solid #f0f0f0',
-                      cursor: 'pointer',
-                      backgroundColor: notif.isRead ? 'transparent' : '#f8f9fa'
-                    }}
+                    className={`cc98-bell-item ${notif.isRead ? 'read' : 'unread'}`}
                   >
-                    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                      <span style={{ marginRight: '0.5rem' }}>
+                    <div className="cc98-bell-item-content">
+                      <span className="icon">
                         {notif.type === 'REPLY' ? '💬' : notif.type === 'MENTION' ? '@' : '🔔'}
                       </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontWeight: notif.isRead ? 'normal' : '600',
-                          fontSize: '0.9rem',
-                          marginBottom: '0.25rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {notif.title}
-                        </div>
-                        <div style={{
-                          color: '#666',
-                          fontSize: '0.8rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {notif.content}
-                        </div>
-                        <div style={{ fontSize: '0.7rem', color: '#999', marginTop: '0.25rem' }}>
+                      <div className="details">
+                        <div className="title-text">{notif.title}</div>
+                        <div className="summary-text">{notif.content}</div>
+                        <div className="time-text">
                           {new Date(notif.createdAt).toLocaleString()}
                         </div>
                       </div>
-                      {!notif.isRead && (
-                        <span style={{
-                          width: '6px',
-                          height: '6px',
-                          borderRadius: '50%',
-                          backgroundColor: '#e74c3c',
-                          flexShrink: 0,
-                          marginLeft: '0.5rem'
-                        }} />
-                      )}
+                      {!notif.isRead && <span className="red-dot-indicator" />}
                     </div>
                   </div>
                 ))
@@ -212,6 +126,167 @@ export default function NotificationBell() {
           </div>
         </>
       )}
+
+      <style>{`
+        .cc98-bell-wrapper {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+        }
+        .cc98-bell-trigger {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 1.2rem;
+          cursor: pointer;
+          padding: 0.25rem;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: var(--cc98-transition);
+        }
+        .cc98-bell-trigger:hover {
+          color: white;
+          text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+        }
+        .cc98-bell-dot {
+          position: absolute;
+          top: -2px;
+          right: -4px;
+          background-color: #fb6165;
+          color: white;
+          font-size: 0.65rem;
+          font-weight: bold;
+          border-radius: 10px;
+          min-width: 14px;
+          height: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 3px;
+          border: 1px solid var(--primary-color);
+        }
+        .cc98-bell-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 998;
+          cursor: default;
+        }
+        .cc98-bell-dropdown {
+          position: absolute;
+          top: calc(100% + 10px);
+          right: -50px;
+          width: 290px;
+          background-color: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-radius: var(--cc98-radius);
+          box-shadow: var(--cc98-shadow);
+          z-index: 999;
+          overflow: hidden;
+          animation: slideDownFade 0.15s ease-out;
+        }
+        .cc98-bell-header {
+          padding: 0.75rem 1rem;
+          border-bottom: 1px solid var(--border-color);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background-color: var(--quote-bg);
+        }
+        .cc98-bell-header .title {
+          font-weight: bold;
+          font-size: 0.88rem;
+          color: var(--primary-text);
+        }
+        .cc98-bell-header .view-all-btn {
+          background: none;
+          border: none;
+          color: var(--link-color);
+          cursor: pointer;
+          font-size: 0.8rem;
+          font-weight: bold;
+        }
+        .cc98-bell-header .view-all-btn:hover {
+          text-decoration: underline;
+        }
+        .cc98-bell-list {
+          max-height: 320px;
+          overflow-y: auto;
+        }
+        .cc98-bell-empty {
+          padding: 2rem 1rem;
+          text-align: center;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        }
+        .cc98-bell-item {
+          padding: 0.75rem 1rem;
+          border-bottom: 1px solid var(--border-color);
+          cursor: pointer;
+          transition: var(--cc98-transition);
+        }
+        .cc98-bell-item:last-child {
+          border-bottom: none;
+        }
+        .cc98-bell-item:hover {
+          background-color: var(--quote-bg);
+        }
+        .cc98-bell-item.unread {
+          background-color: rgba(57, 70, 118, 0.03);
+        }
+        .cc98-bell-item-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.6rem;
+          position: relative;
+        }
+        .cc98-bell-item-content .icon {
+          font-size: 1rem;
+          flex-shrink: 0;
+          margin-top: 0.1rem;
+        }
+        .cc98-bell-item-content .details {
+          flex: 1;
+          min-width: 0;
+        }
+        .cc98-bell-item-content .title-text {
+          font-weight: bold;
+          font-size: 0.85rem;
+          color: var(--text-main);
+          margin-bottom: 0.15rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .cc98-bell-item.unread .title-text {
+          color: var(--primary-text);
+        }
+        .cc98-bell-item-content .summary-text {
+          color: var(--text-muted);
+          font-size: 0.78rem;
+          margin-bottom: 0.25rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .cc98-bell-item-content .time-text {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          opacity: 0.8;
+        }
+        .cc98-bell-item-content .red-dot-indicator {
+          width: 6px;
+          height: 6px;
+          background-color: #fb6165;
+          border-radius: 50%;
+          flex-shrink: 0;
+          align-self: center;
+        }
+      `}</style>
     </div>
   );
 }

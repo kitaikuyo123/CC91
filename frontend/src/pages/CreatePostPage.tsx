@@ -1,30 +1,34 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { createPost, updatePost, getPostById, type CreatePostRequest } from '../api/post';
 import { getCategories } from '../api/category';
 import { queryKeys } from '../lib/queryKeys';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 /**
- * 创建/编辑帖子页面
- * 支持 ?draftId= 参数进入草稿编辑模式
+ * CC98 风格创建/编辑帖子页面
  */
 export default function CreatePostPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const location = useLocation();
 
   const draftId = searchParams.get('draftId');
   const isDraftMode = !!draftId;
 
+  // Retrieve categoryId passed in from Board Page
+  const initialCategoryId = location.state?.categoryId;
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
+  const [categoryId, setCategoryId] = useState<number | undefined>(initialCategoryId);
   const [error, setError] = useState('');
 
-  // 记录最近一次操作的状态，用于 onSuccess 判断跳转目标
+  // 记录最近一次操作的状态
   const lastStatusRef = useRef<string>('PUBLISHED');
 
   // 获取版块列表
@@ -49,7 +53,7 @@ export default function CreatePostPage() {
     }
   }, [draftPost]);
 
-  // 使用 useEffect 进行导航检查，避免在 hooks 之前 return
+  // 认证状态检查
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login', { replace: true });
@@ -60,12 +64,11 @@ export default function CreatePostPage() {
   const createMutation = useMutation({
     mutationFn: isDraftMode
       ? (data: CreatePostRequest) => updatePost(Number(draftId), data)
-      : createPost,
+      : (data: CreatePostRequest) => (createPost as any)(data, {}),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.mePosts() });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.meDrafts() });
-      // 发布 → 跳帖子详情；保存草稿 → 回 Dashboard
       if (lastStatusRef.current === 'DRAFT') {
         navigate('/dashboard');
       } else {
@@ -77,7 +80,6 @@ export default function CreatePostPage() {
     },
   });
 
-  // 如果未认证，不渲染内容
   if (!isAuthenticated) {
     return null;
   }
@@ -89,10 +91,9 @@ export default function CreatePostPage() {
     status,
   });
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    // 基本验证
     if (!categoryId) {
       setError('请选择版块');
       return;
@@ -115,7 +116,7 @@ export default function CreatePostPage() {
     createMutation.mutate(buildPostData('PUBLISHED'));
   };
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = () => {
     if (!categoryId) {
       setError('请选择版块');
       return;
@@ -135,34 +136,39 @@ export default function CreatePostPage() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '800px', padding: '2rem' }}>
-      <div className="card" style={{ padding: '2rem' }}>
-        <h1 style={{ marginBottom: '1.5rem' }}>{isDraftMode ? '编辑草稿' : '发布新帖'}</h1>
+    <div className="cc98-editor-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
+      {/* 1. 面包屑 */}
+      <Breadcrumbs 
+        items={[
+          { label: '版面列表', href: '/' },
+          { label: isDraftMode ? '编辑草稿' : '发表新主题帖' }
+        ]} 
+      />
+
+      {/* 2. 编辑卡片 */}
+      <div className="cc98-editor-card">
+        <div className="cc98-editor-title-bar">
+          <i className="fa fa-pencil-square-o"></i> 发布新帖
+        </div>
 
         {error && (
-          <div className="error-message" role="alert" style={{ marginBottom: '1rem' }}>
-            {error}
+          <div role="alert" className="cc98-error-box" style={{ margin: '1.25rem 1.5rem 0 1.5rem' }}>
+            <i className="fa fa-exclamation-circle"></i> {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
           {/* 版块选择 */}
-          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="category" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-              版块 <span style={{ color: '#e74c3c' }}>*</span>
+          <div className="cc98-form-group">
+            <label htmlFor="category">
+              选择版面 <span style={{ color: '#fb6165' }}>*</span>
             </label>
             <select
               id="category"
               value={categoryId ?? ''}
               onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : undefined)}
               disabled={createMutation.isPending}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1rem'
-              }}
+              className="cc98-form-control"
             >
               <option value="">请选择版块</option>
               {categories.map((cat) => (
@@ -173,13 +179,11 @@ export default function CreatePostPage() {
             </select>
           </div>
 
-          {/* 标题输入 */}
-          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="title" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-              标题 <span style={{ color: '#e74c3c' }}>*</span>
-              <span style={{ fontWeight: 'normal', color: '#888', fontSize: '0.9rem' }}>
-                ({title.length}/200)
-              </span>
+          {/* 标题 */}
+          <div className="cc98-form-group">
+            <label htmlFor="title">
+              主题标题 <span style={{ color: '#fb6165' }}>*</span>
+              <span className="count-hint">({title.length}/200)</span>
             </label>
             <input
               id="title"
@@ -188,22 +192,16 @@ export default function CreatePostPage() {
               onChange={(e) => setTitle(e.target.value)}
               disabled={createMutation.isPending}
               placeholder="请输入帖子标题"
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1rem'
-              }}
+              className="cc98-form-control"
               maxLength={200}
               autoFocus
             />
           </div>
 
-          {/* 内容输入 */}
-          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="content" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-              内容 <span style={{ color: '#e74c3c' }}>*</span>
+          {/* 内容 */}
+          <div className="cc98-form-group">
+            <label htmlFor="content">
+              主题正文 <span style={{ color: '#fb6165' }}>*</span>
             </label>
             <textarea
               id="content"
@@ -211,43 +209,33 @@ export default function CreatePostPage() {
               onChange={(e) => setContent(e.target.value)}
               disabled={createMutation.isPending}
               placeholder="请输入帖子内容..."
-              style={{
-                width: '100%',
-                minHeight: '300px',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
+              className="cc98-form-control text-area"
             />
           </div>
 
           {/* 操作按钮 */}
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className="cc98-editor-actions">
             <button
               type="submit"
-              className="btn btn-primary"
-              style={{ flex: 1, padding: '0.75rem' }}
+              className="cc98-btn btn-publish"
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? '发布中...' : (isDraftMode ? '更新并发布' : '发布帖子')}
+              <i className="fa fa-paper-plane"></i> {createMutation.isPending && lastStatusRef.current === 'PUBLISHED' ? '发布中...' : '发布帖子'}
             </button>
+            
             <button
               type="button"
               onClick={handleSaveDraft}
-              className="btn"
-              style={{ flex: 1, padding: '0.75rem', background: '#f39c12', color: '#fff' }}
+              className="cc98-btn btn-draft"
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? '保存中...' : (isDraftMode ? '更新草稿' : '保存草稿')}
+              <i className="fa fa-floppy-o"></i> {createMutation.isPending && lastStatusRef.current === 'DRAFT' ? '保存中...' : (isDraftMode ? '更新草稿' : '存为草稿')}
             </button>
+            
             <button
               type="button"
               onClick={() => navigate('/posts')}
-              className="btn"
-              style={{ padding: '0.75rem 1.5rem' }}
+              className="cc98-btn btn-cancel"
               disabled={createMutation.isPending}
             >
               取消
@@ -255,6 +243,152 @@ export default function CreatePostPage() {
           </div>
         </form>
       </div>
+
+      <style>{`
+        .cc98-editor-card {
+          background-color: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-radius: var(--cc98-radius);
+          box-shadow: var(--cc98-shadow);
+          overflow: hidden;
+        }
+
+        .cc98-editor-title-bar {
+          background-color: var(--primary-color);
+          color: white;
+          padding: 0.85rem 1.5rem;
+          font-weight: bold;
+          font-size: 1.05rem;
+          border-bottom: 2px solid var(--accent-color);
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .theme-dark .cc98-editor-title-bar {
+          border-bottom-color: var(--border-color);
+        }
+
+        .cc98-error-box {
+          background-color: rgba(251, 97, 101, 0.1);
+          color: #fb6165;
+          padding: 0.75rem 1.25rem;
+          border-radius: var(--cc98-radius);
+          border: 1px solid rgba(251, 97, 101, 0.2);
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .cc98-form-group {
+          margin-bottom: 1.5rem;
+        }
+
+        .cc98-form-group label {
+          display: block;
+          margin-bottom: 0.5rem;
+          font-weight: bold;
+          font-size: 0.92rem;
+          color: var(--text-main);
+        }
+
+        .cc98-form-group label .count-hint {
+          font-weight: normal;
+          color: var(--text-muted);
+          font-size: 0.82rem;
+          margin-left: 0.5rem;
+        }
+
+        .cc98-form-control {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid var(--border-color);
+          background-color: var(--card-bg);
+          color: var(--text-main);
+          border-radius: 4px;
+          font-size: 0.95rem;
+          font-family: inherit;
+          transition: var(--cc98-transition);
+        }
+
+        .cc98-form-control:focus {
+          border-color: var(--primary-color);
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(84, 110, 122, 0.15);
+        }
+
+        .cc98-form-control.text-area {
+          min-height: 320px;
+          resize: vertical;
+          line-height: 1.6;
+        }
+
+        .cc98-editor-actions {
+          display: flex;
+          gap: 1rem;
+          margin-top: 2rem;
+          flex-wrap: wrap;
+        }
+
+        .cc98-btn {
+          padding: 0.7rem 1.5rem;
+          font-size: 0.92rem;
+          font-weight: bold;
+          border-radius: var(--cc98-radius-pill);
+          cursor: pointer;
+          transition: var(--cc98-transition);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          border: none;
+        }
+
+        .btn-publish {
+          background-color: var(--primary-color);
+          color: white;
+          flex: 1;
+          min-width: 150px;
+          box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-publish:hover:not(:disabled) {
+          background-color: var(--accent-color);
+          color: #333;
+          transform: translateY(-1px);
+        }
+
+        .btn-draft {
+          background-color: #f39c12;
+          color: white;
+          flex: 1;
+          min-width: 150px;
+          box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-draft:hover:not(:disabled) {
+          background-color: #e67e22;
+          transform: translateY(-1px);
+        }
+
+        .btn-cancel {
+          background-color: transparent;
+          color: var(--text-muted);
+          border: 1px solid var(--border-color);
+          padding: 0.7rem 2rem;
+        }
+
+        .btn-cancel:hover:not(:disabled) {
+          background-color: var(--quote-bg);
+          color: var(--text-main);
+        }
+
+        .cc98-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      `}</style>
     </div>
   );
 }

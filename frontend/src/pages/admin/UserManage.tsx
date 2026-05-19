@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminGetUsers, adminBanUser, adminUnbanUser, type AdminUser } from '../../api/admin';
+import { adminGetUsers, adminBanUser, adminUnbanUser } from '../../api/admin';
 import { queryKeys } from '../../lib/queryKeys';
 
 /**
@@ -20,7 +20,7 @@ export default function UserManage() {
 
   // 封禁用户的 mutation
   const banMutation = useMutation({
-    mutationFn: ({ userId, username }: { userId: number; username: string }) =>
+    mutationFn: ({ userId }: { userId: number; username: string }) =>
       adminBanUser(userId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() });
@@ -33,7 +33,7 @@ export default function UserManage() {
 
   // 解封用户的 mutation
   const unbanMutation = useMutation({
-    mutationFn: ({ userId, username }: { userId: number; username: string }) =>
+    mutationFn: ({ userId }: { userId: number; username: string }) =>
       adminUnbanUser(userId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() });

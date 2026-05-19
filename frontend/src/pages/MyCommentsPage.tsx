@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getMyComments } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
-import { formatDate } from '../utils/formatDate';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 /**
- * 我的评论页面
+ * CC98 风格的我的回复/评论页面
  */
 export default function MyCommentsPage() {
   const { user } = useAuth();
@@ -18,58 +18,130 @@ export default function MyCommentsPage() {
     enabled: !!user,
   });
 
+  const formatTime = (timeStr: string) => {
+    return timeStr.replace('T', ' ').split('.')[0] || timeStr;
+  };
+
   return (
-    <div className="container" style={{ maxWidth: '900px', padding: '2rem' }}>
-      <button onClick={() => navigate('/dashboard')} className="btn" style={{ marginBottom: '1rem' }}>
-        &larr; 返回 Dashboard
-      </button>
+    <div className="cc98-my-comments-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
+      {/* 1. 面包屑 */}
+      <Breadcrumbs 
+        items={[
+          { label: '首页', href: '/' },
+          { label: '个人中心', href: '/dashboard' },
+          { label: '我的回复' }
+        ]} 
+      />
 
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <h1 style={{ marginBottom: '1rem' }}>💬 我的评论</h1>
-
-        {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '1rem', color: '#999' }}>加载中...</div>
-        ) : error ? (
-          <div className="error-message" role="alert">
-            {(error as any)?.response?.data?.message || '加载失败'}
-          </div>
-        ) : myComments.length === 0 ? (
-          <div className="empty-state">你还没有发表过评论</div>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {myComments.map((c) => (
-              <li
-                key={c.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/posts/${c.postId}`)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    navigate(`/posts/${c.postId}`);
-                  }
-                }}
-                style={{
-                  padding: '0.75rem 0',
-                  borderBottom: '1px solid #eee',
-                  cursor: 'pointer'
-                }}
-                aria-label={`查看评论对应帖子：${c.postTitle}`}
-              >
-                <div style={{ fontSize: '0.95rem', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {c.content}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <span style={{ marginRight: '0.5rem' }}>
-                    <time dateTime={c.createdAt}>{formatDate(c.createdAt)}</time>
-                  </span>
-                  <span>来自：{c.postTitle}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="cc98-btn btn-publish"
+          style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+        >
+          <i className="fa fa-chevron-left"></i> 返回 Dashboard
+        </button>
       </div>
+
+      {/* 2. 主体 Panel */}
+      <div className="cc98-panel-classic col-a">
+        <div className="cc98-panel-title">
+          <i className="fa fa-comments-o"></i> 我的回复评论历史 ({myComments.length} 条)
+        </div>
+        <div className="cc98-panel-body" style={{ padding: '0.5rem 0' }}>
+          {isLoading ? (
+            <div className="loading-state">载入回复历史数据中...</div>
+          ) : error ? (
+            <div className="error-state">获取回复列表失败</div>
+          ) : myComments.length === 0 ? (
+            <div className="empty-state">你还没有发表过任何评论回复</div>
+          ) : (
+            <ul className="cc98-dashboard-list">
+              {myComments.map((c) => (
+                <li key={c.id} onClick={() => navigate(`/posts/${c.postId}`)}>
+                  <div className="item-title comment-text">{c.content}</div>
+                  <div className="item-meta">
+                    <span>回复时间: {formatTime(c.createdAt)}</span>
+                    <span>·</span>
+                    <span className="source-topic">来自：{c.postTitle}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        .cc98-panel-classic {
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          background-color: var(--card-bg);
+          box-shadow: var(--cc98-shadow);
+          overflow: hidden;
+        }
+
+        .cc98-panel-classic.col-a {
+          border-top: 6px solid var(--cc98-alt-color-a);
+        }
+
+        .cc98-panel-title {
+          padding: 0.85rem 1.5rem;
+          font-weight: bold;
+          font-size: 1.05rem;
+          color: var(--text-main);
+          border-bottom: 1px solid var(--border-color);
+          background-color: var(--quote-bg);
+        }
+
+        .cc98-panel-body {
+          background-color: var(--card-bg);
+        }
+
+        .cc98-dashboard-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .cc98-dashboard-list li {
+          padding: 1rem 1.5rem;
+          border-bottom: 1px dashed var(--border-color);
+          cursor: pointer;
+          transition: var(--cc98-transition);
+        }
+
+        .cc98-dashboard-list li:hover {
+          background-color: var(--quote-bg);
+        }
+
+        .item-title.comment-text {
+          font-weight: normal;
+          font-size: 0.95rem;
+          color: var(--text-main);
+          line-height: 1.5;
+        }
+
+        .item-meta {
+          font-size: 0.78rem;
+          color: var(--text-muted);
+          display: flex;
+          gap: 0.4rem;
+          margin-top: 0.4rem;
+        }
+
+        .source-topic {
+          font-weight: bold;
+          color: var(--primary-color);
+        }
+
+        .loading-state, .error-state, .empty-state {
+          padding: 3rem 1.5rem;
+          text-align: center;
+          color: var(--text-muted);
+          font-size: 0.9rem;
+        }
+      `}</style>
     </div>
   );
 }

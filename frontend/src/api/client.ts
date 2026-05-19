@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { mockRequestAdapter } from './mockDb';
 
 /**
  * Axios client configuration
@@ -14,10 +15,13 @@ const client = axios.create({
 });
 
 /**
- * Request interceptor - auto-attach JWT token
+ * Request interceptor - auto-attach JWT token and override adapter for mock
  */
 client.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    if (localStorage.getItem('use_mock') === 'true') {
+      config.adapter = mockRequestAdapter as any;
+    }
     const token = localStorage.getItem('access_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -67,6 +71,14 @@ function processQueue(error: unknown, token: string | null) {
 client.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    // Detect server offline / connection error and fallback to mock mode
+    if ((error.code === 'ERR_NETWORK' || !error.response) && localStorage.getItem('use_mock') !== 'true') {
+      localStorage.setItem('use_mock', 'true');
+      window.dispatchEvent(new Event('mock-mode-changed'));
+      window.location.reload();
+      return new Promise(() => {}); // Keep request pending during reload
+    }
+
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // Only attempt refresh for 401 errors on non-auth endpoints

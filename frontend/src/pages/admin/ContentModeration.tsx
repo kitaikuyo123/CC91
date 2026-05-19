@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminGetPosts, adminUpdatePostStatus, adminDeletePost, adminDeleteComment, type Post } from '../../api/admin';
+import { adminGetPosts, adminUpdatePostStatus, adminDeletePost } from '../../api/admin';
 import { queryKeys } from '../../lib/queryKeys';
 
 /**
@@ -62,14 +62,6 @@ export default function ContentModeration() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'PUBLISHED': return '已发布';
-      case 'DRAFT': return '草稿';
-      case 'DELETED': return '已删除';
-      default: return status;
-    }
-  };
 
   return (
     <div>

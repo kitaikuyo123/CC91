@@ -85,3 +85,7 @@ build/
 tmp/
 temp/
 *.tmp
+
+frontend1/
+.playwright-mcp/
+plan/
