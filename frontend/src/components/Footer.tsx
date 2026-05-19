@@ -46,9 +46,9 @@ export default function Footer() {
 
         {/* 3. Copyright info */}
         <div className="cc98-footer-copyright">
-          <p>&copy; {new Date().getFullYear()} CC91 论坛 - CC98 美术重构版. 版权所有.</p>
+          <p>&copy; {new Date().getFullYear()} CC91 论坛. 版权所有.</p>
           <p style={{ marginTop: '0.25rem', fontSize: '0.75rem', opacity: 0.6 }}>
-            Powered by React + Spring Boot. 求是学子的精神家园.
+            Powered by React + Spring Boot.
           </p>
         </div>
       </div>

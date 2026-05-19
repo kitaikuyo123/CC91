@@ -79,12 +79,12 @@ export default function ProfileEditPage() {
   return (
     <div className="cc98-editor-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
       {/* 1. 面包屑 */}
-      <Breadcrumbs 
+      <Breadcrumbs
         items={[
           { label: '版面列表', href: '/' },
           { label: '个人中心', href: '/dashboard' },
           { label: '修改资料设置' }
-        ]} 
+        ]}
       />
 
       {/* 2. 编辑卡片 */}

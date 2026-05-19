@@ -37,9 +37,9 @@ export default function HomePage() {
     queryFn: () => getPostList(0, 50),
   });
 
-  // 计算热门帖子（按浏览量排序）
+  // 计算热门帖子（按浏览量排序，取前6个）
   const hotPosts = morePostsData?.content
-    ? [...morePostsData.content].sort((a, b) => b.viewCount - a.viewCount).slice(0, 8)
+    ? [...morePostsData.content].sort((a, b) => b.viewCount - a.viewCount).slice(0, 6)
     : [];
 
   const recentPosts = recentPostsData?.content || [];
@@ -49,20 +49,6 @@ export default function HomePage() {
   if (isLoading) {
     return (
       <div className="cc98-home-page container">
-        {/* Welcome Banner */}
-        <div className="cc98-welcome-hero" style={{ 
-          marginBottom: '1.5rem', 
-          border: '1px solid var(--border-color)', 
-          borderRadius: 'var(--cc98-radius)', 
-          padding: '1.5rem', 
-          backgroundColor: 'var(--card-bg)', 
-          backgroundImage: 'linear-gradient(to right, var(--primary-color), var(--cc98-alt-color-a))', 
-          color: 'white',
-          boxShadow: 'var(--cc98-shadow)'
-        }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>CC91 论坛</h1>
-          <p style={{ margin: '0.5rem 0 0 0', opacity: 0.9, fontSize: '0.9rem' }}>一个现代化的技术交流社区</p>
-        </div>
         <div style={{ textAlign: 'center', padding: '5rem 0' }}>
           <div className="spinner"></div>
           <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入 CC91 社区，请稍候...</p>
@@ -73,20 +59,6 @@ export default function HomePage() {
 
   return (
     <div className="cc98-home-page container">
-      {/* Welcome Banner */}
-      <div className="cc98-welcome-hero" style={{ 
-        marginBottom: '1.5rem', 
-        border: '1px solid var(--border-color)', 
-        borderRadius: 'var(--cc98-radius)', 
-        padding: '1.5rem', 
-        backgroundColor: 'var(--card-bg)', 
-        backgroundImage: 'linear-gradient(to right, var(--primary-color), var(--cc98-alt-color-a))', 
-        color: 'white',
-        boxShadow: 'var(--cc98-shadow)'
-      }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>CC91 论坛</h1>
-        <p style={{ margin: '0.5rem 0 0 0', opacity: 0.9, fontSize: '0.9rem' }}>一个现代化的技术交流社区</p>
-      </div>
 
       {/* 1. 全站公告 */}
       <AnnouncementPanel announcements={mockAnnouncements} />
@@ -97,13 +69,13 @@ export default function HomePage() {
           {/* 版块区域 */}
           <section style={{ marginBottom: '2.5rem' }}>
             <div className="cc98-section-title-external">
-              <i className="fa fa-th-large" style={{ color: 'var(--cc98-alt-color-b)' }}></i> 讨论版块
+              <i className="fa fa-th-large" style={{ color: 'var(--cc98-alt-color-a)' }}></i> 讨论版块
             </div>
             <div className="cc98-board-grid">
               {categories.map((category) => (
-                <BoardCard 
-                  key={category.id} 
-                  category={category} 
+                <BoardCard
+                  key={category.id}
+                  category={category}
                   onClick={(id) => navigate(`/category/${id}`)}
                 />
               ))}
@@ -136,7 +108,7 @@ export default function HomePage() {
                         {index + 1}
                       </span>
                       <div className="cc98-hot-detail">
-                        <a 
+                        <a
                           href={`/posts/${post.id}`}
                           onClick={(e) => { e.preventDefault(); navigate(`/posts/${post.id}`); }}
                           className="cc98-hot-link"
@@ -167,27 +139,31 @@ export default function HomePage() {
         }
 
         .cc98-home-grid {
-          display: flex;
-          gap: 1.75rem;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.25rem;
           align-items: flex-start;
         }
 
         .cc98-home-main-col {
-          flex: 1;
+          grid-column: span 2;
           min-width: 0;
         }
 
         .cc98-home-sidebar-col {
-          width: 280px;
-          flex-shrink: 0;
+          grid-column: span 1;
+          min-width: 0;
         }
 
         @media (max-width: 992px) {
           .cc98-home-grid {
-            flex-direction: column;
+            grid-template-columns: 1fr;
+          }
+          .cc98-home-main-col {
+            grid-column: span 1;
           }
           .cc98-home-sidebar-col {
-            width: 100%;
+            grid-column: span 1;
           }
         }
 
@@ -204,7 +180,7 @@ export default function HomePage() {
 
         .cc98-board-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          grid-template-columns: 1fr 1fr;
           gap: 1.25rem;
         }
 
@@ -228,8 +204,7 @@ export default function HomePage() {
 
         .cc98-sidebar-box-classic {
           border: 1px solid var(--border-color);
-          border-top: 8px solid #fb6165;
-          border-radius: 4px;
+          border-radius: var(--cc98-radius);
           background-color: var(--card-bg);
           box-shadow: var(--cc98-shadow);
           overflow: hidden;

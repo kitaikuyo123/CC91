@@ -102,12 +102,12 @@ export default function PostDetailPage() {
   return (
     <div className="cc98-topic-page container" style={{ marginTop: '1.5rem' }}>
       {/* 1. 面包屑导航 */}
-      <Breadcrumbs 
+      <Breadcrumbs
         items={[
           { label: '版面列表', href: '/' },
           { label: post.categoryName || '讨论板块', href: post.categoryId ? `/category/${post.categoryId}` : undefined },
           { label: `阅读: ${post.title}` }
-        ]} 
+        ]}
       />
 
       {/* 2. 主题标题卡片 */}
@@ -120,14 +120,14 @@ export default function PostDetailPage() {
         </div>
 
         <div className="action-area" style={{ display: 'flex', gap: '0.5rem' }}>
-          <button 
+          <button
             className="cc98-fav-toggle-btn"
             onClick={() => navigate('/posts')}
             title="返回帖子列表"
           >
             <i className="fa fa-arrow-left"></i> 返回列表
           </button>
-          <button 
+          <button
             className={`cc98-fav-toggle-btn ${isFavorited ? 'favorited' : ''}`}
             onClick={handleFavoriteToggle}
             title={isFavorited ? '从收藏夹中移除' : '收藏此贴'}
@@ -149,7 +149,7 @@ export default function PostDetailPage() {
         <PostCard
           id={post.id}
           authorUsername={post.authorUsername}
-          floor="楼主"
+          floor="1楼"
           content={post.content}
           createdAt={post.createdAt}
           updatedAt={post.updatedAt}
@@ -162,9 +162,9 @@ export default function PostDetailPage() {
       </div>
 
       {/* 4. 评论楼层区域 */}
-      <CommentSection 
-        postId={postId} 
-        commentCount={post.commentCount} 
+      <CommentSection
+        postId={postId}
+        commentCount={post.commentCount}
         topicAuthorUsername={post.authorUsername}
       />
 

@@ -53,7 +53,6 @@ export default function PostCard({
   const reputation = (hash % 45) + 3;
   const gender = hash % 2 === 0 ? 'male' : 'female';
   const avatar = hash % 3 === 0 ? studentAvatar : catAvatar;
-  const level = hash % 3 === 0 ? '晨光曦微' : hash % 3 === 1 ? '求是之子' : '风云巨擘';
   const signature = hash % 2 === 0 ? '行百里者半九十，心之所向素履以往。' : '浙大求是人，纵横天地间！ 🌟';
 
   // Support local likes/dislikes since the real backend doesn't save them
@@ -135,8 +134,8 @@ export default function PostCard({
               {authorUsername}
             </SafeLink>
           </div>
-          
-          <div className="cc98-user-level-badge">{level}</div>
+
+
 
           <div className="cc98-user-stats">
             <div className="cc98-stat-line">
@@ -287,7 +286,7 @@ export default function PostCard({
           width: 175px;
           background-color: var(--primary-color);
           color: rgba(255, 255, 255, 0.9);
-          padding: 1.25rem 0.5rem;
+          padding: 1.25rem 1.0rem;
           display: flex;
           flex-direction: row;
           justify-content: space-between;
@@ -335,18 +334,7 @@ export default function PostCard({
           text-align: left;
         }
 
-        .cc98-user-level-badge {
-          background-color: rgba(255, 255, 255, 0.2);
-          color: white;
-          font-size: 0.65rem;
-          padding: 0.05rem 0.35rem;
-          border-radius: 4px;
-          margin-bottom: 0.5rem;
-          max-width: 100%;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
+        
 
         .cc98-gender-badge {
           position: absolute;

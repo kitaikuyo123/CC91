@@ -58,7 +58,7 @@ export default function TopicTable({ posts = [] }: TopicTableProps) {
     <table className="cc98-topic-list">
       <thead className="cc98-tl-header">
         <tr>
-          <th className="cc98-tl-cell cc98-tl-status" style={{ width: '45px' }}>状态</th>
+          <th className="cc98-tl-cell cc98-tl-status" style={{ width: '45px' }}></th>
           <th className="cc98-tl-cell cc98-tl-title">主题标题</th>
           <th className="cc98-tl-cell cc98-tl-author" style={{ width: '130px' }}>作者</th>
           <th className="cc98-tl-cell cc98-tl-stats" style={{ width: '120px' }}>回复/点击</th>
@@ -115,7 +115,6 @@ export default function TopicTable({ posts = [] }: TopicTableProps) {
 
               {/* 3. Author info */}
               <td className="cc98-tl-cell cc98-tl-author">
-                <span>作者:</span>
                 <Link to={`/profile/${post.authorUsername}`} className="cc98-author-link">
                   {post.authorUsername}
                 </Link>
@@ -131,7 +130,7 @@ export default function TopicTable({ posts = [] }: TopicTableProps) {
                 </span>
                 <span className="cc98-stat-divider">/</span>
                 <span className="cc98-stat-badge cc98-stat-views" title="阅读量">
-                  <span>浏览: {viewCount}</span>
+                  {viewCount}
                 </span>
               </td>
 

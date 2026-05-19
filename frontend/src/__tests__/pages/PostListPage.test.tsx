@@ -117,9 +117,8 @@ describe('PostListPage', () => {
       render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getAllByText('作者:').length).toBeGreaterThan(0);
         expect(screen.getByText('user1')).toBeInTheDocument();
-        expect(screen.getByText('浏览: 100')).toBeInTheDocument();
+        expect(screen.getByText('100')).toBeInTheDocument();
       });
     });
 

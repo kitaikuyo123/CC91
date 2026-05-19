@@ -262,7 +262,7 @@ export default function Header() {
           position: absolute;
           top: 0;
           left: 0;
-          background: rgba(57, 70, 118, 0.72) !important;
+          background: var(--cc98-alt-color-a); !important;
           backdrop-filter: blur(10px);
           border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         }

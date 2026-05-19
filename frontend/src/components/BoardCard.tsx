@@ -60,6 +60,7 @@ export default function BoardCard({ category, onClick }: BoardCardProps) {
           transition: var(--cc98-transition);
           position: relative;
           box-shadow: var(--cc98-shadow);
+          min-width: 0;
         }
         
         .cc98-board-card:hover {

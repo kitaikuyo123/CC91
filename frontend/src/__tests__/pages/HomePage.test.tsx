@@ -70,22 +70,6 @@ describe('HomePage', () => {
     },
   ];
 
-  describe('Page header', () => {
-    it('should render forum title and description', () => {
-      vi.mocked(categoryApi.getCategories).mockResolvedValue(mockCategories);
-      vi.mocked(postApi.getPostList).mockResolvedValue({
-        content: mockPosts,
-        totalElements: 2,
-        totalPages: 1,
-      } as any);
-
-      render(<HomePage />, { wrapper: createWrapper() });
-
-      expect(screen.getByText('CC91 论坛')).toBeInTheDocument();
-      expect(screen.getByText('一个现代化的技术交流社区')).toBeInTheDocument();
-    });
-  });
-
   describe('Categories section', () => {
     it('should display categories list', async () => {
       vi.mocked(categoryApi.getCategories).mockResolvedValue(mockCategories);

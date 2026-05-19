@@ -70,16 +70,15 @@ export default function ProfilePage() {
   const hash = hashCode(profile.username);
   const defaultAvatar = hash % 3 === 0 ? studentAvatar : catAvatar;
   const avatar = profile.avatarUrl || defaultAvatar;
-  const level = hash % 3 === 0 ? '晨光曦微' : hash % 3 === 1 ? '求是之子' : '风云巨擘';
 
   return (
     <div className="cc98-profile-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
       {/* 1. 面包屑 */}
-      <Breadcrumbs 
+      <Breadcrumbs
         items={[
           { label: '讨论区', href: '/' },
           { label: `用户 @${profile.username} 的名片` }
-        ]} 
+        ]}
       />
 
       {/* 2. 主体个人卡片 */}
@@ -103,7 +102,7 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-            <div className="profile-user-level">{level}</div>
+
             <div className="profile-meta-stats">
               <div className="stat-line">
                 <span>注册时间:</span>
@@ -240,15 +239,7 @@ export default function ProfilePage() {
           border-radius: 50%;
         }
 
-        .profile-user-level {
-          margin-top: 1rem;
-          background-color: var(--primary-color);
-          color: white;
-          font-size: 0.78rem;
-          font-weight: bold;
-          padding: 0.15rem 0.65rem;
-          border-radius: var(--cc98-radius-pill);
-        }
+        
 
         .profile-meta-stats {
           margin-top: 1.5rem;
