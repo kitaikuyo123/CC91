@@ -12,6 +12,11 @@ spring:
       hibernate.dialect: org.hibernate.dialect.H2Dialect
   flyway:
     enabled: false
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
 
 jwt:
   secret: test-secret-key-for-testing-purposes-only
@@ -29,3 +34,5 @@ account:
 app:
   dev-data:
     enabled: false
+  mail:
+    console-log-only: true
