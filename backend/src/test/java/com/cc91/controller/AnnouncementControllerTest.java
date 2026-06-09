@@ -100,6 +100,7 @@ class AnnouncementControllerTest {
         // Arrange
         User user = createTestUser("author1");
         Announcement announcement = new Announcement("测试公告", "测试内容", user.getId());
+        announcement.setAuthor(user);
         announcement.setIsPinned(true);
         announcement = announcementRepository.saveAndFlush(announcement);
 
@@ -110,7 +111,7 @@ class AnnouncementControllerTest {
                 .andExpect(jsonPath("$.title").value("测试公告"))
                 .andExpect(jsonPath("$.content").value("测试内容"))
                 .andExpect(jsonPath("$.isPinned").value(true))
-                .andExpect(jsonPath("$.authorUsername").exists())
+                .andExpect(jsonPath("$.authorUsername").value(user.getUsername()))
                 .andExpect(jsonPath("$.createdAt").exists());
     }
 
@@ -145,7 +146,7 @@ class AnnouncementControllerTest {
                 .andExpect(jsonPath("$.message").value("公告创建成功"))
                 .andExpect(jsonPath("$.data.title").value("新公告"))
                 .andExpect(jsonPath("$.data.content").value("新内容"))
-                .andExpect(jsonPath("$.data.authorUsername").exists())
+                .andExpect(jsonPath("$.data.authorUsername").value("admin_user"))
                 .andExpect(jsonPath("$.data.isPinned").value(false))
                 .andExpect(jsonPath("$.data.id").exists())
                 .andExpect(jsonPath("$.data.createdAt").exists());

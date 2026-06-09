@@ -101,6 +101,7 @@ class AnnouncementServiceTest {
         // Arrange
         User user = createTestUser();
         Announcement announcement = new Announcement("测试公告", "测试内容", user.getId());
+        announcement.setAuthor(user);  // 显式设置关联，避免一级缓存返回 author=null
         announcement.setIsPinned(true);
         announcement = announcementRepository.saveAndFlush(announcement);
 
@@ -114,7 +115,7 @@ class AnnouncementServiceTest {
         assertEquals("测试内容", dto.getContent());
         assertTrue(dto.getIsPinned());
         assertEquals(user.getId(), dto.getAuthorId());
-        assertNotNull(dto.getAuthorUsername());
+        assertEquals(user.getUsername(), dto.getAuthorUsername());
         assertNotNull(dto.getCreatedAt());
     }
 
@@ -145,7 +146,7 @@ class AnnouncementServiceTest {
         assertEquals("新公告", dto.getTitle());
         assertEquals("新内容", dto.getContent());
         assertEquals(user.getId(), dto.getAuthorId());
-        assertNotNull(dto.getAuthorUsername());
+        assertEquals(user.getUsername(), dto.getAuthorUsername());
         assertFalse(dto.getIsPinned());
         assertNotNull(dto.getCreatedAt());
     }
