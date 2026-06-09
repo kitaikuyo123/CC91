@@ -64,11 +64,14 @@ class PostServiceTest {
     @Test
     @Transactional
     void createPost_ValidRequest_CreatesPost() {
-        // Arrange: 创建一个用户
+        // Arrange: 创建一个用户和版块
         User user = new User("author", "author@example.com", passwordEncoder.encode("password123"));
         userRepository.saveAndFlush(user);
 
-        CreatePostRequest request = new CreatePostRequest("测试标题", "测试内容");
+        Category category = new Category("技术讨论", "技术相关话题", 1);
+        categoryRepository.saveAndFlush(category);
+
+        CreatePostRequest request = new CreatePostRequest("测试标题", "测试内容", category.getId());
 
         // Act: 创建帖子
         PostResponse result = postService.createPost("author", request);
@@ -93,8 +96,11 @@ class PostServiceTest {
 
     @Test
     void createPost_UserNotExists_ThrowsResourceNotFoundException() {
-        // Arrange: 准备创建请求（用户不存在）
-        CreatePostRequest request = new CreatePostRequest("标题", "内容");
+        // Arrange: 创建版块（categoryId 必填，否则 existsById(null) 抛异常）
+        Category category = new Category("技术讨论", "技术相关话题", 1);
+        categoryRepository.saveAndFlush(category);
+
+        CreatePostRequest request = new CreatePostRequest("标题", "内容", category.getId());
 
         // Act & Assert: 用户不存在抛出异常
         ResourceNotFoundException exception = assertThrows(

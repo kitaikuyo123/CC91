@@ -77,16 +77,20 @@ class PostControllerTest {
     @WithMockUser(username = "author")
     @Transactional
     void createPost_Authenticated_ReturnsCreatedPost() throws Exception {
-        // Arrange: 创建用户
+        // Arrange: 创建用户和版块
         User user = new User("author", "author@example.com", passwordEncoder.encode("password123"));
         userRepository.save(user);
+
+        Category category = new Category("技术讨论", "技术相关话题", 1);
+        categoryRepository.saveAndFlush(category);
 
         String requestBody = """
             {
                 "title": "测试标题",
-                "content": "测试内容"
+                "content": "测试内容",
+                "categoryId": %d
             }
-            """;
+            """.formatted(category.getId());
 
         // Act & Assert: 认证用户可以创建帖子
         mockMvc.perform(post("/api/posts")
@@ -103,13 +107,17 @@ class PostControllerTest {
     @Test
     @WithMockUser(username = "nonexistent")
     void createPost_UserNotExists_Returns404() throws Exception {
-        // Arrange: 用户不存在
+        // Arrange: 创建版块（categoryId 必填，否则 @NotNull 校验先触发 400）
+        Category category = new Category("技术讨论", "技术相关话题", 1);
+        categoryRepository.saveAndFlush(category);
+
         String requestBody = """
             {
                 "title": "标题",
-                "content": "内容"
+                "content": "内容",
+                "categoryId": %d
             }
-            """;
+            """.formatted(category.getId());
 
         // Act & Assert: 用户不存在返回 404
         mockMvc.perform(post("/api/posts")
