@@ -5,6 +5,7 @@ import com.cc91.dto.UpdateUserProfileRequest;
 import com.cc91.dto.UserProfileDTO;
 import com.cc91.entity.User;
 import com.cc91.entity.UserProfile;
+import com.cc91.exception.BadRequestException;
 import com.cc91.repository.UserRepository;
 import com.cc91.repository.UserProfileRepository;
 import jakarta.persistence.EntityManager;
@@ -256,57 +257,76 @@ class UserServiceTest {
 
     @Test
     @Transactional
-    void changePassword_OldPasswordCorrect_Success() {
-        // Arrange: 创建一个用户
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("oldPassword123"));
-        userRepository.saveAndFlush(user);
+    void changePassword_CorrectOldPassword_Success() {
+        // Arrange: 创建用户，记录旧密码哈希
+        String oldPassword = "oldPassword123";
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode(oldPassword));
+        user = userRepository.saveAndFlush(user);
+        String oldHash = user.getPasswordHash();
 
         ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setOldPassword("oldPassword123");
+        request.setOldPassword(oldPassword);
         request.setNewPassword("newPassword456");
 
-        // Act: 修改密码
+        // Act
         userService.changePassword("testuser", request);
 
-        // Assert: 验证新密码已生效
-        User updatedUser = userRepository.findByUsername("testuser").orElseThrow();
+        // Assert: 密码哈希已变更
+        User updatedUser = userRepository.findById(user.getId()).orElseThrow();
+        assertNotEquals(oldHash, updatedUser.getPasswordHash());
         assertTrue(passwordEncoder.matches("newPassword456", updatedUser.getPasswordHash()));
-        assertFalse(passwordEncoder.matches("oldPassword123", updatedUser.getPasswordHash()));
     }
 
     @Test
     @Transactional
-    void changePassword_OldPasswordWrong_ThrowsBadRequest() {
+    void changePassword_WrongOldPassword_ThrowsBadRequestException() {
         // Arrange
         User user = new User("testuser", "test@example.com", passwordEncoder.encode("correctPassword"));
         userRepository.saveAndFlush(user);
 
         ChangePasswordRequest request = new ChangePasswordRequest();
         request.setOldPassword("wrongPassword");
-        request.setNewPassword("newPassword456");
+        request.setNewPassword("newPassword123");
 
-        // Act & Assert: 旧密码错误抛出异常
-        Exception exception = assertThrows(RuntimeException.class,
+        // Act & Assert
+        BadRequestException ex = assertThrows(BadRequestException.class,
                 () -> userService.changePassword("testuser", request));
-        assertEquals("旧密码不正确", exception.getMessage());
+        assertEquals("旧密码不正确", ex.getMessage());
     }
 
     @Test
     @Transactional
-    void changePassword_NewPasswordTooShort_SuccessRegardless() {
-        // Arrange: 密码长度验证由 DTO @Size(min=6) 处理，Service 层不二次校验
-        User user = new User("testuser", "test@example.com", passwordEncoder.encode("password123"));
+    void changePassword_UserNotExists_ThrowsRuntimeException() {
+        // Arrange
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setOldPassword("anyPassword");
+        request.setNewPassword("newPassword123");
+
+        // Act & Assert
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> userService.changePassword("nonexistent", request));
+        assertEquals("用户不存在", ex.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void changePassword_ShortNewPassword_SuccessAtServiceLevel() {
+        // 注：新密码长度校验 (@Size(min=6)) 通过 @Valid 在 controller 层触发，
+        // service 层不做此校验，短密码在 service 层能成功修改。
+        // Arrange
+        String oldPassword = "oldPassword123";
+        User user = new User("testuser", "test@example.com", passwordEncoder.encode(oldPassword));
         userRepository.saveAndFlush(user);
 
         ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setOldPassword("password123");
-        request.setNewPassword("short");
+        request.setOldPassword(oldPassword);
+        request.setNewPassword("ab");  // 仅 2 位，太短
 
-        // Act: Service 层不做长度校验，DTO 层在 Controller 通过 @Valid 触发
-        userService.changePassword("testuser", request);
+        // Act & Assert: service 层不校验长度，不会抛异常
+        assertDoesNotThrow(() -> userService.changePassword("testuser", request));
 
-        // Assert: 密码已更新（短密码通过 Service 但在 Controller 层会被 @Valid 拦截）
-        User updatedUser = userRepository.findByUsername("testuser").orElseThrow();
-        assertTrue(passwordEncoder.matches("short", updatedUser.getPasswordHash()));
+        // 验证密码确实被修改了
+        User updatedUser = userRepository.findById(user.getId()).orElseThrow();
+        assertTrue(passwordEncoder.matches("ab", updatedUser.getPasswordHash()));
     }
 }
