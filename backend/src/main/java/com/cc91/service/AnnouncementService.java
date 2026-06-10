@@ -70,6 +70,7 @@ public class AnnouncementService {
                 request.getContent(),
                 author.getId()
         );
+        announcement.setAuthor(author);  // 设置关联以支持 toDTO 直接读取 username，避免 lazy-loading 失败
         if (request.getIsPinned() != null) {
             announcement.setIsPinned(request.getIsPinned());
         }
