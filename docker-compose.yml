@@ -84,8 +84,6 @@ services:
         condition: service_healthy
       mysql:
         condition: service_healthy
-      content-service:
-        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
       interval: 10s
@@ -113,8 +111,6 @@ services:
         condition: service_healthy
       mysql:
         condition: service_healthy
-      content-service:
-        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
       interval: 10s
@@ -142,8 +138,6 @@ services:
         condition: service_healthy
       mysql:
         condition: service_healthy
-      content-service:
-        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health"]
       interval: 10s

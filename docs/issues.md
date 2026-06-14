@@ -12,7 +12,4 @@
 
 ## 未完成功能
 
-### I-01 docker-compose 冗余依赖链
-- [ ] **优先级**: P2
-- **观察**: `docker-compose.yml` 中 `user-service`/`forum-service`/`notification-service` 的 `depends_on: content-service: service_started` 是冗余依赖——这三个服务的 Java 源码无任何对 content-service 的引用（已 Grep 确认）。
-- **处置**: 本次保留以避免启动顺序风险；后续如需加快冷启动可移除这 3 处依赖，Feign 断路器已配置可应对瞬时不可用。
+_当前无未完成项。_
