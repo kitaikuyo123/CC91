@@ -10,20 +10,25 @@
 
 ### 0.1 环境启动
 
-```bash
-# 1. 启动后端微服务（按提示选择 0 = 全部启动）
-start-microservices.bat
+> 推荐 Docker 一键启动（9 个容器：MySQL + Eureka + Gateway + 6 业务服务 + Prometheus + Grafana + 前端 Nginx）。
 
-# 2. 启动前端
-cd frontend && npm run dev
+```bash
+# 推荐：Docker Compose 一键启动
+cp .env.example .env       # 配置 DB_PASSWORD / JWT_SECRET 等
+docker compose up -d --build
+docker compose ps          # 等待所有容器 healthy（约 1-2 分钟）
 ```
+
+如需本地无 Docker 启动（IDE 调试场景），参考 [`env-setup.md`](env-setup.md)。
 
 验证清单（全部打勾后再进入正式验收）：
 
-- [ ] Eureka 控制台 http://localhost:8761 可访问，7 个服务已注册
+- [ ] Eureka 控制台 http://localhost:8761 可访问，**7 个服务已注册**（Gateway + User + Forum + Notification + Content + File + 自身）
 - [ ] Gateway http://localhost:9000 可访问
-- [ ] 前端 http://localhost:5173 可访问
+- [ ] 前端 http://localhost:3001 可访问（Docker 模式）；本地 Vite 模式为 5173
 - [ ] MySQL 数据库连接正常，`cc91_db` 存在且有数据
+- [ ] Prometheus http://localhost:19090 可访问（指标采集）
+- [ ] Grafana http://localhost:3000 可访问（监控仪表盘）
 
 ### 0.2 准备演示数据
 
@@ -133,7 +138,7 @@ cd frontend && npm run dev
 |----------|-----------------|----------|
 | JWT 无状态认证 | A07 | 展示 Token payload、刷新/撤销机制 |
 | RBAC 权限控制 | A01 | 普通用户访问 admin API 返回 403 |
-| 账户锁定（5 次失败后锁定 30min） | A07 | 连续输错密码演示锁定效果 |
+| 账户锁定（连续失败触发，阈值由后端配置控制） | A07 | 连续输错密码演示锁定效果 |
 | bcrypt 密码哈希 | A02 | 展示数据库中密码是哈希值而非明文 |
 | HTML 消毒（DOMPurify + 后端 HtmlSanitizer） | A03 | 发帖内容插入 `<script>alert('xss')</script>` 被过滤 |
 | CORS 白名单 | A05 | 展示 SecurityConfig 中 CORS 配置 |
@@ -178,20 +183,35 @@ cd frontend && npm run dev
 
 ### 3.1 运行压力测试
 
+> **现场演示推荐配置**：30 并发 / 每场景 10 秒，总耗时约 85 秒，8 场景全部 100% 成功。
+>
+> 完整基线（50 并发 / 15 秒）见 `docs/stress-test/stress-test-report.md`。
+
 ```bash
-# 确保后端已启动，然后运行
-python docs/stress-test/stress_test.py --base-url http://localhost:9000 --concurrency 50 --duration 15
+# 现场演示参数（推荐）
+python docs/stress-test/stress_test.py \
+  --base-url http://localhost:9000 \
+  --concurrency 30 --duration 10 \
+  --output docs/stress-test/stress_test_result.json
+
+# 完整基线参数（演示前预跑用，耗时约 2.5 分钟）
+python docs/stress-test/stress_test.py \
+  --base-url http://localhost:9000 \
+  --concurrency 50 --duration 15 \
+  --output docs/stress-test/stress_test_result.json
 ```
 
 ### 3.2 展示已有测试报告
 
-打开 `docs/stress-test/stress-test-report.md`，讲解 6 个场景的结果：
+打开 `docs/stress-test/stress-test-report.md`，讲解 8 个场景的结果：
 
 | 场景 | 关注指标 | 说明要点 |
 |------|----------|----------|
 | 只读基准 | RPS, P99 | 公开接口无认证开销，展示吞吐基线 |
-| 单接口极限 | 各接口独立 RPS | 对比不同接口性能差异 |
-| 认证压力 | 登录 RPS | JWT 签发是 CPU 密集操作，展示认证瓶颈 |
+| 单接口极限 - /categories | 独立 RPS | 字典类接口性能 |
+| 单接口极限 - /posts | 独立 RPS | 万级数据下分页查询性能 |
+| 单接口极限 - /announcements | 独立 RPS | 通常吞吐最高（数据量小） |
+| 认证压力 | 登录 RPS | BCrypt 是 CPU 密集操作，展示认证瓶颈 |
 | 读写混合（80/20） | 稳定性 | 模拟真实使用场景 |
 | 并发写入 | 成功率 | 展示数据一致性保证 |
 | 帖子详情+评论 | 延迟 | 复杂查询性能 |
@@ -200,7 +220,8 @@ python docs/stress-test/stress_test.py --base-url http://localhost:9000 --concur
 
 - 使用 Python 标准库（无第三方依赖），展示工程简洁性
 - 结果输出包含 RPS、平均延迟、P50/P90/P95/P99、状态码分布
-- 强调：50 并发下 P99 < 100ms，满足校园论坛场景需求
+- **30 并发演示配置**：所有场景 100% 成功，P99 < 2.2s（登录因 BCrypt 计算密集是最慢场景）
+- **50 并发完整基线**：暴露尾延迟尖刺（少数请求达 30s 超时），说明系统容量边界
 
 ---
 
@@ -212,7 +233,7 @@ python docs/stress-test/stress_test.py --base-url http://localhost:9000 --concur
 
 ```
                          ┌──────────┐
-                         │  前端 SPA │  :5173
+                         │  前端 SPA │  :3001 (Docker) / :5173 (Vite)
                          └─────┬────┘
                                │
                          ┌─────▼────┐
@@ -241,7 +262,7 @@ python docs/stress-test/stress_test.py --base-url http://localhost:9000 --concur
 
 | 展示内容 | 操作 |
 |----------|------|
-| 服务注册发现 | 打开 http://localhost:8761，展示 7 个已注册服务 |
+| 服务注册发现 | 打开 http://localhost:8761，展示 7 个已注册实例（Gateway + 6 业务服务） |
 | Gateway 路由 | 展示 Gateway 配置文件中的路由规则 |
 | 服务间调用 | 讲解 Feign Client 的使用（如 Forum Service 调用 User Service 获取作者信息） |
 | 健康检查 | 访问 `http://localhost:8081/actuator/health` 展示健康状态 |
@@ -256,13 +277,15 @@ python docs/stress-test/stress_test.py --base-url http://localhost:9000 --concur
 
 ### 4.4 部署方式
 
-说明当前部署方案：
-- 开发环境：`start-microservices.bat` + `start-frontend.bat`
-- 每个服务独立 Spring Boot 进程
-- 通过 Eureka 实现服务发现，Gateway 统一入口
+说明当前部署方案（详见 [`docker-deployment-guide.md`](docker-deployment-guide.md)）：
 
-> **注意**：项目当前未配置 Docker（无 Dockerfile / docker-compose），属于后续优化项。
-> 如需在验收中展示 Docker 化，可现场补充或作为路线图说明。
+- **推荐：Docker Compose 一键启动 9 个容器**
+  - `docker compose up -d --build` 启动全部服务
+  - 多阶段构建镜像，最终镜像基于轻量 JRE/Alpine
+  - healthcheck 保证启动顺序（MySQL/Eureka 就绪后才启动下游）
+  - 容器自动重启（`restart: unless-stopped`）
+- **本地无 Docker 启动**（IDE 调试场景）：`start-microservices.bat` + `start-frontend.bat`，参考 [`env-setup.md`](env-setup.md)
+- **服务治理**：Eureka 实现服务发现，Gateway 统一入口，OpenFeign 服务间调用
 
 ---
 
@@ -297,8 +320,8 @@ gh pr list --state merged --limit 10
 
 | 指标 | 数据 | 说明 |
 |------|------|------|
-| 总提交数 | 170+ | `git log --oneline --all \| wc -l` |
-| 贡献者数 | 15 人 | `git shortlog -sn --all` |
+| 总提交数 | 156（当前分支） / 198（全分支） | `git log --oneline \| wc -l` |
+| 贡献者数 | 11 人 | `git shortlog -sn --all` |
 | 功能分支数 | 10+ 个 feat/ 分支 | 展示功能拆分粒度 |
 | PR 合并数 | 5+ 个已合并 PR | `gh pr list --state merged` |
 
@@ -323,7 +346,7 @@ gh pr list --state merged --limit 10
 |------|----------|----------|
 | 前端单元测试 | 46 个测试文件 | `cd frontend && npx vitest run` |
 | 后端单元测试 | Controller/Service/Repository 层 | `cd microservices && mvn test` |
-| 压力测试 | 6 场景 | `python docs/stress-test/stress_test.py` |
+| 压力测试 | 8 场景 | `python docs/stress-test/stress_test.py` |
 | 安全审查 | OWASP Top 10 | 展示 `security-audit.md` |
 
 ---
@@ -332,15 +355,15 @@ gh pr list --state merged --limit 10
 
 ### 6.1 总结陈述模板
 
-> CC91 论坛系统是一个基于 **Spring Boot 微服务架构**的校园论坛平台，包含 7 个微服务 + API 网关 + 服务注册中心。
+> CC91 论坛系统是一个基于 **Spring Boot 微服务架构**的校园论坛平台，包含 6 个业务微服务 + API 网关 + 服务注册中心，并通过 Docker Compose 实现一键部署。
 >
 > **功能方面**：实现了用户认证、帖子管理、评论互动、通知系统、管理后台等完整的论坛功能闭环。
 >
-> **安全方面**：按照 OWASP Top 10 标准进行了全面安全审查，包含 JWT 认证、RBAC 权限、XSS 防护、账户锁定等。
+> **安全方面**：按照 OWASP Top 10 标准进行了全面安全审查，包含 JWT 认证、RBAC 权限、XSS 双层防护、账户锁定等。
 >
-> **性能方面**：50 并发压力测试下，只读接口 P99 延迟 < 100ms，读写混合场景稳定运行。
+> **性能方面**：30 并发 / 10 秒演示压测下，8 个场景全部 100% 成功，P99 < 2.2s；50 并发完整基线见压测报告。
 >
-> **工程方面**：团队 15 人协作，170+ 次提交，conventional commits 规范，PR 审查流程，完整文档体系。
+> **工程方面**：团队 11 人协作，156 次提交，conventional commits 规范，PR 审查流程，完整文档体系。
 
 ### 6.2 可能的提问与应对
 
@@ -349,11 +372,12 @@ gh pr list --state merged --limit 10
 | 为什么选择微服务架构？ | 独立部署/扩展、技术异构性、故障隔离、团队分工 |
 | 微服务间如何通信？ | Feign 声明式 HTTP 客户端 + Eureka 服务发现 |
 | 如何保证数据一致性？ | 每个服务独立数据源，通过 API 保证最终一致性 |
-| 性能瓶颈在哪？ | 认证接口（JWT 签发是 CPU 密集型），可通过缓存 Token 优化 |
-| 安全方面最关键的措施？ | JWT 无状态认证 + RBAC + XSS 双层防护 + 环境变量管理密钥 |
+| 性能瓶颈在哪？ | 登录接口（BCrypt 密码校验是 CPU 密集型，30 并发下 P99 约 2s）+ 帖子列表分页查询（万级数据下偶发尾延迟）。优化方向：Redis 缓存 Token / 复合索引 / 异步化浏览量更新 |
+| 安全方面最关键的措施？ | JWT 无状态认证 + RBAC + XSS 双层防护（DOMPurify + HtmlSanitizer）+ 环境变量管理密钥 |
 | 如果用户量增长 10 倍怎么办？ | Gateway 层负载均衡、数据库读写分离、缓存热点数据、按服务独立扩容 |
-| 为什么不用 Docker？ | 开发阶段优先保证功能完整，Docker 化是部署阶段的自然演进 |
-| 测试策略是什么？ | 分层测试：单元测试覆盖核心逻辑，压力测试验证性能，安全审查覆盖攻击面 |
+| 为什么选择 Docker 部署？ | 一键启动 9 个容器、环境隔离、healthcheck 保证启动顺序、版本可移植、易于扩缩容 |
+| 微服务间如何保证一致性？ | 当前共享数据库（DB-per-Service 过渡形态），通过 API 保证最终一致性；未来可引入 Saga |
+| 测试策略是什么？ | 分层测试：单元测试覆盖核心逻辑（JUnit 5 + Vitest），集成测试覆盖 API，压力测试验证性能，安全审查覆盖 OWASP 攻击面 |
 
 ---
 
@@ -362,9 +386,9 @@ gh pr list --state merged --limit 10
 ```
 环境准备
   [ ] MySQL 运行中，cc91_db 有数据
-  [ ] 全部 7 个微服务启动成功
-  [ ] Eureka 控制台显示 7 个注册实例
-  [ ] 前端可正常访问
+  [ ] 全部 9 个容器启动成功（docker compose ps 全 healthy）
+  [ ] Eureka 控制台显示 7 个注册实例（Gateway + 6 业务服务）
+  [ ] 前端可正常访问（http://localhost:3001 Docker 或 5173 Vite）
 
 功能演示
   [ ] 注册 + 邮箱验证
