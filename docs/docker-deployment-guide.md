@@ -371,6 +371,6 @@ docker compose logs -f gateway
 - [文档导航](docs-index.md)
 - [微服务设计文档](microservices-design.md)
 - [监控设计文档](monitoring-design.md)
-- [环境配置说明](ENV_SETUP.md)
+- [环境配置说明](env-setup.md)
 - [验收指南](acceptance-guide.md)
 - [压力测试报告](stress-test/stress-test-report.md)

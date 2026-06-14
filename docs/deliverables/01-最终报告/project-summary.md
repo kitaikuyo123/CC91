@@ -561,7 +561,7 @@ Gateway + 6 个微服务 + Eureka
 | 文件本地存储 | 低 | 单实例 OK，生产建议迁移 OSS/S3 |
 | 邮件服务依赖 | 低 | 不影响核心功能，控制台可输出验证码 |
 
-详见：`docs/SECURITY_AUDIT.md`
+详见：`docs/security-audit.md`
 
 ---
 
@@ -573,10 +573,10 @@ Gateway + 6 个微服务 + Eureka
 |------|------|------|
 | 微服务设计 | `docs/microservices-design.md` | 拆分策略、通信机制、收益分析 |
 | 监控设计 | `docs/monitoring-design.md` | Prometheus + Grafana 方案 |
-| 安全审查 | `docs/SECURITY_AUDIT.md` | OWASP Top 10 全覆盖审查 |
+| 安全审查 | `docs/security-audit.md` | OWASP Top 10 全覆盖审查 |
 | 压力测试报告 | `docs/stress-test/stress-test-report.md` | 8 场景性能数据 |
 | API 参考 | `docs/api-reference.md` | 接口文档 |
-| 环境搭建 | `docs/ENV_SETUP.md` | 本地开发环境指南 |
+| 环境搭建 | `docs/env-setup.md` | 本地开发环境指南 |
 | 验收指南 | `docs/acceptance-guide.md` | 答辩/验收操作指南 |
 | Docker 部署 | `docs/docker-deployment-guide.md` | 容器化一键部署 |
 

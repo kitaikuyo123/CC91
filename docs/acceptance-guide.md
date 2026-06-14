@@ -2,7 +2,7 @@
 
 > 适用场景：项目答辩 / 课程验收 / 交付评审
 > 预计时长：60–90 分钟（含 Q&A）
-> 前置准备：按 `docs/ENV_SETUP.md` 启动全部服务
+> 前置准备：按 `docs/env-setup.md` 启动全部服务
 
 ---
 
@@ -170,7 +170,7 @@ cd frontend && npm run dev
 
 ### 2.5 安全审查报告
 
-展示 `docs/SECURITY_AUDIT.md`，说明已按 OWASP Top 10 全覆盖审查。
+展示 `docs/security-audit.md`，说明已按 OWASP Top 10 全覆盖审查。
 
 ---
 
@@ -311,9 +311,9 @@ gh pr list --state merged --limit 10
 | `project-summary.md` / `report.pdf` | 项目总结（21 页 PDF 主报告） |
 | `microservices-design.md` | 微服务拆分设计 v2.0 |
 | `api-reference.md` | API 接口文档 |
-| `SECURITY_AUDIT.md` | 安全审查报告 |
+| `security-audit.md` | 安全审查报告 |
 | `stress-test/stress-test-report.md` | 压力测试报告 |
-| `ENV_SETUP.md` | 环境搭建指南 |
+| `env-setup.md` | 环境搭建指南 |
 | `docker-deployment-guide.md` | Docker 一键部署 |
 | `issues.md` | 问题跟踪 |
 
@@ -324,7 +324,7 @@ gh pr list --state merged --limit 10
 | 前端单元测试 | 46 个测试文件 | `cd frontend && npx vitest run` |
 | 后端单元测试 | Controller/Service/Repository 层 | `cd microservices && mvn test` |
 | 压力测试 | 6 场景 | `python docs/stress-test/stress_test.py` |
-| 安全审查 | OWASP Top 10 | 展示 `SECURITY_AUDIT.md` |
+| 安全审查 | OWASP Top 10 | 展示 `security-audit.md` |
 
 ---
 

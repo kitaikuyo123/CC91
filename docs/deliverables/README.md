@@ -33,14 +33,14 @@ docs/deliverables/
 ├── 05-设计与架构/                  # 设计文档
 │   ├── microservices-design.md     # 微服务架构（取代旧 architecture.md）
 │   ├── monitoring-design.md
-│   ├── SECURITY_AUDIT.md
+│   ├── security-audit.md
 │   ├── api-reference.md
 │   ├── docker-deployment-guide.md
 │   └── acceptance-guide.md
 └── 06-部署与运行/                  # 一键部署所需
     ├── docker-compose.yml
     ├── .env.example
-    ├── ENV_SETUP.md
+    ├── env-setup.md
     ├── build.ps1
     └── monitoring/                 # Prometheus + Grafana 配置
 ```
@@ -51,7 +51,7 @@ docs/deliverables/
 
 1. **`01-最终报告/CC91-项目总结报告.pdf`** — 项目全貌，覆盖功能、技术、流程、5 维度分析
 2. **`05-设计与架构/microservices-design.md`** — 微服务拆分策略与收益
-3. **`05-设计与架构/SECURITY_AUDIT.md`** — OWASP Top 10 全覆盖
+3. **`05-设计与架构/security-audit.md`** — OWASP Top 10 全覆盖
 4. **`04-测试报告/stress-test/stress-test-report.md`** — 万级数据下 8 场景压测
 5. **`02-智能体配置/CLAUDE.md`** — AI 协作协议（5 阶段工作流）
 

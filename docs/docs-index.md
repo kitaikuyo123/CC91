@@ -22,7 +22,7 @@
 | 验收指南 | 面向验收人员的功能和流程检查说明 | [acceptance-guide.md](acceptance-guide.md) |
 | Docker 部署与验收指南 | 一键部署、容器服务、端口、健康检查、常见问题 | [docker-deployment-guide.md](docker-deployment-guide.md) |
 | API 参考 | 后端接口、请求参数、响应结构 | [api-reference.md](api-reference.md) |
-| 安全审查报告 | OWASP Top 10、安全措施、残留风险 | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) |
+| 安全审查报告 | OWASP Top 10、安全措施、残留风险 | [security-audit.md](security-audit.md) |
 | 单元测试报告 | 后端 Service/Security 与前端组件/Context 测试结果 | [unit-test-report.md](unit-test-report.md) |
 | 集成测试报告 | 后端 Controller/API 与前端页面级测试结果 | [integration-test-report.md](integration-test-report.md) |
 | 压力测试报告 | 性能压测结果、场景数据、总体结论 | [stress-test/stress-test-report.md](stress-test/stress-test-report.md) |
@@ -42,7 +42,7 @@
 
 | 文档 | 作用 | 链接 |
 |------|------|------|
-| 环境配置说明 | 环境变量、数据库、邮件、JWT 等配置说明 | [ENV_SETUP.md](ENV_SETUP.md) |
+| 环境配置说明 | 环境变量、数据库、邮件、JWT 等配置说明 | [env-setup.md](env-setup.md) |
 | Docker 部署与验收指南 | Docker Compose 启动、检查、清理、故障排查 | [docker-deployment-guide.md](docker-deployment-guide.md) |
 | Docker Compose 配置 | 实际容器编排文件 | [../docker-compose.yml](../docker-compose.yml) |
 | 环境变量模板 | Docker 和本地运行所需变量模板 | [../.env.example](../.env.example) |
@@ -57,7 +57,7 @@
 | 压力测试问题与优化建议 | 登录瓶颈、尾延迟、缓存和异步化建议 | [stress-test/stress-test-issues-and-optimization.md](stress-test/stress-test-issues-and-optimization.md) |
 | 单元测试报告 | 后端单元级用例结果、覆盖范围和修复记录 | [unit-test-report.md](unit-test-report.md) |
 | 集成测试报告 | 集成级用例结果、接口/页面覆盖范围 | [integration-test-report.md](integration-test-report.md) |
-| 安全审查报告 | 安全检查项、已修复问题、部署前安全建议 | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) |
+| 安全审查报告 | 安全检查项、已修复问题、部署前安全建议 | [security-audit.md](security-audit.md) |
 | 问题记录 | 项目问题和处理记录 | [issues.md](issues.md) |
 
 ---
@@ -84,7 +84,7 @@
 7. [unit-test-report.md](unit-test-report.md)
 8. [integration-test-report.md](integration-test-report.md)
 9. [stress-test/stress-test-report.md](stress-test/stress-test-report.md)
-10. [SECURITY_AUDIT.md](SECURITY_AUDIT.md)
+10. [security-audit.md](security-audit.md)
 
 ---
 
