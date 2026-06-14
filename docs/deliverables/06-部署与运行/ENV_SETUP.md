@@ -2,6 +2,12 @@
 
 > 本文档指导开发者在 Windows / macOS / Linux 环境下搭建 CC91 论坛系统的本地开发环境。
 
+> ⚠️ **Docker 是推荐的运行方式**
+>
+> 如果你只想运行 / 验收项目，请直接看 [`docker-deployment-guide.md`](docker-deployment-guide.md)——一条 `docker compose up -d --build` 启动 9 个容器（MySQL + Eureka + Gateway + 6 个业务服务 + Prometheus + Grafana），无需在宿主机安装 JDK/Maven/MySQL。
+>
+> **本文档仅用于本地无 Docker 开发场景**（例如需要在 IDE 里逐服务调试、热重载、单步断点）。前端在本地 Vite 模式下默认端口是 5173；Docker 模式下前端映射到 3001。
+
 ---
 
 ## 1. 环境要求
@@ -217,14 +223,17 @@ EXIT;
 | `INTERNAL_TOKEN` | 是 | 微服务间内部通信令牌 | 随机字符串 |
 | `MAIL_USERNAME` | 否 | QQ 邮箱账号（不配置则邮件功能不可用） | `your@qq.com` |
 | `MAIL_PASSWORD` | 否 | QQ 邮箱 SMTP 授权码 | `xxxxxxxxxxxx` |
-| `CORS_ALLOWED_ORIGINS` | 否 | 允许的前端域名（逗号分隔），默认 `http://localhost:5173,http://localhost:3000` | `http://localhost:5173` |
+| `CORS_ORIGINS` | 否 | 允许的前端域名（逗号分隔），默认 `http://localhost:5173` | `http://localhost:5173,http://localhost:3001` |
 
 > **注意**：`JWT_SECRET` 和 `INTERNAL_TOKEN` 是必须配置的环境变量。请使用足够长且随机的字符串作为密钥。
 > 可以使用以下命令生成随机密钥：`openssl rand -base64 48`
 
 ---
 
-## 6. 启动步骤
+## 6. 启动步骤（本地无 Docker）
+
+> 这是本地开发启动方式，需要先按第 2~4 节在宿主机装好 JDK/Maven/Node/MySQL。
+> Docker 用户请直接看 [`docker-deployment-guide.md`](docker-deployment-guide.md)。
 
 ### 6.1 启动微服务后端
 
