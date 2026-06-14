@@ -308,14 +308,13 @@ gh pr list --state merged --limit 10
 
 | 文档 | 内容 |
 |------|------|
-| `architecture.md` | 系统架构设计 |
+| `project-summary.md` / `report.pdf` | 项目总结（21 页 PDF 主报告） |
 | `microservices-design.md` | 微服务拆分设计 v2.0 |
 | `api-reference.md` | API 接口文档 |
 | `SECURITY_AUDIT.md` | 安全审查报告 |
-| `stress-test-report.md` | 压力测试报告 |
+| `stress-test/stress-test-report.md` | 压力测试报告 |
 | `ENV_SETUP.md` | 环境搭建指南 |
-| `gap-analysis.md` | 差距分析 |
-| `final-iteration-plan.md` | 最终迭代计划 |
+| `docker-deployment-guide.md` | Docker 一键部署 |
 | `issues.md` | 问题跟踪 |
 
 ### 5.4 测试覆盖

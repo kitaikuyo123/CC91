@@ -1,8 +1,8 @@
 # CC91 校园论坛系统 — 项目总结报告
 
-> **项目周期**：2026 年 3 月 – 2026 年 6 月  
-> **团队规模**：15 人  
-> **代码提交**：170+ commits  
+> **项目周期**：2026 年 4 月 – 2026 年 6 月
+> **团队规模**：11 人
+> **代码提交**：156 commits（当前分支）
 > **版本**：v2.0（微服务架构）
 
 ---
@@ -12,6 +12,18 @@
 CC91 是一个面向校园场景的现代化论坛系统，采用 Spring Boot 微服务架构 + React 19 前端，支持用户认证、帖子管理、评论互动、通知推送、管理后台等完整功能闭环。
 
 经过多轮迭代，项目从单体架构演进为 **7 个微服务 + API 网关 + 服务注册中心** 的分布式系统，并通过 Docker Compose 实现一键部署。
+
+### 1.1 架构演进时间线
+
+| 时间 | 阶段 | 关键产出 |
+|------|------|---------|
+| 2026-04 | 单体基线 | Spring Boot 单体后端 + React 19 前端，用户/资料模块完成（M1/M2） |
+| 2026-04-13 | AI 协作体系建立 | Lead/Developer/QA 三类智能体协议（CLAUDE.md / developer.md / qa.md），4 个 Skills 落地 |
+| 2026-05 | 测试补齐 | 后端 JUnit 5 + MockMvc 单元/集成测试体系，前端 Vitest + RTL 组件测试 |
+| 2026-05-28 | CodeGraph MCP 接入 | 引入代码知识图谱，加速符号搜索与调用链追踪 |
+| 2026-06-09 ~ 06-10 | 微服务拆分 | 单体 → Eureka + Gateway + 6 业务微服务，OpenFeign + Resilience4j 通信 |
+| 2026-06-11 ~ 06-12 | 容器化 | Docker Compose 编排 9 个容器，多阶段构建，healthcheck 启动顺序 |
+| 2026-06-13 ~ 06-14 | 监控与压测 | Prometheus + Grafana + 5 条告警规则，万级数据下 8 场景压测 |
 
 ---
 
@@ -23,7 +35,7 @@ CC91 是一个面向校园场景的现代化论坛系统，采用 Spring Boot �
 |------|------|------|
 | **用户系统** | 注册 / 登录 / 退出 / 邮箱验证 / 密码重置 | ✅ |
 | | JWT 双 Token 机制（Access + Refresh） | ✅ |
-| | 账户锁定（5 次失败锁定 30 分钟） | ✅ |
+| | 账户锁定（多次失败触发，阈值由后端配置控制） | ✅ |
 | | 个人资料编辑、头像上传 | ✅ |
 | **论坛核心** | 版块分类浏览 | ✅ |
 | | 发帖（支持草稿/发布双状态） | ✅ |
@@ -81,45 +93,56 @@ CC91 是一个面向校园场景的现代化论坛系统，采用 Spring Boot �
 | 前端安全 | DOMPurify | XSS 前端层防护 |
 | 后端安全 | HtmlSanitizer + BCrypt | XSS 后端层防护 + 密码哈希 |
 
-### 3.2 智能技术应用（Claude Code + MCP Server）
+### 3.2 智能技术应用（Claude Code + MCP Server + Skills）
 
-本项目在开发过程中深度应用了 AI 辅助开发技术：
+本项目在开发过程中深度应用了 AI 辅助开发技术，形成 "**Agent + MCP + Rules + Skills**" 的完整协作闭环。
 
 #### 3.2.1 Claude Code 作为开发平台
 
-- **角色**：Claude Code 担任项目 Lead，通过 `.claude/CLAUDE.md` 定义完整的工作协议
+- **角色**：Claude Code 担任项目 Lead，通过 `CLAUDE.md` 定义完整的工作协议（团队、5 阶段工作流、审查清单、技术栈声明）
 - **Subagent 体系**：
-  - **Developer Agent**（`.claude/agents/developer.md`）：全栈开发，配备 5 个专业技能（React 最佳实践、Spring Boot 模式、TypeScript 审查、Web 设计规范）
+  - **Lead**（项目根 `CLAUDE.md`）：需求理解、任务拆解、代码审查、最终验收
+  - **Developer Agent**（`.claude/agents/developer.md`）：全栈开发，配备 5 个专业技能
   - **QA Agent**（`.claude/agents/qa.md`）：测试驱动，强制运行测试并输出报告
 - **工作流**：Phase 1 理解规划 → Phase 2 开发 → Phase 3 测试 → Phase 4 审查 → Phase 5 收尾
 
-#### 3.2.2 CodeGraph MCP Server
+#### 3.2.2 MCP Server（Model Context Protocol）
 
-- **用途**：基于 Tree-sitter 的代码知识图谱，提供亚毫秒级符号搜索
-- **实际应用**：
-  - 代码导航：`codegraph_context` 一键获取任务上下文
-  - 调用追踪：`codegraph_trace` 跟踪完整调用链
-  - 影响分析：`codegraph_impact` 评估变更影响范围
-  - 替代传统 grep/read 循环，大幅提升代码理解效率
+MCP 是 Anthropic 提出的开放协议，为 AI 智能体提供连接外部工具和数据源的标准接口。本项目配置的 MCP Server：
 
-#### 3.2.3 技能（Skills）体系
+| MCP Server | 用途 | 实际应用 |
+|-----------|------|---------|
+| **CodeGraph** | 基于 Tree-sitter 的代码知识图谱，提供亚毫秒级符号搜索 | 代码导航（`codegraph_context` 一键获取任务上下文）、调用追踪（`codegraph_trace` 跟踪完整调用链）、影响分析（`codegraph_impact` 评估变更影响范围）。**项目共索引 308 个文件，4284 个符号，6998 条边**，替代传统 grep/read 循环 |
+| **Playwright** | 浏览器自动化 | QA 智能体的 E2E 测试与页面视觉验证，动态决策"点击哪个按钮、检查哪个元素" |
+| **IDE**（executeCode / getDiagnostics） | Jupyter Kernel 执行 + VS Code 诊断 | 在 Jupyter 中执行 Python 压测脚本，获取语言服务器诊断信息 |
 
-项目配置了 7 个专业 Skills：
+**选用依据**：Bash 可以运行预编写脚本，但无法在运行时动态决策。CodeGraph 让 AI 像 IDE 一样理解代码结构（函数→调用者→被调用者→影响范围），Playwright 让 QA 像真人一样"看着页面操作"。文件操作、构建测试、Git 管理等日常任务 Claude Code 内置工具已完全胜任，避免过度工程化。
 
-| Skill | 用途 |
-|-------|------|
-| `java-springboot` | Spring Boot 开发最佳实践 |
-| `springboot-patterns` | 分层架构、REST API 设计模式 |
-| `typescript-react-reviewer` | React 代码审查、反模式识别 |
-| `vercel-react-best-practices` | React 性能优化（60+ 条规则） |
-| `web-design-guidelines` | Web 界面设计规范 |
-| `code-review` | 代码审查（安全 + 代码质量） |
-| `verify` | 手动验证代码变更 |
+#### 3.2.3 规则系统（Rules）
 
-#### 3.2.4 IDE MCP 集成
+规则系统约束 AI 的输出边界和行为规范：
 
-- **executeCode**：在 Jupyter Kernel 中执行 Python 压力测试脚本
-- **getDiagnostics**：获取 VS Code 语言诊断信息
+| 规则文件 | 约束范围 |
+|---------|---------|
+| `CLAUDE.md`（项目根目录） | Lead 智能体的工作协议：团队定义、5 阶段工作流、审查清单、技术栈声明 |
+| `.claude/agents/developer.md` | Developer 智能体行为约束：技术栈、核心职责、工作原则、项目结构约定 |
+| `.claude/agents/qa.md` | QA 智能体行为约束：测试质量红线（禁止测试框架行为、必须测试业务分支）、测试优先级、报告格式 |
+
+**选用依据**：将团队经验固化为可执行约束。例如 QA 规则明确禁止"测试框架行为"（如 `@Valid` 注解、Bean 注入），强制要求"测试业务逻辑分支"（如登录失败计数、账户锁定触发），直接提升测试有效性。
+
+#### 3.2.4 技能（Skills）体系
+
+技能模块将领域最佳实践沉淀为可复用的知识单元。项目配置了 5 个 Skills：
+
+| Skill | 来源 | 用途 |
+|-------|------|------|
+| `java-springboot` | 社区开源 | Spring Boot 最佳实践：项目结构、依赖注入、Web 层、数据层、日志、测试、安全 |
+| `springboot-patterns` | 社区开源（ECC） | Spring Boot 架构模式：REST API 设计、分层服务、DTO、缓存、异步、限流、错误处理、可观测性 |
+| `typescript-react-reviewer` | 社区开源 | TypeScript + React 19 代码审查：反模式检测、状态管理、React 19 Hook 陷阱、类型安全 |
+| `vercel-react-best-practices` | Vercel 官方 | React 性能优化 60+ 条规则：异步瀑布、Bundle 优化、服务端性能、重渲染、渲染策略 |
+| `web-design-guidelines` | 社区开源 | Web 界面设计规范 |
+
+**选用依据**：技能的可组合性使得"一个 Developer 智能体 + 多个 Skills"比"多个 Developer 智能体"更具经济性和可维护性。技能通过 `skills-lock.json` 版本化锁定，保证旧流程可回溯。
 
 ---
 
@@ -131,13 +154,31 @@ CC91 是一个面向校园场景的现代化论坛系统，采用 Spring Boot �
 需求分析 → 任务拆分 → Developer 实现 → QA 测试 → Lead 审查 → Git 提交
 ```
 
-### 4.2 团队角色分工
+更详细的 5 阶段工作流：
 
-| 角色 | 职责 |
-|------|------|
-| **Lead**（Claude Code） | 需求分析、任务分配、代码审查、质量把控、工作流调度 |
-| **Developer** | 全栈实现（Spring Boot + React）、Bug 修复、构建维护 |
-| **QA** | 测试编写与执行、回归验证、测试报告输出 |
+| 阶段 | Lead | Developer | QA |
+|------|------|-----------|-----|
+| Phase 1 理解规划 | 与用户对话、TaskCreate 编排依赖 | — | — |
+| Phase 2 开发 | SendMessage 分配任务（含验收标准） | 阅读现有代码、参考 Skills、实现代码、自测 | — |
+| Phase 3 测试 | SendMessage 分配测试任务 | — | 运行 `mvn test` / `npm test`、按 qa.md 报告格式输出 |
+| Phase 4 审查 | 按审查清单检查（安全/API/错误/质量） | 修复阻断问题 | 补充回归 |
+| Phase 5 收尾 | 确认任务完成、提交变更 | — | — |
+
+### 4.2 团队角色分工（11 人）
+
+| 成员 | 软件工程角色 | 主要职责 | 负责维护的智能体配置 |
+|------|------------|---------|---------------------|
+| 徐哲楷 | 项目负责人 / 产品统筹 | 控制范围、确认里程碑、统一验收口径 | Lead 智能体（CLAUDE.md 协议、审查清单） |
+| 蔡致 | 前端工程师 | 页面结构、路由、表单、交互实现 | Developer + typescript-react-reviewer |
+| 刘一鸣 | 前端工程师 | 状态管理（React Query）、接口联调、错误处理 | Developer + vercel-react-best-practices |
+| 项方灿 | 前端工程师 | 样式系统、响应式适配、可用性优化 | Developer + vercel-react-best-practices |
+| 王建皓 | 后端工程师 | 登录、注册、鉴权、会话管理（Spring Security + JWT） | Developer + springboot-patterns |
+| 李明睿 | 后端工程师 | 帖子、评论、内容治理接口 | Developer + springboot-patterns |
+| 罗新鹏 | 后端工程师 | 数据模型（JPA Entity + Flyway 迁移）、校验与异常处理 | Developer + java-springboot |
+| 朱城弘 | 测试工程师 | 测试用例设计、后端接口测试（JUnit 5 + MockMvc） | QA + qa.md 规则维护 |
+| 陈瑜凡 | 测试工程师 | 前端组件测试（Vitest + RTL）、回归验证 | QA + qa.md 规则维护 |
+| 陈元煦 | DevOps 工程师 | 环境配置、构建发布、数据库运维、Docker 容器化 | 自动化脚本（Maven/npm/Docker） |
+| 王帆 | 安全与审查工程师 | 安全基线审查、代码审查、知识沉淀 | CLAUDE.md 审查清单 + 安全规则 |
 
 ### 4.3 协作机制
 
@@ -151,74 +192,176 @@ CC91 是一个面向校园场景的现代化论坛系统，采用 Spring Boot �
 - **分支策略**：`main` → `develop` → `feat/*` / `fix/*`
 - **提交规范**：Conventional Commits（`feat:` / `fix:` / `refactor:` / `test:` / `docs:` / `chore:`）
 - **PR 流程**：功能分支 → `develop`，通过审查后合并
+- **AI 产物约束**：AI 生成代码必须绑定到具体任务编号，不允许直接合并，必须经过人工确认
 
 ---
 
 ## 五、个人心得体会
 
-### 5.1 成员 A — 后端架构
+> **说明**：本章为 11 位成员的心得占位结构，**具体内容待用户收集齐素材后回填**。
 
-**角色**：后端微服务拆分与架构设计
+### 5.1 徐哲楷 — 项目负责人 / Lead 协议维护
 
-**主要挑战**：
-1. 从单体到微服务的拆分策略选择——需要在"过度拆分"和"拆分不足"之间找到平衡
-2. Spring Cloud 组件版本兼容性问题（Spring Boot 3.2.x vs Spring Cloud 2023.0.x）
-3. 中文编码问题——Alpine 容器缺少 locale 导致 UTF-8 乱码，排查了两天才定位到 `-Dfile.encoding=UTF-8`
-
-**解决方法**：
-- 采用 DDD 限界上下文方法，按业务域逐步拆分，保留共享数据库作为过渡方案
-- 通过 `spring-cloud-dependencies` BOM 统一管理版本，避免手动排依赖冲突
-- 为所有 Dockerfile 添加 locale 和 JVM 编码参数，并在 JDBC URL 中使用 `sessionVariables` 强制 utf8mb4
-
-**收获与反思**：微服务不是银弹。对于 15 人以下团队的中小型项目，共享数据库的"适度微服务"比严格的 Database-per-Service 更务实。关键是把服务边界定义清楚，通信机制设计好，剩下的可以渐进演进。
-
-### 5.2 成员 B — 前端开发
-
-**角色**：React 前端架构与组件开发
+**承担角色**：项目负责人（统筹）+ Lead 智能体协议（CLAUDE.md）维护
 
 **主要挑战**：
-1. React 19 的并发特性（useTransition、useDeferredValue）在论坛场景下的适用性判断
-2. @tanstack/react-query 的缓存策略设计——哪些数据该缓存、缓存多久
-3. 前端 mock 模式与真实后端的切换时机——过早 fallback 导致用户体验差
+> 待补充
 
 **解决方法**：
-- 对高频只读数据（分类列表、公告列表）使用 React Query 默认缓存策略
-- 对用户相关数据（通知、收藏）设置较短的 staleTime
-- 优化 mock fallback 逻辑：从 1 次 500ms 重试改为 5 次指数退避（总计约 15s），避免后端启动期间误切 mock
+> 待补充
 
-**收获与反思**：前端状态管理的关键在于区分"服务端状态"和"客户端状态"。React Query 管理前者，Context/useState 管理后者，两者职责清晰。Mock 模式应该作为最后的兜底，而不是第一个 fallback。
+**收获与反思**：
+> 待补充
 
-### 5.3 成员 C — 测试与质量保障
+---
 
-**角色**：全栈测试编写与质量保障
+### 5.2 蔡致 — 前端工程师（页面结构、路由、表单）
+
+**承担角色**：前端工程师，负责页面结构、路由设计、表单交互；维护 Developer 智能体 + typescript-react-reviewer 技能
 
 **主要挑战**：
-1. 如何编写"高价值"测试——区分业务逻辑测试和框架行为测试
-2. 集成测试中 Flyway 种子数据与业务逻辑的一致性验证
-3. 前端的 navigate 跳转路径断言在 mock 环境下的实现
+> 待补充
 
 **解决方法**：
-- 制定了"测试质量红线"：禁止测试框架行为（@Valid、Bean 注入、DTO getter/setter），必须测试业务执行路径
-- 集成测试使用 H2 内存数据库 + 真实 Flyway 迁移，验证种子数据中的 admin/admin123 能成功登录
-- 前端跳转测试使用 `vi.mock('react-router-dom')` mock navigate 函数，并断言完整目标路径
+> 待补充
 
-**收获与反思**：测试的价值不在于覆盖率数字，而在于是否覆盖了关键业务分支。38 个通过的前端测试中，真正有防御价值的是登录失败路径（用户不存在、密码错误、账户锁定）和权限拦截测试，而非框架注解验证。
+**收获与反思**：
+> 待补充
 
-### 5.4 成员 D — DevOps 与部署
+---
 
-**角色**：Docker 容器化、CI/CD、监控部署
+### 5.3 刘一鸣 — 前端工程师（React Query、接口联调）
+
+**承担角色**：前端工程师，负责状态管理（React Query）、接口联调、错误处理；维护 Developer + vercel-react-best-practices
 
 **主要挑战**：
-1. Alpine 基础镜像的 locale 缺失导致 Java 编码问题
-2. MySQL Connector/J 9.3.0 的 charset 协商行为与旧版不兼容
-3. 服务启动顺序导致 Gateway 503——Gateway 先就绪但后端服务未注册到 Eureka
+> 待补充
 
 **解决方法**：
-- 所有 Dockerfile 添加 `apk add tzdata` + `ENV LANG=en_US.UTF-8` + `-Dfile.encoding=UTF-8`
-- Connector/J 从 9.3.0 降级到 8.4.0 LTS，JDBC URL 用 `sessionVariables` 直接控制 MySQL 会话字符集
-- Gateway 添加 `spring-retry` 依赖 + `loadbalancer.retry.enabled=true` + 5 秒 Eureka 拉取间隔
+> 待补充
 
-**收获与反思**：容器化部署的坑往往不在应用代码本身，而在基础设施层。Alpine 的 locale、JDBC 驱动的版本兼容性、Eureka 的注册延迟——这些问题在本地开发时不会暴露，到 Docker 环境才集中爆发。提前做好基础镜像的标准化和版本锁定非常重要。
+**收获与反思**：
+> 待补充
+
+---
+
+### 5.4 项方灿 — 前端工程师（样式、响应式、可用性）
+
+**承担角色**：前端工程师，负责样式系统、响应式适配、可用性优化；维护 Developer + vercel-react-best-practices
+
+**主要挑战**：
+> 待补充
+
+**解决方法**：
+> 待补充
+
+**收获与反思**：
+> 待补充
+
+---
+
+### 5.5 王建皓 — 后端工程师（鉴权、会话）
+
+**承担角色**：后端工程师，负责登录、注册、鉴权、会话管理（Spring Security + JWT）；维护 Developer + springboot-patterns
+
+**主要挑战**：
+> 待补充
+
+**解决方法**：
+> 待补充
+
+**收获与反思**：
+> 待补充
+
+---
+
+### 5.6 李明睿 — 后端工程师（帖子、评论、治理）
+
+**承担角色**：后端工程师，负责帖子、评论、内容治理接口；维护 Developer + springboot-patterns
+
+**主要挑战**：
+> 待补充
+
+**解决方法**：
+> 待补充
+
+**收获与反思**：
+> 待补充
+
+---
+
+### 5.7 罗新鹏 — 后端工程师（数据建模、Flyway）
+
+**承担角色**：后端工程师，负责数据模型（JPA Entity + Flyway 迁移）、校验与异常处理；维护 Developer + java-springboot
+
+**主要挑战**：
+> 待补充
+
+**解决方法**：
+> 待补充
+
+**收获与反思**：
+> 待补充
+
+---
+
+### 5.8 朱城弘 — 测试工程师（后端 JUnit 5 + MockMvc）
+
+**承担角色**：测试工程师，负责测试用例设计、后端接口测试（JUnit 5 + MockMvc）；维护 QA 智能体 + qa.md 规则
+
+**主要挑战**：
+> 待补充
+
+**解决方法**：
+> 待补充
+
+**收获与反思**：
+> 待补充
+
+---
+
+### 5.9 陈瑜凡 — 测试工程师（前端 Vitest + RTL）
+
+**承担角色**：测试工程师，负责前端组件测试（Vitest + RTL）、回归验证；维护 QA + qa.md
+
+**主要挑战**：
+> 待补充
+
+**解决方法**：
+> 待补充
+
+**收获与反思**：
+> 待补充
+
+---
+
+### 5.10 陈元煦 — DevOps 工程师（容器化、构建发布）
+
+**承担角色**：DevOps 工程师，负责环境配置、构建发布、数据库运维、Docker 容器化；维护自动化脚本
+
+**主要挑战**：
+> 待补充
+
+**解决方法**：
+> 待补充
+
+**收获与反思**：
+> 待补充
+
+---
+
+### 5.11 王帆 — 安全与审查工程师（OWASP、XSS 防护）
+
+**承担角色**：安全与审查工程师，负责安全基线审查、代码审查、知识沉淀；维护 CLAUDE.md 审查清单 + 安全规则
+
+**主要挑战**：
+> 待补充
+
+**解决方法**：
+> 待补充
+
+**收获与反思**：
+> 待补充
 
 ---
 
@@ -237,24 +380,28 @@ CC91 是一个面向校园场景的现代化论坛系统，采用 Spring Boot �
 | 并发线程 | 50 |
 | 持续时间 | 15 秒 / 固定请求数（500-1000） |
 | 目标服务 | Gateway (port 9000) |
+| 数据规模 | 10,005 帖 + 90,014 评论 + 16 用户 |
 | 测试脚本 | `docs/stress-test/stress_test.py` |
+| 测试日期 | 2026-06-14 |
 
 #### 6.1.3 测试结果
 
-| 场景 | 成功率 | RPS | 平均延迟 | P99 |
-|------|--------|-----|---------|-----|
-| 只读基准（categories + posts + announcements） | 100% | 33 | 29ms | 70ms |
-| 单接口 GET /api/posts | 100% | 33 | 49ms | 109ms |
-| 认证登录 POST /api/auth/login | 100% | 33 | 662ms | 745ms |
-| 读写混合 80/20 | 100% | 453 | 107ms | 454ms |
-| 并发写入 POST /api/posts | 100% | 724 | 58ms | 114ms |
-| 帖子详情 + 评论 | 100% | 33 | 202ms | 288ms |
+| 场景 | 总请求 | 成功率 | RPS | 平均延迟(ms) | P95(ms) | P99(ms) |
+|------|-------:|------:|-----:|------------:|--------:|--------:|
+| 只读基准（categories + posts + announcements） | 545 | 100% | 34.86 | 1394.18 | 3175.86 | 4234.13 |
+| 单接口 GET /api/categories | 1009 | 100% | 64.83 | 754.96 | 1253.21 | 1809.74 |
+| 单接口 GET /api/posts | 858 | 99.65% | 28.56 | 935.90 | 1326.45 | 1836.19 |
+| 单接口 GET /api/announcements | 2175 | 100% | 143.32 | 343.79 | 669.83 | 955.04 |
+| 认证登录 POST /api/auth/login | 623 | 100% | 39.19 | 1236.72 | 2108.13 | 2386.25 |
+| 读写混合 80/20 | 1000 | 100% | 92.64 | 527.14 | 976.86 | 1811.74 |
+| 并发写入 POST /api/posts | 500 | 100% | 119.92 | 402.43 | 742.50 | 1019.20 |
+| 帖子详情 + 评论 | 1982 | 100% | 129.21 | 380.65 | 574.37 | 757.19 |
 
 #### 6.1.4 瓶颈与优化方向
 
-- **P0 瓶颈**：BCrypt 密码验证（平均 662ms），可通过登录限流 + Redis Session 缓存优化
-- **P1 瓶颈**：帖子详情查询（202ms），因浏览量同步更新 + 评论关联查询，可异步化浏览量更新
-- **优化方向**：引入 Redis 缓存、异步消息队列、数据库连接池调优
+- **P0 瓶颈**：BCrypt 密码验证（平均 1237ms），可通过登录限流 + Redis Session 缓存优化
+- **P1 瓶颈**：帖子列表查询（GET /api/posts），万级数据下出现 3 次 30s 超时，建议为 `posts(status, created_at)` 建立复合索引或引入分页缓存
+- **优化方向**：引入 Redis 缓存（categories、announcements 等字典数据）、异步化浏览量更新、数据库连接池调优
 
 详见：`docs/stress-test/stress-test-report.md`
 
@@ -385,7 +532,7 @@ Gateway + 6 个微服务 + Eureka
 | A04 | 不安全设计 | 无状态 JWT，DTO 与 Entity 分离 | ✅ |
 | A05 | 安全配置错误 | 环境变量管理密钥，无硬编码，CORS 白名单 | ✅ |
 | A06 | 过时组件 | `mvn dependency-check:check` + `npm audit` | ✅ |
-| A07 | 认证失败 | 双 Token 机制，账户锁定（5 次/30min），Refresh Token 撤销 | ✅ |
+| A07 | 认证失败 | 双 Token 机制，账户锁定（多次失败触发），Refresh Token 撤销 | ✅ |
 | A08 | 数据完整性 | Flyway 版本化迁移，数据库 schema 可追溯 | ✅ |
 | A09 | 日志失败 | 异常全量记录，登录失败 WARN 日志 | ✅ |
 | A10 | SSRF | 服务间调用使用内部 API + INTERNAL_TOKEN 认证 | ✅ |
@@ -424,23 +571,23 @@ Gateway + 6 个微服务 + Eureka
 
 | 文档 | 路径 | 说明 |
 |------|------|------|
-| 架构设计 | `docs/architecture.md` | 系统架构、数据模型、路由设计 |
 | 微服务设计 | `docs/microservices-design.md` | 拆分策略、通信机制、收益分析 |
 | 监控设计 | `docs/monitoring-design.md` | Prometheus + Grafana 方案 |
 | 安全审查 | `docs/SECURITY_AUDIT.md` | OWASP Top 10 全覆盖审查 |
-| 压力测试报告 | `docs/stress-test/stress-test-report.md` | 6 场景性能数据 |
+| 压力测试报告 | `docs/stress-test/stress-test-report.md` | 8 场景性能数据 |
 | API 参考 | `docs/api-reference.md` | 接口文档 |
 | 环境搭建 | `docs/ENV_SETUP.md` | 本地开发环境指南 |
 | 验收指南 | `docs/acceptance-guide.md` | 答辩/验收操作指南 |
+| Docker 部署 | `docs/docker-deployment-guide.md` | 容器化一键部署 |
 
 ### 7.2 智能体配置
 
 | 文件 | 说明 |
 |------|------|
-| `.claude/CLAUDE.md` | Lead 工作协议，完整 5 阶段工作流 |
+| `CLAUDE.md` | Lead 工作协议，完整 5 阶段工作流 |
 | `.claude/agents/developer.md` | Developer Agent 配置（技能、职责、自查清单） |
 | `.claude/agents/qa.md` | QA Agent 配置（测试红线、质量标准） |
-| `.claude/settings.json` | 项目级 Claude Code 配置 |
+| `.claude/settings.json` | 项目级 Claude Code 配置（MCP 接入） |
 | `.claude/settings.local.json` | 本地覆盖配置 |
 
 ### 7.3 技能定义
@@ -459,6 +606,9 @@ Gateway + 6 个微服务 + Eureka
 |------|------|
 | `docs/stress-test/stress_test.py` | Python 压力测试脚本（零依赖） |
 | `docs/stress-test/stress_test_result.json` | 压力测试原始数据 |
+| `docs/stress-test/seed_data.sql` | 万级种子数据脚本 |
+| `docs/unit-test-report.md` | 后端单元测试报告 |
+| `docs/integration-test-report.md` | 集成测试报告 |
 | `frontend/src/__tests__/` | 前端 46 个测试文件（Vitest + RTL） |
 | 各服务 `src/test/` | 后端单元测试（JUnit 5 + MockMvc） |
 
@@ -467,7 +617,7 @@ Gateway + 6 个微服务 + Eureka
 | 文件 | 说明 |
 |------|------|
 | `docker-compose.yml` | 9 个容器编排（MySQL + 7 服务 + Prometheus + Grafana） |
-| `.env` | 环境变量（密码、密钥） |
+| `.env` / `.env.example` | 环境变量（密码、密钥） |
 | `scripts/build.ps1` | 一键编译脚本 |
 | `nginx/nginx.conf` | 前端 Nginx 反向代理配置 |
 | `monitoring/` | Prometheus + Grafana 配置 |
@@ -477,9 +627,9 @@ Gateway + 6 个微服务 + Eureka
 ## 八、项目亮点总结
 
 1. **微服务架构落地**：7 个微服务 + Gateway + Eureka，按业务域拆分，服务间通过 OpenFeign + Resilience4j 通信
-2. **智能开发工具链**：Claude Code + CodeGraph MCP Server + 5 个专业 Skills 形成完整 AI 辅助开发体系
+2. **智能开发工具链**：Claude Code + CodeGraph MCP Server + Playwright MCP + 5 个专业 Skills 形成完整 AI 辅助开发体系
 3. **全链路安全防护**：OWASP Top 10 全覆盖，XSS 前后端双重净化，文件上传 5 层校验
 4. **可观测性**：Prometheus + Grafana 全链路监控，5 条告警规则，JVM/HTTP/DB 全维度指标
 5. **容器化部署**：Docker Compose 一键启动 9 个容器，healthcheck 保证启动顺序
-6. **分层测试**：前端 46 个测试文件 + 后端分层测试 + 压力测试 6 场景，关键业务路径全覆盖
+6. **分层测试**：前端 46 个测试文件 + 后端分层测试 + 压力测试 8 场景，关键业务路径全覆盖
 7. **文档体系完整**：架构、安全、性能、验收、API 五大类文档，可交付评审
