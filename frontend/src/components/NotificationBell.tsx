@@ -53,7 +53,11 @@ export default function NotificationBell() {
       markAsReadMutation.mutate(notif.id);
     }
     if (notif.relatedId) {
-      navigate(`/posts/${notif.relatedId}`);
+      if (notif.type === 'ANNOUNCEMENT') {
+        navigate(`/announcements/${notif.relatedId}`);
+      } else {
+        navigate(`/posts/${notif.relatedId}`);
+      }
     }
   };
 

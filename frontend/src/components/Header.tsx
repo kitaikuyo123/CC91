@@ -27,7 +27,7 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
-      const refreshToken = localStorage.getItem('refresh_token');
+      const refreshToken = sessionStorage.getItem('refresh_token');
       if (refreshToken) {
         await apiLogout();
       }

@@ -2,7 +2,6 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ErrorMessage from '../components/ErrorMessage';
-import { useToast } from '../components/Toast';
 import client from '../api/client';
 
 /**
@@ -11,7 +10,6 @@ import client from '../api/client';
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { showToast } = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,12 +18,6 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!username.trim() || !password.trim()) {
-      setError('请输入用户名和密码');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -37,9 +29,9 @@ export default function LoginPage() {
       const { accessToken, refreshToken } = response.data;
 
       // Store tokens FIRST so the axios interceptor can use them
-      localStorage.setItem('access_token', accessToken);
+      sessionStorage.setItem('access_token', accessToken);
       if (refreshToken) {
-        localStorage.setItem('refresh_token', refreshToken);
+        sessionStorage.setItem('refresh_token', refreshToken);
       }
 
       // Now fetch user role and avatar
@@ -50,14 +42,22 @@ export default function LoginPage() {
         userRole = userResponse.data.role || 'USER';
         avatarUrl = userResponse.data.avatarUrl || null;
       } catch (err) {
-        showToast('无法获取用户权限信息，部分功能可能受限，请刷新页面重试', 'error');
+        // If user info fetch fails, default to regular user
+        console.error('Failed to fetch user role', err);
       }
 
       login(username, accessToken, userRole, avatarUrl);
       navigate(`/profile/${username}`);
     } catch (err: any) {
-      const message = err.response?.data?.message || '登录失败，请检查用户名或密码。';
-      setError(message);
+      const status = err.response?.status;
+      const message = err.response?.data?.message;
+      if (status === 403) {
+        setError(message || '该账号已被封禁，如有疑问请联系管理员。');
+      } else if (status === 423) {
+        setError(message || '账号已被临时锁定，请稍后再试。');
+      } else {
+        setError(message || '登录失败，请检查用户名或密码。');
+      }
     } finally {
       setIsLoading(false);
     }

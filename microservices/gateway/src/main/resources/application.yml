@@ -1,0 +1,64 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    loadbalancer:
+      retry:
+        enabled: true
+    gateway:
+      routes:
+        - id: user-content-service
+          uri: lb://forum-service
+          predicates:
+            - Path=/api/users/me/posts, /api/users/me/drafts, /api/users/me/comments, /api/users/me/bookmarks
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**, /api/users/**
+        - id: admin-user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/admin/users/**
+        - id: forum-service
+          uri: lb://forum-service
+          predicates:
+            - Path=/api/posts/**, /api/comments/**, /api/categories/**
+        - id: admin-content-service
+          uri: lb://forum-service
+          predicates:
+            - Path=/api/admin/posts/**, /api/admin/comments/**
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+        - id: content-service
+          uri: lb://content-service
+          predicates:
+            - Path=/api/announcements/**, /api/reports/**, /api/admin/announcements/**, /api/admin/reports/**
+        - id: file-service
+          uri: lb://file-service
+          predicates:
+            - Path=/api/upload/**, /uploads/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,gateway
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    registry-fetch-interval-seconds: 5
+    service-url:
+      defaultZone: http://localhost:8761/eureka/

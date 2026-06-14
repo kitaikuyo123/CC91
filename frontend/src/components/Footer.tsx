@@ -5,35 +5,7 @@ export default function Footer() {
   return (
     <footer className="cc98-footer">
       <div className="container">
-        {/* 1. Statistics Bar */}
-        <div className="cc98-footer-stats">
-          <div className="cc98-stat-item">
-            <span className="stat-label">今日帖数：</span>
-            <span className="stat-value">124</span>
-          </div>
-          <div className="cc98-stat-item">
-            <span className="stat-label">昨日帖数：</span>
-            <span className="stat-value">482</span>
-          </div>
-          <div className="cc98-stat-item">
-            <span className="stat-label">最高日帖数：</span>
-            <span className="stat-value">1,539</span>
-          </div>
-          <div className="cc98-stat-item">
-            <span className="stat-label">论坛主题：</span>
-            <span className="stat-value">1,829</span>
-          </div>
-          <div className="cc98-stat-item">
-            <span className="stat-label">总帖数：</span>
-            <span className="stat-value">38,193</span>
-          </div>
-          <div className="cc98-stat-item">
-            <span className="stat-label">注册会员：</span>
-            <span className="stat-value">9,852 人</span>
-          </div>
-        </div>
-
-        {/* 2. Helpful Links */}
+        {/* 1. Helpful Links */}
         <div className="cc98-footer-links">
           <a href="#about">关于我们</a>
           <span className="cc98-footer-divider">|</span>

@@ -7,7 +7,7 @@ import { mockRequestAdapter } from './mockDb';
  */
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 10000,
 });
 
@@ -16,10 +16,10 @@ const client = axios.create({
  */
 client.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (localStorage.getItem('use_mock') === 'true') {
+    if (sessionStorage.getItem('use_mock') === 'true') {
       config.adapter = mockRequestAdapter as any;
     }
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -75,14 +75,14 @@ client.interceptors.response.use(
   async (error: AxiosError) => {
     // Detect server offline / connection error and fallback to mock mode
     // Retry once after a short delay to avoid false positives from CORS preflight timing
-    if ((error.code === 'ERR_NETWORK' || !error.response) && localStorage.getItem('use_mock') !== 'true') {
+    if ((error.code === 'ERR_NETWORK' || !error.response) && sessionStorage.getItem('use_mock') !== 'true') {
       const config = error.config as InternalAxiosRequestConfig & { _networkRetry?: boolean };
       if (!config._networkRetry) {
         config._networkRetry = true;
         await new Promise((r) => setTimeout(r, 500));
         return client(config);
       }
-      localStorage.setItem('use_mock', 'true');
+      sessionStorage.setItem('use_mock', 'true');
       window.dispatchEvent(new Event('mock-mode-changed'));
       window.location.reload();
       return new Promise(() => {}); // Keep request pending during reload
@@ -115,7 +115,7 @@ client.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const storedRefreshToken = localStorage.getItem('refresh_token');
+        const storedRefreshToken = sessionStorage.getItem('refresh_token');
         if (!storedRefreshToken) {
           throw new Error('No refresh token available');
         }
@@ -129,9 +129,9 @@ client.interceptors.response.use(
         const { accessToken, refreshToken: newRefreshToken } = response.data;
 
         // Store new tokens
-        localStorage.setItem('access_token', accessToken);
+        sessionStorage.setItem('access_token', accessToken);
         if (newRefreshToken) {
-          localStorage.setItem('refresh_token', newRefreshToken);
+          sessionStorage.setItem('refresh_token', newRefreshToken);
         }
 
         // Process queued requests
@@ -154,9 +154,9 @@ client.interceptors.response.use(
 );
 
 function clearTokensAndRedirect() {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('user');
+  sessionStorage.removeItem('access_token');
+  sessionStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('user');
   // Only redirect if not already on login/register pages
   if (!window.location.pathname.startsWith('/login') &&
       !window.location.pathname.startsWith('/register') &&

@@ -15,11 +15,10 @@ describe('Footer', () => {
     expect(screen.getByText(/Powered by React \+ Spring Boot\./)).toBeInTheDocument();
   });
 
-  it('should display forum statistics', () => {
+  it('should display footer links', () => {
     render(<Footer />);
 
-    expect(screen.getByText('今日帖数：')).toBeInTheDocument();
-    expect(screen.getByText('论坛主题：')).toBeInTheDocument();
-    expect(screen.getByText('注册会员：')).toBeInTheDocument();
+    expect(screen.getByText('关于我们')).toBeInTheDocument();
+    expect(screen.getByText('联系管理员')).toBeInTheDocument();
   });
 });

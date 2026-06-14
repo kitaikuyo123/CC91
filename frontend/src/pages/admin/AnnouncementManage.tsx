@@ -5,7 +5,6 @@ import {
   type Announcement, type CreateAnnouncementRequest, type UpdateAnnouncementRequest
 } from '../../api/announcement';
 import ErrorMessage from '../../components/ErrorMessage';
-import ConfirmDialog from '../../components/ConfirmDialog';
 import { queryKeys } from '../../lib/queryKeys';
 
 /**
@@ -23,10 +22,6 @@ export default function AnnouncementManage() {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // 确认对话框状态
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<{ id: number; title: string } | null>(null);
 
   // 使用 React Query 获取公告列表
   const { data: announcements = [], isLoading } = useQuery({
@@ -86,9 +81,9 @@ export default function AnnouncementManage() {
     },
   });
 
-  const handleDelete = (id: number, title: string) => {
-    setConfirmTarget({ id, title });
-    setConfirmOpen(true);
+  const handleDelete = async (id: number, title: string) => {
+    if (!confirm(`确定要删除公告「${title}」吗？`)) return;
+    deleteMutation.mutate(id);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -240,21 +235,6 @@ export default function AnnouncementManage() {
           </table>
         </div>
       </div>
-
-      <ConfirmDialog
-        isOpen={confirmOpen}
-        title="删除公告"
-        message={`确定要删除公告「${confirmTarget?.title ?? ''}」吗？`}
-        variant="danger"
-        onConfirm={() => {
-          setConfirmOpen(false);
-          if (confirmTarget) {
-            deleteMutation.mutate(confirmTarget.id);
-          }
-        }}
-        onCancel={() => setConfirmOpen(false)}
-        isLoading={deleteMutation.isPending}
-      />
     </div>
   );
 }

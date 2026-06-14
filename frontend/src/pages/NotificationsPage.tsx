@@ -31,7 +31,7 @@ export default function NotificationsPage() {
   const markAsReadMutation = useMutation({
     mutationFn: markAsRead,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list(0, 50) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
     },
   });
@@ -40,7 +40,7 @@ export default function NotificationsPage() {
   const markAllAsReadMutation = useMutation({
     mutationFn: markAllAsRead,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list(0, 50) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
     },
   });
@@ -50,7 +50,11 @@ export default function NotificationsPage() {
       markAsReadMutation.mutate(notif.id);
     }
     if (notif.relatedId) {
-      navigate(`/posts/${notif.relatedId}`);
+      if (notif.type === 'ANNOUNCEMENT') {
+        navigate(`/announcements/${notif.relatedId}`);
+      } else {
+        navigate(`/posts/${notif.relatedId}`);
+      }
     }
   };
 

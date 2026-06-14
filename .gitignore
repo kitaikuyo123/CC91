@@ -97,3 +97,9 @@ frontend1/
 plan/
 # Local Claude settings
 .claude/settings.local.json
+
+# Python cache
+__pycache__/
+
+# Stress test output
+stress_test_result.json

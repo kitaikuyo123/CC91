@@ -6,12 +6,12 @@ import { useState, useEffect } from 'react';
  * is running in Mock Mode (backend offline / VITE_USE_MOCK enabled).
  */
 export default function MockBanner() {
-  const [isMock, setIsMock] = useState(localStorage.getItem('use_mock') === 'true');
+  const [isMock, setIsMock] = useState(sessionStorage.getItem('use_mock') === 'true');
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const handleStorageChange = () => {
-      setIsMock(localStorage.getItem('use_mock') === 'true');
+      setIsMock(sessionStorage.getItem('use_mock') === 'true');
     };
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('mock-mode-changed', handleStorageChange);
@@ -22,12 +22,12 @@ export default function MockBanner() {
   }, []);
 
   const handleSwitchToLive = () => {
-    localStorage.removeItem('use_mock');
+    sessionStorage.removeItem('use_mock');
     window.location.reload();
   };
 
   const handleSwitchToMock = () => {
-    localStorage.setItem('use_mock', 'true');
+    sessionStorage.setItem('use_mock', 'true');
     window.location.reload();
   };
 

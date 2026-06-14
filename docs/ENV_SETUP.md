@@ -214,35 +214,61 @@ EXIT;
 | `JWT_SECRET` | 是 | JWT 签名密钥，至少 256 位（32 字节） | 随机字符串 |
 | `JWT_EXPIRATION` | 否 | Token 过期时间（毫秒），默认 `3600000`（1 小时） | `3600000` |
 | `JWT_REFRESH_EXPIRATION` | 否 | 刷新 Token 过期时间（毫秒），默认 `604800000`（7 天） | `604800000` |
+| `INTERNAL_TOKEN` | 是 | 微服务间内部通信令牌 | 随机字符串 |
 | `MAIL_USERNAME` | 否 | QQ 邮箱账号（不配置则邮件功能不可用） | `your@qq.com` |
 | `MAIL_PASSWORD` | 否 | QQ 邮箱 SMTP 授权码 | `xxxxxxxxxxxx` |
 | `CORS_ALLOWED_ORIGINS` | 否 | 允许的前端域名（逗号分隔），默认 `http://localhost:5173,http://localhost:3000` | `http://localhost:5173` |
-| `AVATAR_DIR` | 否 | 头像文件存储目录，默认 `uploads/avatars` | `uploads/avatars` |
-| `SERVER_PORT` | 否 | 后端服务端口，默认 `8080` | `8080` |
 
-> **注意**：`JWT_SECRET` 是必须配置的环境变量。如果未设置，应用将无法启动。请使用足够长且随机的字符串作为密钥。
+> **注意**：`JWT_SECRET` 和 `INTERNAL_TOKEN` 是必须配置的环境变量。请使用足够长且随机的字符串作为密钥。
 > 可以使用以下命令生成随机密钥：`openssl rand -base64 48`
 
 ---
 
 ## 6. 启动步骤
 
-### 6.1 启动后端
+### 6.1 启动微服务后端
 
-确保环境变量已设置，然后执行：
+**方式一：使用启动脚本（推荐）**
+
+双击 `start-microservices.bat`，输入 MySQL 凭据，选择要启动的服务（输入 `0` 启动全部）。
+
+**方式二：手动逐个启动**
+
+每个服务在独立的终端窗口中运行：
 
 ```bash
-cd backend
+# 终端 1: Eureka 注册中心（必须最先启动）
+cd microservices/eureka-server
 mvn spring-boot:run
+
+# 等 Eureka 启动完成后，启动其他服务（可并行）
+# 终端 2: API Gateway
+cd microservices/gateway
+mvn spring-boot:run
+
+# 终端 3~7: 业务服务
+cd microservices/user-service && mvn spring-boot:run
+cd microservices/forum-service && mvn spring-boot:run
+cd microservices/notification-service && mvn spring-boot:run
+cd microservices/content-service && mvn spring-boot:run
+cd microservices/file-service && mvn spring-boot:run
 ```
 
-首次启动时，Flyway 会自动执行数据库迁移脚本（位于 `backend/src/main/resources/db/migration/`），创建所需的全部数据表。
+微服务架构与端口分配：
 
-后端默认运行在 `http://localhost:8080`。
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| Eureka Server | 8761 | 服务注册与发现 |
+| API Gateway | 9000 | 统一入口，路由转发 |
+| User Service | 8081 | 认证、用户管理 |
+| Forum Service | 8082 | 帖子、评论、分类 |
+| Notification Service | 8083 | 通知 |
+| Content Service | 8085 | 公告、举报 |
+| File Service | 8086 | 文件上传 |
 
 ### 6.2 启动前端
 
-新开一个终端窗口：
+双击 `start-frontend.bat` 或手动执行：
 
 ```bash
 cd frontend
@@ -250,13 +276,14 @@ npm install
 npm run dev
 ```
 
-前端默认运行在 `http://localhost:5173`，已配置代理转发 API 请求到后端。
+前端默认运行在 `http://localhost:5173`，Vite 代理已配置将 `/api` 和 `/uploads` 转发到 Gateway (9000)。
 
 ### 6.3 验证服务
 
 - 前端页面：http://localhost:5173
-- 后端 API 基础路径：http://localhost:8080/api
-- 健康检查：http://localhost:8080/api/categories （应返回分类列表 JSON）
+- Eureka 控制台：http://localhost:8761 （查看已注册的服务）
+- Gateway 健康检查：http://localhost:9000/actuator/health
+- API 示例：http://localhost:9000/api/categories （应返回分类列表 JSON）
 
 ---
 
@@ -286,18 +313,20 @@ CREATE DATABASE cc91_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 2. 确认 MySQL 服务正在运行
 3. 在 MySQL 客户端中验证用户名和密码是否正确：`mysql -u root -p`
 
-### JWT Secret 未设置
+### JWT Secret 或 Internal Token 未设置
 
-**现象**：应用启动失败，日志中出现 `JWT_SECRET` 相关错误。
+**现象**：应用启动失败，日志中出现 `JWT_SECRET` 或 `INTERNAL_TOKEN` 相关错误。
 
-**解决方案**：确保设置了 `JWT_SECRET` 环境变量，值至少 32 个字符。
+**解决方案**：确保设置了环境变量。
 
 ```bash
 # Windows
 set JWT_SECRET=your_jwt_secret_at_least_32_characters_long
+set INTERNAL_TOKEN=your_internal_token
 
 # macOS/Linux
 export JWT_SECRET=your_jwt_secret_at_least_32_characters_long
+export INTERNAL_TOKEN=your_internal_token
 ```
 
 ### 前端 matchMedia 报错
@@ -308,20 +337,17 @@ export JWT_SECRET=your_jwt_secret_at_least_32_characters_long
 
 ### 端口被占用
 
-**现象**：启动时报错 `Port 8080 already in use` 或 `Port 5173 already in use`。
+**现象**：启动时报错 `Port xxxx already in use`。
 
-**解决方案**：
-- 后端：设置 `SERVER_PORT` 环境变量使用其他端口
-- 前端：Vite 会自动尝试下一个可用端口（5174, 5175, ...）
-- 或关闭占用端口的进程：
+**解决方案**：关闭占用端口的进程：
 
 ```bash
 # Windows - 查找并关闭占用端口的进程
-netstat -ano | findstr :8080
+netstat -ano | findstr :9000
 taskkill /PID <进程ID> /F
 
 # macOS/Linux
-lsof -ti:8080 | xargs kill -9
+lsof -ti:9000 | xargs kill -9
 ```
 
 ### npm install 失败

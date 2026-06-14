@@ -186,7 +186,7 @@ function getCurrentUser(config: AxiosRequestConfig): { username: string; role: s
     token = authHeader.replace('Bearer ', '');
   } else {
     // Fallback: check localStorage directly
-    token = localStorage.getItem('access_token') || '';
+    token = sessionStorage.getItem('access_token') || '';
   }
 
   if (token && token.startsWith('mock-token-')) {

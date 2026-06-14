@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import SafeLink from './SafeLink';
 import { sanitizeHtml, escapeHtml } from '../utils/sanitize';
-import { useToast } from './Toast';
 import catAvatar from '../assets/cc98_avatar_cat.png';
-import studentAvatar from '../assets/cc98_avatar_student.png';
 
 interface PostCardProps {
   id: number;
@@ -37,15 +35,6 @@ interface PostCardProps {
   onReport?: () => void;
 }
 
-// Generate deterministic hash code for user stats
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash);
-}
-
 /**
  * CC98 经典帖子楼层双栏卡片组件 (绑定真实 API 数据)
  */
@@ -77,56 +66,15 @@ export default function PostCard({
   onReport
 }: PostCardProps) {
   // Deterministic user stats based on username hash
-  const hash = hashCode(authorUsername || 'anon');
-  const postCount = (hash % 850) + 18;
-  const fanCount = hash % 95;
-  const reputation = (hash % 45) + 3;
-  const gender = hash % 2 === 0 ? 'male' : 'female';
-  const avatar = authorAvatarUrl || (hash % 3 === 0 ? studentAvatar : catAvatar);
-  const signature = hash % 2 === 0 ? '行百里者半九十，心之所向素履以往。' : '浙大求是人，纵横天地间！ 🌟';
-
-  // Support local likes/dislikes since the real backend doesn't save them
-  const [localLikes, setLocalLikes] = useState((hash % 12) + 1);
-  const [dislikes, setDislikes] = useState(hash % 3);
-  const [localLiked, setLocalLiked] = useState(false);
-  const [disliked, setDisliked] = useState(false);
-
-  const { showToast } = useToast();
+  const avatar = authorAvatarUrl || catAvatar;
 
   const hasLikeApi = onToggleLike !== undefined;
-  const likes = hasLikeApi ? (likeCount ?? 0) : localLikes;
-  const liked = hasLikeApi ? !!isLikedByCurrentUser : localLiked;
+  const likes = likeCount ?? 0;
+  const liked = !!isLikedByCurrentUser;
 
   const handleLike = () => {
     if (hasLikeApi) {
       onToggleLike?.();
-    } else {
-      if (localLiked) {
-        setLocalLikes(l => l - 1);
-        setLocalLiked(false);
-      } else {
-        setLocalLikes(l => l + 1);
-        setLocalLiked(true);
-        if (disliked) {
-          setDislikes(d => d - 1);
-          setDisliked(false);
-        }
-      }
-    }
-  };
-
-  const handleDislike = () => {
-    // 踩功能仅支持本地模式（无对应后端 API）
-    if (disliked) {
-      setDislikes(d => d - 1);
-      setDisliked(false);
-    } else {
-      setDislikes(d => d + 1);
-      setDisliked(true);
-      if (liked && !hasLikeApi) {
-        setLocalLikes(l => l - 1);
-        setLocalLiked(false);
-      }
     }
   };
 
@@ -179,21 +127,6 @@ export default function PostCard({
           </div>
 
 
-
-          <div className="cc98-user-stats">
-            <div className="cc98-stat-line">
-              <span className="lbl">帖数</span>
-              <span className="val">{postCount}</span>
-            </div>
-            <div className="cc98-stat-line">
-              <span className="lbl">粉丝</span>
-              <span className="val">{fanCount}</span>
-            </div>
-            <div className="cc98-stat-line">
-              <span className="lbl">威望</span>
-              <span className="val">{reputation}</span>
-            </div>
-          </div>
         </div>
 
         {/* Right Column: Avatar and Actions */}
@@ -207,25 +140,9 @@ export default function PostCard({
           </div>
 
           <div className="cc98-sidebar-buttons">
-            <button className="cc98-sidebar-btn" onClick={() => showToast(`关注了 ${authorUsername}`, 'success')}>
-              关注
-            </button>
-            <button className="cc98-sidebar-btn" onClick={() => showToast(`准备私信给 ${authorUsername}`, 'info')}>
-              私信
-            </button>
           </div>
         </div>
 
-        {/* Gender Badge */}
-        {gender === 'male' ? (
-          <span className="cc98-gender-badge male" title="男生">
-            <i className="fa fa-mars"></i>
-          </span>
-        ) : (
-          <span className="cc98-gender-badge female" title="女生">
-            <i className="fa fa-venus"></i>
-          </span>
-        )}
       </div>
 
       {/* 2. Right Content Area */}
@@ -301,15 +218,6 @@ export default function PostCard({
         {/* Nested Comments/Replies Slot */}
         {children}
 
-        {/* Signature */}
-        {signature && (
-          <div className="cc98-post-signature-container">
-            <hr className="cc98-post-signature-divider" />
-            <div className="cc98-post-signature">
-              {signature}
-            </div>
-          </div>
-        )}
 
         {/* Actions (Like, Dislike, Quote Reply, Edit/Delete if authorized) */}
         {!isEditing && (
@@ -335,13 +243,6 @@ export default function PostCard({
               title="赞同此楼发言"
             >
               <i className={`fa ${liked ? 'fa-thumbs-up' : 'fa-thumbs-o-up'}`}></i> 赞 ({likes})
-            </div>
-            <div
-              className={`cc98-action-item ${disliked ? 'active disliked' : ''}`}
-              onClick={handleDislike}
-              title="不赞同此楼发言"
-            >
-              <i className={`fa ${disliked ? 'fa-thumbs-down' : 'fa-thumbs-o-down'}`}></i> 踩 ({dislikes})
             </div>
             {onToggleBookmark && (
               <div
@@ -473,31 +374,6 @@ export default function PostCard({
         }
 
         
-
-        .cc98-gender-badge {
-          position: absolute;
-          top: 0.5rem;
-          right: 0.2rem;
-          font-size: 0.8rem;
-          width: 1.3rem;
-          height: 1.3rem;
-          border: 1.5px solid var(--primary-color);
-          border-radius: 50%;
-          background-color: var(--primary-color);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2;
-        }
-
-        .theme-dark .cc98-gender-badge {
-          border-color: #1e1e24;
-          background-color: #1e1e24;
-        }
-
-        .cc98-gender-badge i {
-          color: white !important;
-        }
 
         .cc98-post-avatar-wrap {
           position: relative;
@@ -685,10 +561,6 @@ export default function PostCard({
           color: var(--primary-color);
         }
 
-        .cc98-action-item.disliked {
-          color: #fb6165;
-        }
-
         .cc98-action-item.favorited {
           color: var(--accent-color);
         }
@@ -756,14 +628,6 @@ export default function PostCard({
 
           .cc98-sidebar-buttons {
             display: none;
-          }
-
-          .cc98-gender-badge {
-            position: static;
-            display: inline-flex;
-            width: 1.1rem;
-            height: 1.1rem;
-            font-size: 0.65rem;
           }
 
           .cc98-post-content-area {

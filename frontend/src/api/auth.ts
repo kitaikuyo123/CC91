@@ -124,7 +124,7 @@ export async function refreshToken(refreshTokenValue: string): Promise<LoginResp
  * POST /api/auth/logout
  */
 export async function logout(): Promise<void> {
-  const storedRefreshToken = localStorage.getItem('refresh_token');
+  const storedRefreshToken = sessionStorage.getItem('refresh_token');
   if (storedRefreshToken) {
     await client.post('/auth/logout', {
       refreshToken: storedRefreshToken,

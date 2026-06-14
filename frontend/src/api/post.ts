@@ -74,9 +74,7 @@ export async function createPost(data: CreatePostRequest): Promise<Post> {
  */
 export async function getPostById(id: number, increaseView?: boolean): Promise<Post> {
   const response = await client.get<Post>(`/posts/${id}`, {
-    params: {
-      ...(increaseView !== undefined ? { increaseView } : {})
-    }
+    params: increaseView !== undefined ? { increaseView } : undefined
   });
   return response.data;
 }

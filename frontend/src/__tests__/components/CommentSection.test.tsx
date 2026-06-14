@@ -341,9 +341,9 @@ describe('CommentSection', () => {
       });
 
       const replyButtons = screen.getAllByText('回复');
-      await user.click(replyButtons[0]);
+      await user.click(replyButtons[1]);
 
-      expect(screen.getByPlaceholderText('写下你的回复...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('回复 @user1...')).toBeInTheDocument();
     });
 
     it('再次点击回复按钮应该隐藏回复表单', async () => {
@@ -357,10 +357,10 @@ describe('CommentSection', () => {
       });
 
       const replyButtons = screen.getAllByText('回复');
-      await user.click(replyButtons[0]);
-      await user.click(replyButtons[0]);
+      await user.click(replyButtons[1]);
+      await user.click(replyButtons[1]);
 
-      expect(screen.queryByPlaceholderText('写下你的回复...')).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText('回复 @user1...')).not.toBeInTheDocument();
     });
 
     it('提交回复应该更新评论树', async () => {
@@ -394,9 +394,9 @@ describe('CommentSection', () => {
       });
 
       const replyButtons = screen.getAllByText('回复');
-      await user.click(replyButtons[0]);
+      await user.click(replyButtons[1]);
 
-      const textarea = screen.getByPlaceholderText('写下你的回复...');
+      const textarea = screen.getByPlaceholderText('回复 @user1...');
       await user.type(textarea, 'New reply');
 
       const submitButton = screen.getByRole('button', { name: '发送回复' });
@@ -422,9 +422,9 @@ describe('CommentSection', () => {
       });
 
       const replyButtons = screen.getAllByText('回复');
-      await user.click(replyButtons[0]);
+      await user.click(replyButtons[1]);
 
-      const textarea = screen.getByPlaceholderText('写下你的回复...');
+      const textarea = screen.getByPlaceholderText('回复 @user1...');
       await user.type(textarea, 'New reply');
 
       const submitButton = screen.getByRole('button', { name: '发送回复' });

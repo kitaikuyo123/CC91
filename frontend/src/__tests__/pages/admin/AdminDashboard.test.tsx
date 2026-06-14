@@ -97,26 +97,18 @@ describe('AdminDashboard', () => {
     expect(screen.getByText('管理员')).toBeInTheDocument();
   });
 
-  it('renders quick action links to admin pages', async () => {
+  it('renders dashboard heading and recent user status', async () => {
     setupMocks();
 
     render(<AdminDashboard />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText('管理版块')).toBeInTheDocument();
+      expect(screen.getByText('管理后台首页')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('内容审核')).toBeInTheDocument();
-    expect(screen.getByText('用户管理')).toBeInTheDocument();
-
-    // Verify link hrefs
-    const categoriesLink = screen.getByText('管理版块').closest('a');
-    const contentLink = screen.getByText('内容审核').closest('a');
-    const usersLink = screen.getByText('用户管理').closest('a');
-
-    expect(categoriesLink).toHaveAttribute('href', '/admin/categories');
-    expect(contentLink).toHaveAttribute('href', '/admin/content');
-    expect(usersLink).toHaveAttribute('href', '/admin/users');
+    expect(screen.getByText('最新注册用户')).toBeInTheDocument();
+    expect(screen.getByText('正常')).toBeInTheDocument();
+    expect(screen.getByText('已封禁')).toBeInTheDocument();
   });
 
   it('shows loading state initially', async () => {

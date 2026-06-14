@@ -115,7 +115,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div className="quick-title">消息通知</div>
-          <div className="quick-desc">查看收到的回复和私信</div>
+          <div className="quick-desc">查看收到的回复和通知</div>
         </div>
 
         <div className="cc98-quick-card" onClick={() => navigate(`/profile/${user?.username}`)}>
@@ -265,7 +265,14 @@ export default function DashboardPage() {
                     <li 
                       key={notif.id} 
                       className={notif.isRead ? '' : 'unread-item'}
-                      onClick={() => notif.relatedId && navigate(`/posts/${notif.relatedId}`)}
+                      onClick={() => {
+                        if (!notif.relatedId) return;
+                        if (notif.type === 'ANNOUNCEMENT') {
+                          navigate(`/announcements/${notif.relatedId}`);
+                        } else {
+                          navigate(`/posts/${notif.relatedId}`);
+                        }
+                      }}
                     >
                       <div className="notif-header">
                         <span className="notif-indicator">{notif.type === 'REPLY' ? '💬 回复' : '🔔 系统'}</span>

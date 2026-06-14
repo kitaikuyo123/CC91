@@ -1,13 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   adminGetPosts, adminUpdatePostStatus, adminDeletePost,
   adminGetComments, adminDeleteComment
 } from '../../api/admin';
-import { adminGetReports, adminHandleReport, type ReportStatus } from '../../api/report';
+import { adminGetReports, adminHandleReport } from '../../api/report';
 import ErrorMessage from '../../components/ErrorMessage';
-import ConfirmDialog from '../../components/ConfirmDialog';
-import { useToast } from '../../components/Toast';
 import { queryKeys } from '../../lib/queryKeys';
 
 type TabType = 'posts' | 'comments' | 'reports';
@@ -17,30 +15,10 @@ type TabType = 'posts' | 'comments' | 'reports';
  */
 export default function ContentModeration() {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('posts');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // 确认对话框状态
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmConfig, setConfirmConfig] = useState<{
-    title: string;
-    message: string;
-    variant: 'danger' | 'warning' | 'default';
-    onConfirm: () => void;
-  }>({ title: '', message: '', variant: 'default', onConfirm: () => {} });
-
-  const openConfirm = (
-    title: string,
-    message: string,
-    onConfirm: () => void,
-    variant: 'danger' | 'warning' | 'default' = 'danger'
-  ) => {
-    setConfirmConfig({ title, message, variant, onConfirm });
-    setConfirmOpen(true);
-  };
 
   // 帖子列表
   const { data: posts = [], isLoading: postsLoading } = useQuery({
@@ -51,17 +29,30 @@ export default function ContentModeration() {
 
   // 评论列表
   const { data: comments = [], isLoading: commentsLoading } = useQuery({
-    queryKey: queryKeys.admin.comments(),
+    queryKey: ['admin', 'comments'],
     queryFn: adminGetComments,
     enabled: activeTab === 'comments',
   });
 
   // 举报列表
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
-    queryKey: queryKeys.admin.reports(),
+    queryKey: ['admin', 'reports'],
     queryFn: adminGetReports,
     enabled: activeTab === 'reports',
   });
+
+  // 举报页加载评论列表，用于建立 commentId -> postId 映射
+  const { data: reportComments = [] } = useQuery({
+    queryKey: ['admin', 'comments'],
+    queryFn: adminGetComments,
+    enabled: activeTab === 'reports',
+  });
+
+  const commentPostMap = useMemo(() => {
+    const map = new Map<number, number>();
+    reportComments.forEach(c => map.set(c.id, c.postId));
+    return map;
+  }, [reportComments]);
 
   // 更新帖子状态
   const statusMutation = useMutation({
@@ -92,7 +83,7 @@ export default function ContentModeration() {
   const deleteCommentMutation = useMutation({
     mutationFn: adminDeleteComment,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.comments() });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'comments'] });
       setSuccess('评论删除成功');
     },
     onError: (err: any) => {
@@ -102,10 +93,10 @@ export default function ContentModeration() {
 
   // 处理举报
   const handleReportMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: Extract<ReportStatus, 'RESOLVED' | 'REVIEWED'> }) =>
+    mutationFn: ({ id, status }: { id: number; status: 'RESOLVED' | 'DISMISSED' }) =>
       adminHandleReport(id, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports() });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
       setSuccess('举报处理成功');
     },
     onError: (err: any) => {
@@ -113,43 +104,24 @@ export default function ContentModeration() {
     },
   });
 
-  const handleResolveReport = (report: any) => {
-    // F-08 修复: 检查 contentId 是否存在
-    if (report.contentId == null || report.contentId === undefined) {
-      setError('无法获取被举报内容的 ID，操作失败');
-      return;
+  const handleResolveReport = async (report: any) => {
+    if (!confirm(`确定要处理此举报并删除该内容吗？此操作不可恢复。`)) return;
+
+    try {
+      if (report.targetType === 'POST') {
+        await deletePostMutation.mutateAsync(report.targetId);
+      } else {
+        await deleteCommentMutation.mutateAsync(report.targetId);
+      }
+      await handleReportMutation.mutateAsync({ id: report.id, status: 'RESOLVED' });
+    } catch (err: any) {
+      setError(err.response?.data?.message || '操作失败');
     }
-    openConfirm(
-      '处理举报',
-      '确定要处理此举报并删除该内容吗？此操作不可恢复。',
-      async () => {
-        setConfirmOpen(false);
-        try {
-          if (report.contentType === 'POST') {
-            await deletePostMutation.mutateAsync(report.contentId);
-          } else if (report.contentType === 'COMMENT') {
-            await deleteCommentMutation.mutateAsync(report.contentId);
-          }
-          await handleReportMutation.mutateAsync({ id: report.id, status: 'RESOLVED' });
-          showToast('举报已处理，相关内容已删除', 'success');
-        } catch (err: any) {
-          setError(err.response?.data?.message || '操作失败');
-        }
-      },
-      'danger'
-    );
   };
 
   const handleDismissReport = (reportId: number) => {
-    openConfirm(
-      '忽略举报',
-      '确定要忽略该举报吗？',
-      () => {
-        setConfirmOpen(false);
-        handleReportMutation.mutate({ id: reportId, status: 'REVIEWED' });
-      },
-      'default'
-    );
+    if (!confirm('确定要忽略该举报吗？')) return;
+    handleReportMutation.mutate({ id: reportId, status: 'DISMISSED' });
   };
 
   const handleStatusChange = (postId: number, newStatus: string) => {
@@ -157,36 +129,14 @@ export default function ContentModeration() {
   };
 
   const handleDeletePost = (postId: number, title: string) => {
-    if (postId == null) {
-      setError('帖子 ID 无效');
-      return;
-    }
-    openConfirm(
-      '删除帖子',
-      `确定要删除帖子「${title}」吗？`,
-      () => {
-        setConfirmOpen(false);
-        deletePostMutation.mutate(postId);
-      },
-      'danger'
-    );
+    if (!confirm(`确定要删除帖子「${title}」吗？此操作不可恢复。`)) return;
+    deletePostMutation.mutate(postId);
   };
 
   const handleDeleteComment = (commentId: number, content: string) => {
-    if (commentId == null) {
-      setError('评论 ID 无效');
-      return;
-    }
     const preview = content.length > 30 ? content.substring(0, 30) + '...' : content;
-    openConfirm(
-      '删除评论',
-      `确定要删除评论「${preview}」吗？`,
-      () => {
-        setConfirmOpen(false);
-        deleteCommentMutation.mutate(commentId);
-      },
-      'danger'
-    );
+    if (!confirm(`确定要删除评论「${preview}」吗？`)) return;
+    deleteCommentMutation.mutate(commentId);
   };
 
   const getStatusColor = (status: string) => {
@@ -195,6 +145,15 @@ export default function ContentModeration() {
       case 'DRAFT': return '#f39c12';
       case 'DELETED': return '#e74c3c';
       default: return '#95a5a6';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'PUBLISHED': return '已发布';
+      case 'DRAFT': return '草稿';
+      case 'DELETED': return '已删除';
+      default: return status;
     }
   };
 
@@ -306,24 +265,16 @@ export default function ContentModeration() {
                           <td>{post.authorUsername}</td>
                           <td className="hide-mobile">{post.categoryName || '-'}</td>
                           <td>
-                            <select
-                              value={post.status || 'PUBLISHED'}
-                              onChange={(e) => handleStatusChange(post.id, e.target.value)}
-                              disabled={statusMutation.isPending}
-                              aria-label={`修改帖子"${post.title}"的状态`}
-                              style={{
-                                padding: '0.25rem 0.5rem',
-                                border: '1px solid var(--color-border)',
-                                borderRadius: 'var(--radius-sm)',
-                                background: getStatusColor(post.status || 'PUBLISHED'),
-                                color: '#fff',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <option value="PUBLISHED">已发布</option>
-                              <option value="DRAFT">草稿</option>
-                              <option value="DELETED">已删除</option>
-                            </select>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: 'var(--radius-sm)',
+                              background: getStatusColor(post.status || 'PUBLISHED'),
+                              color: '#fff',
+                              fontSize: '0.85rem',
+                            }}>
+                              {getStatusLabel(post.status || 'PUBLISHED')}
+                            </span>
                           </td>
                           <td className="hide-mobile">{post.viewCount}</td>
                           <td>
@@ -335,12 +286,26 @@ export default function ContentModeration() {
                             >
                               查看
                             </a>
-                            <button
-                              className="btn btn-danger btn-sm"
-                              onClick={() => handleDeletePost(post.id, post.title)}
-                            >
-                              删除
-                            </button>
+                            {post.status === 'DELETED' ? (
+                              <button
+                                className="btn btn-success btn-sm"
+                                disabled={statusMutation.isPending}
+                                onClick={() => {
+                                  if (confirm(`确定要恢复帖子「${post.title}」吗？`)) {
+                                    statusMutation.mutate({ postId: post.id, status: 'PUBLISHED' });
+                                  }
+                                }}
+                              >
+                                恢复
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-danger btn-sm"
+                                onClick={() => handleDeletePost(post.id, post.title)}
+                              >
+                                删除
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -460,50 +425,43 @@ export default function ContentModeration() {
                       {reports.map((report: any) => (
                         <tr key={report.id}>
                           <td style={{ maxWidth: '300px' }}>
-                            {report.contentType === 'POST' ? (
-                              <div>
-                                <div style={{ fontWeight: '500' }}>
-                                  主题：
-                                  <a href={`/posts/${report.contentId}`} target="_blank" rel="noopener noreferrer">
-                                    {report.contentTitle}
+                            <div style={{ fontWeight: '500' }}>
+                              {report.targetType === 'POST' ? '帖子' : '评论'} ID：
+                              {(() => {
+                                const postId = report.targetType === 'POST'
+                                  ? report.targetId
+                                  : commentPostMap.get(report.targetId);
+                                return postId ? (
+                                  <a
+                                    href={`/posts/${postId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    #{report.targetId}
                                   </a>
-                                </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  内容：{report.contentBody}
-                                </div>
-                              </div>
-                            ) : (
-                              <div>
-                                <div style={{ fontWeight: '500' }}>
-                                  评论所属帖：
-                                  <a href={`/posts/${report.contentId}`} target="_blank" rel="noopener noreferrer">
-                                    {report.contentTitle || '未知帖'}
-                                  </a>
-                                </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  评论内容：{report.contentBody}
-                                </div>
-                              </div>
-                            )}
+                                ) : (
+                                  <span>#{report.targetId}</span>
+                                );
+                              })()}
+                            </div>
                             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
                               举报时间：{new Date(report.createdAt).toLocaleString('zh-CN')}
                             </div>
                           </td>
                           <td>
-                            <span className={`badge ${report.contentType === 'POST' ? 'badge-info' : 'badge-warning'}`} style={{
+                            <span style={{
                               padding: '0.2rem 0.5rem',
                               borderRadius: '4px',
                               fontSize: '0.8rem',
-                              backgroundColor: report.contentType === 'POST' ? '#3498db' : '#e67e22',
+                              backgroundColor: report.targetType === 'POST' ? '#3498db' : '#e67e22',
                               color: 'white'
                             }}>
-                              {report.contentType === 'POST' ? '帖子' : '评论'}
+                              {report.targetType === 'POST' ? '帖子' : '评论'}
                             </span>
                           </td>
-                          <td>{report.reporterUsername}</td>
+                          <td>用户 #{report.reporterId}</td>
                           <td>
                             <div style={{ fontWeight: 'bold' }}>{report.reason}</div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{report.description || '无详细描述'}</div>
                           </td>
                           <td>
                             <span style={{
@@ -550,15 +508,6 @@ export default function ContentModeration() {
           )}
         </>
       )}
-
-      <ConfirmDialog
-        isOpen={confirmOpen}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
-        variant={confirmConfig.variant}
-        onConfirm={confirmConfig.onConfirm}
-        onCancel={() => setConfirmOpen(false)}
-      />
     </div>
   );
 }

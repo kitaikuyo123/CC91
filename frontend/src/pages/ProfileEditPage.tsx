@@ -81,8 +81,21 @@ export default function ProfileEditPage() {
       setIsUploading(true);
       const url = await uploadAvatar(file);
       setCurrentAvatarUrl(url);
-      // 头像上传成功后自动保存 profile，避免用户忘记保存导致孤立文件
-      updateMutation.mutate();
+      // 立即保存 profile，使用 closure 中的 url 而非 state 中的 currentAvatarUrl
+      updateProfile({
+        avatarUrl: url,
+        bio: bio.trim() || undefined,
+        location: location.trim() || undefined,
+        website: website.trim() || undefined,
+      }).then((data) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
+        if (user) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(user.username) });
+          queryClient.invalidateQueries({ queryKey: queryKeys.posts.all });
+          queryClient.invalidateQueries({ queryKey: queryKeys.comments.all });
+          updateUserAvatar(data.avatarUrl ?? null);
+        }
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || '图片上传失败，请重试');
     } finally {

@@ -1,14 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register, verifyEmail, resendVerification } from '../api/auth';
-import { useToast } from '../components/Toast';
 
 /**
  * CC98 风格用户注册页面组件
  */
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { showToast } = useToast();
   const [step, setStep] = useState<'register' | 'verify'>('register');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -54,7 +52,7 @@ export default function RegisterPage() {
     try {
       await verifyEmail(email, verificationCode);
 
-      showToast('邮箱验证成功！请登录', 'success');
+      alert('邮箱验证成功！请登录');
       navigate('/login');
     } catch (err: any) {
       const message = err.response?.data?.message || '验证失败，请重试';

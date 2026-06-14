@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminGetUsers, adminBanUser, adminUnbanUser, adminUpdateUserRole } from '../../api/admin';
+import { adminGetUsers, adminBanUser, adminUnbanUser, adminUpdateUserRole, adminDeleteUser } from '../../api/admin';
 import { useAuth } from '../../context/AuthContext';
-import ConfirmDialog from '../../components/ConfirmDialog';
 import { queryKeys } from '../../lib/queryKeys';
 
 /**
@@ -14,25 +13,6 @@ export default function UserManage() {
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // 确认对话框状态
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmConfig, setConfirmConfig] = useState<{
-    title: string;
-    message: string;
-    variant: 'danger' | 'warning' | 'default';
-    onConfirm: () => void;
-  }>({ title: '', message: '', variant: 'default', onConfirm: () => {} });
-
-  const openConfirm = (
-    title: string,
-    message: string,
-    onConfirm: () => void,
-    variant: 'danger' | 'warning' | 'default' = 'danger'
-  ) => {
-    setConfirmConfig({ title, message, variant, onConfirm });
-    setConfirmOpen(true);
-  };
 
   // 使用 React Query 获取用户列表
   const { data: users = [], isLoading } = useQuery({
@@ -86,15 +66,8 @@ export default function UserManage() {
   });
 
   const handleBan = (userId: number, username: string) => {
-    openConfirm(
-      '封禁用户',
-      `确定要封禁用户「${username}」吗？`,
-      () => {
-        setConfirmOpen(false);
-        banMutation.mutate({ userId, username });
-      },
-      'danger'
-    );
+    if (!confirm(`确定要封禁用户「${username}」吗？`)) return;
+    banMutation.mutate({ userId, username });
   };
 
   const handleUnban = (userId: number, username: string) => {
@@ -104,27 +77,32 @@ export default function UserManage() {
   const handleRoleChange = (userId: number, username: string, newRole: string, currentRole: string) => {
     if (newRole === currentRole) return;
     if (username === currentUser?.username) {
-      openConfirm(
-        '警告',
-        '修改自己的角色可能导致您失去管理权限，确定继续吗？',
-        () => {
-          setConfirmOpen(false);
-          roleMutation.mutate({ userId, role: newRole, username });
-        },
-        'warning'
-      );
+      if (!confirm('警告：修改自己的角色可能导致您失去管理权限，确定继续吗？')) return;
     } else {
       const label = newRole === 'ADMIN' ? '管理员' : '普通用户';
-      openConfirm(
-        '修改角色',
-        `确定要将用户「${username}」的角色修改为「${label}」吗？`,
-        () => {
-          setConfirmOpen(false);
-          roleMutation.mutate({ userId, role: newRole, username });
-        },
-        'warning'
-      );
+      if (!confirm(`确定要将用户「${username}」的角色修改为「${label}」吗？`)) return;
     }
+    roleMutation.mutate({ userId, role: newRole, username });
+  };
+
+  // 删除用户的 mutation
+  const deleteMutation = useMutation({
+    mutationFn: ({ userId }: { userId: number; username: string }) =>
+      adminDeleteUser(userId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() });
+      setError('');
+      setSuccess(`用户「${variables.username}」已删除`);
+    },
+    onError: (err: any) => {
+      setSuccess('');
+      setError(err.response?.data?.message || '删除失败');
+    },
+  });
+
+  const handleDelete = (userId: number, username: string) => {
+    if (!confirm(`确定要删除用户「${username}」吗？此操作不可撤销！`)) return;
+    deleteMutation.mutate({ userId, username });
   };
 
   return (
@@ -211,6 +189,8 @@ export default function UserManage() {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleUnban(user.id, user.username)}
+                          disabled={user.username === currentUser?.username}
+                          title={user.username === currentUser?.username ? '不能解封自己' : ''}
                         >
                           解封
                         </button>
@@ -218,10 +198,21 @@ export default function UserManage() {
                         <button
                           className="btn btn-danger btn-sm"
                           onClick={() => handleBan(user.id, user.username)}
+                          disabled={user.username === currentUser?.username}
+                          title={user.username === currentUser?.username ? '不能封禁自己' : ''}
                         >
                           封禁
                         </button>
                       )}
+                      <button
+                        className="btn btn-danger btn-sm"
+                        style={{ marginLeft: '0.25rem', background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                        onClick={() => handleDelete(user.id, user.username)}
+                        disabled={user.username === currentUser?.username}
+                        title={user.username === currentUser?.username ? '不能删除自己' : '删除用户'}
+                      >
+                        删除
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -231,15 +222,6 @@ export default function UserManage() {
         </div>
         </div>
       )}
-
-      <ConfirmDialog
-        isOpen={confirmOpen}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
-        variant={confirmConfig.variant}
-        onConfirm={confirmConfig.onConfirm}
-        onCancel={() => setConfirmOpen(false)}
-      />
     </div>
   );
 }

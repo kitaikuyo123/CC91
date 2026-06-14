@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { adminGetUsers, adminGetPosts } from '../../api/admin';
 import { getCategories } from '../../api/category';
@@ -75,22 +74,6 @@ export default function AdminDashboard() {
           <div className="stat-card-icon" aria-hidden="true">&#x1F512;</div>
           <div className="stat-card-value" style={{ color: 'var(--color-danger)' }}>{stats.lockedUsers}</div>
           <div className="stat-card-label">封禁用户</div>
-        </div>
-      </div>
-
-      {/* 快捷入口 */}
-      <div className="admin-card" style={{ marginBottom: '2rem' }}>
-        <h2 style={{ marginBottom: '1rem' }}>快捷操作</h2>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <Link to="/admin/categories" className="btn btn-primary">
-            管理版块
-          </Link>
-          <Link to="/admin/content" className="btn btn-success">
-            内容审核
-          </Link>
-          <Link to="/admin/users" className="btn btn-warning">
-            用户管理
-          </Link>
         </div>
       </div>
 

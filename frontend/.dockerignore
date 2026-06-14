@@ -1,34 +1,5 @@
-# Dependencies
-node_modules/
-npm-debug.log*
-
-# Build output
-dist/
-build/
-
-# Git
-.git/
+node_modules
+dist
+.git
 .gitignore
-
-# IDE
-.idea/
-.vscode/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Testing
-coverage/
-*.lcov
-
-# Backend (not needed for frontend build)
-backend/
-
-# Environment
-.env
-.env.local
-
-# Documentation
-docs/
-README.md
+*.md

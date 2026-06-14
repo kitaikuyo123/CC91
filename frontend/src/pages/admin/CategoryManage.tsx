@@ -5,7 +5,6 @@ import {
   type Category, type CreateCategoryRequest, type UpdateCategoryRequest
 } from '../../api/category';
 import ErrorMessage from '../../components/ErrorMessage';
-import ConfirmDialog from '../../components/ConfirmDialog';
 import { queryKeys } from '../../lib/queryKeys';
 
 /**
@@ -23,10 +22,6 @@ export default function CategoryManage() {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // 确认对话框状态
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<{ id: number; name: string } | null>(null);
 
   // 使用 React Query 获取版块列表
   const { data: categories = [], isLoading } = useQuery({
@@ -86,9 +81,9 @@ export default function CategoryManage() {
     },
   });
 
-  const handleDelete = (id: number, name: string) => {
-    setConfirmTarget({ id, name });
-    setConfirmOpen(true);
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`确定要删除版块「${name}」吗？`)) return;
+    deleteMutation.mutate(id);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -221,21 +216,6 @@ export default function CategoryManage() {
         </table>
         </div>
       </div>
-
-      <ConfirmDialog
-        isOpen={confirmOpen}
-        title="删除版块"
-        message={`确定要删除版块「${confirmTarget?.name ?? ''}」吗？`}
-        variant="danger"
-        onConfirm={() => {
-          setConfirmOpen(false);
-          if (confirmTarget) {
-            deleteMutation.mutate(confirmTarget.id);
-          }
-        }}
-        onCancel={() => setConfirmOpen(false)}
-        isLoading={deleteMutation.isPending}
-      />
     </div>
   );
 }

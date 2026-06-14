@@ -1,0 +1,65 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/cc91_db?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&sessionVariables=character_set_client=utf8mb4,character_set_connection=utf8mb4,character_set_results=utf8mb4}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:3600000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+app:
+  mail:
+    console-log-only: ${MAIL_CONSOLE_ONLY:true}
+  upload:
+    avatar-dir: ${AVATAR_DIR:uploads/avatars}
+    image-dir: ${IMAGE_DIR:uploads/images}
+
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  allowed-methods: ${CORS_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+
+account:
+  lock:
+    max-attempts: ${ACCOUNT_LOCK_MAX_ATTEMPTS:5}
+    duration-seconds: ${ACCOUNT_LOCK_DURATION:30}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+internal:
+  token: ${INTERNAL_TOKEN}

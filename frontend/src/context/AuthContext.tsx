@@ -19,34 +19,34 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try { return JSON.parse(storedUser); } catch { return null; }
-    }
-    return null;
-  });
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!localStorage.getItem('access_token');
-  });
-  const [isAdmin, setIsAdmin] = useState(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('access_token');
+    const storedUser = sessionStorage.getItem('user');
+
+    if (token && storedUser) {
       try {
         const userData = JSON.parse(storedUser);
-        return userData.role === 'ADMIN';
-      } catch { return false; }
+        setUser(userData);
+        setIsAuthenticated(true);
+        setIsAdmin(userData.role === 'ADMIN');
+      } catch {
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('access_token');
+      }
     }
-    return false;
-  });
+  }, []);
 
   const login = (username: string, accessToken: string, role: string = 'USER', avatarUrl?: string | null) => {
     const userData: User = { username, email: '', role, avatarUrl };
     setUser(userData);
     setIsAuthenticated(true);
     setIsAdmin(role === 'ADMIN');
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+    sessionStorage.setItem('access_token', accessToken);
+    sessionStorage.setItem('user', JSON.stringify(userData));
   };
 
   const updateUserAvatar = (avatarUrl: string | null) => {
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
+      sessionStorage.setItem('user', JSON.stringify(user));
     }
   }, [user]);
 
@@ -66,9 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setIsAuthenticated(false);
     setIsAdmin(false);
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('user');
   };
 
   return (

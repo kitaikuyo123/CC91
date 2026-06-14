@@ -6,9 +6,21 @@
     "enabled": true,
     "logPath": "logs/",
     "autoSnapshot": true,
-    "snapshotTriggers": ["TASK_START", "TASK_COMPLETE", "INTERVENTION", "TURN_END"],
-    "interventionPoints": ["BEFORE_TASK", "AFTER_FAILURE", "MANUAL_APPROVAL"],
+    "snapshotTriggers": [
+      "TASK_START",
+      "TASK_COMPLETE",
+      "INTERVENTION",
+      "TURN_END"
+    ],
+    "interventionPoints": [
+      "BEFORE_TASK",
+      "AFTER_FAILURE",
+      "MANUAL_APPROVAL"
+    ],
     "conversationLog": true,
     "changeTracking": true
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
   }
 }

@@ -1,9 +1,5 @@
 import client from './client';
-import type { PageResponse, Post } from './post';
-
-function unwrapList<T>(payload: T[] | PageResponse<T>): T[] {
-  return Array.isArray(payload) ? payload : payload.content;
-}
+import type { Post } from './post';
 
 /**
  * Admin user info type
@@ -29,12 +25,12 @@ export interface UpdatePostStatusRequest {
 
 /**
  * Get all posts (with optional status filter)
- * GET /api/admin/posts?status= - backend returns Spring Page
+ * GET /api/admin/posts?status= - backend returns List directly
  */
 export async function adminGetPosts(status?: string): Promise<Post[]> {
   const params = status ? { status } : {};
-  const response = await client.get<Post[] | PageResponse<Post>>('/admin/posts', { params });
-  return unwrapList(response.data);
+  const response = await client.get<Post[]>('/admin/posts', { params });
+  return response.data;
 }
 
 /**
@@ -70,11 +66,11 @@ export interface AdminComment {
 
 /**
  * Get all comments (admin)
- * GET /api/admin/comments - backend returns Spring Page
+ * GET /api/admin/comments
  */
 export async function adminGetComments(): Promise<AdminComment[]> {
-  const response = await client.get<AdminComment[] | PageResponse<AdminComment>>('/admin/comments');
-  return unwrapList(response.data);
+  const response = await client.get<AdminComment[]>('/admin/comments');
+  return response.data;
 }
 
 /**
@@ -89,11 +85,11 @@ export async function adminDeleteComment(id: number): Promise<void> {
 
 /**
  * Get all users
- * GET /api/admin/users - backend returns Spring Page
+ * GET /api/admin/users - backend returns List directly
  */
 export async function adminGetUsers(): Promise<AdminUser[]> {
-  const response = await client.get<AdminUser[] | PageResponse<AdminUser>>('/admin/users');
-  return unwrapList(response.data);
+  const response = await client.get<AdminUser[]>('/admin/users');
+  return response.data;
 }
 
 /**
@@ -118,4 +114,12 @@ export async function adminBanUser(id: number): Promise<void> {
  */
 export async function adminUnbanUser(id: number): Promise<void> {
   await client.put(`/admin/users/${id}/unban`);
+}
+
+/**
+ * Delete user
+ * DELETE /api/admin/users/{id}
+ */
+export async function adminDeleteUser(id: number): Promise<void> {
+  await client.delete(`/admin/users/${id}`);
 }
