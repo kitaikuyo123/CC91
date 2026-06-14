@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import SafeLink from './SafeLink';
 import { sanitizeHtml, escapeHtml } from '../utils/sanitize';
 import catAvatar from '../assets/cc98_avatar_cat.png';

@@ -2,9 +2,9 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci
 COPY . .
-RUN npx vite build
+RUN npm run build
 
 # Stage 2: Nginx 运行
 FROM nginx:alpine

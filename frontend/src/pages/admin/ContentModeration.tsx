@@ -124,10 +124,6 @@ export default function ContentModeration() {
     handleReportMutation.mutate({ id: reportId, status: 'DISMISSED' });
   };
 
-  const handleStatusChange = (postId: number, newStatus: string) => {
-    statusMutation.mutate({ postId, status: newStatus });
-  };
-
   const handleDeletePost = (postId: number, title: string) => {
     if (!confirm(`确定要删除帖子「${title}」吗？此操作不可恢复。`)) return;
     deletePostMutation.mutate(postId);
