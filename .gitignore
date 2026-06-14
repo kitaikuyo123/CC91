@@ -98,6 +98,9 @@ plan/
 # Local Claude settings
 .claude/settings.local.json
 
+# CodeGraph MCP index (local-only)
+.codegraph/
+
 # Python cache
 __pycache__/
 
