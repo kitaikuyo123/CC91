@@ -144,6 +144,13 @@ export default function CreatePostPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const MAX_SIZE = 2 * 1024 * 1024; // 2MB，与后端 MAX_IMAGE_SIZE 对齐
+    if (file.size > MAX_SIZE) {
+      setError('图片大小不能超过 2MB');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setError('');
     setIsUploading(true);
 
@@ -253,7 +260,7 @@ export default function CreatePostPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
                   onChange={handleImageUpload}
                   style={{ display: 'none' }}
                 />
