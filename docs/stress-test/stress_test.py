@@ -481,6 +481,9 @@ class StressTestRunner:
         # 自动清理本次压测产生的帖子
         self.cleanup_created_posts()
 
+        # 兜底清理历史压测遗留的"压测帖子-xxx"标题帖子
+        self.cleanup_legacy_posts()
+
         return self.results
 
     # ── 清理 ──
