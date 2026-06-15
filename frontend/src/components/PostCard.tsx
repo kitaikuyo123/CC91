@@ -111,6 +111,12 @@ export default function PostCard({
       `;
     });
 
+    // 解析 Markdown 图片语法 ![alt](url)
+    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    html = html.replace(imageRegex, (_, alt, url) => {
+      return `<img src="${url}" alt="${alt}" class="cc98-post-image" style="max-width: 100%; height: auto; display: block; margin: 0.5rem 0; border-radius: var(--cc98-radius);" />`;
+    });
+
     return { __html: sanitizeHtml(html) };
   };
 
