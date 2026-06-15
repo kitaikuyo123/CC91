@@ -5,8 +5,7 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn package -DskipTests -B
 
-FROM eclipse-temurin:17-jre-alpine
-RUN apk add --no-cache tzdata
+FROM eclipse-temurin:17-jre
 ENV LANG=en_US.UTF-8
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
