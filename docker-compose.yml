@@ -178,6 +178,9 @@ services:
       context: ./microservices/file-service
     container_name: cc91-file-service
     environment:
+      DB_URL: jdbc:mysql://mysql:3306/cc91_db?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&sessionVariables=character_set_client=utf8mb4,character_set_connection=utf8mb4,character_set_results=utf8mb4
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
@@ -188,6 +191,8 @@ services:
       - upload-data:/app/uploads
     depends_on:
       eureka-server:
+        condition: service_healthy
+      mysql:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8086/actuator/health"]

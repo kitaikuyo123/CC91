@@ -4,7 +4,9 @@ import com.cc91.fileservice.client.UserServiceClient;
 import com.cc91.fileservice.dto.ApiResponse;
 import com.cc91.fileservice.dto.UpdateAvatarRequest;
 import com.cc91.fileservice.dto.UserInfoDTO;
+import com.cc91.fileservice.entity.UploadRecord;
 import com.cc91.fileservice.exception.UnauthorizedException;
+import com.cc91.fileservice.repository.UploadRecordRepository;
 import com.cc91.fileservice.security.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,10 +42,14 @@ public class FileUploadController {
 
     private final UserServiceClient userServiceClient;
     private final JwtUtil jwtUtil;
+    private final UploadRecordRepository uploadRecordRepository;
 
-    public FileUploadController(UserServiceClient userServiceClient, JwtUtil jwtUtil) {
+    public FileUploadController(UserServiceClient userServiceClient,
+                                JwtUtil jwtUtil,
+                                UploadRecordRepository uploadRecordRepository) {
         this.userServiceClient = userServiceClient;
         this.jwtUtil = jwtUtil;
+        this.uploadRecordRepository = uploadRecordRepository;
     }
 
     /**
@@ -81,12 +87,14 @@ public class FileUploadController {
             } catch (Exception ex) {
                 logger.error("Failed to update avatar in User Service for userId={}: {}", userId, ex.getMessage());
                 // File is saved, but User Service update failed
-                // Return success with a warning
+                // Still record upload metadata, then return success with a warning
+                recordUpload(file, filename, avatarUrl, "AVATAR", username, userId);
                 return ResponseEntity.ok(ApiResponse.success("Avatar uploaded but profile update may be delayed",
                         Map.of("avatarUrl", avatarUrl)));
             }
         }
 
+        recordUpload(file, filename, avatarUrl, "AVATAR", username, userId);
         return ResponseEntity.ok(ApiResponse.success("Avatar uploaded successfully",
                 Map.of("avatarUrl", avatarUrl)));
     }
@@ -100,7 +108,8 @@ public class FileUploadController {
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadImage(
             @RequestParam("file") MultipartFile file
     ) throws IOException {
-        getCurrentUsername(); // Verify authenticated
+        String username = getCurrentUsername(); // Verify authenticated
+        Long userId = getCurrentUserId();
 
         // Validate file
         validateImageFile(file);
@@ -115,6 +124,7 @@ public class FileUploadController {
         file.transferTo(filePath.toFile());
 
         String url = "/uploads/images/" + filename;
+        recordUpload(file, filename, url, "IMAGE", username, userId);
         return ResponseEntity.ok(ApiResponse.success("Upload successful", Map.of("url", url)));
     }
 
@@ -137,14 +147,50 @@ public class FileUploadController {
     }
 
     /**
-     * Generates a unique filename preserving the original extension.
+     * Generates a unique filename derived from the validated Content-Type.
+     * Security: do NOT trust the client-supplied originalFilename extension,
+     * which could be forged (e.g. upload evil.html with Content-Type=image/png).
+     * validateImageFile already restricted contentType to one of the four
+     * allow-listed image MIME types, so we map that to the extension here.
      */
     private String generateFilename(MultipartFile file) {
-        String originalFilename = file.getOriginalFilename();
-        String ext = originalFilename != null && originalFilename.contains(".")
-                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                : ".png";
+        String contentType = file.getContentType();
+        String ext = switch (contentType) {
+            case "image/jpeg" -> ".jpg";
+            case "image/png" -> ".png";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            default -> ".png"; // fallback; validateImageFile guarantees one of the four above
+        };
         return UUID.randomUUID().toString() + ext;
+    }
+
+    /**
+     * Persists a row to upload_record after a successful file save.
+     * Wrap in try/catch: persistence failure MUST NOT break the upload
+     * response — the file is already on disk. Audit logs are best-effort.
+     */
+    private void recordUpload(MultipartFile file,
+                              String storedFilename,
+                              String url,
+                              String purpose,
+                              String username,
+                              Long userId) {
+        try {
+            UploadRecord record = new UploadRecord();
+            record.setUploaderUserId(userId);
+            record.setUploaderUsername(username);
+            record.setFilename(storedFilename);
+            record.setOriginalFilename(file.getOriginalFilename());
+            record.setContentType(file.getContentType());
+            record.setFileSize(file.getSize());
+            record.setUrl(url);
+            record.setPurpose(purpose);
+            uploadRecordRepository.save(record);
+        } catch (Exception ex) {
+            logger.warn("Failed to persist upload_record (purpose={}, filename={}, user={}): {}",
+                    purpose, storedFilename, username, ex.getMessage());
+        }
     }
 
     /**
