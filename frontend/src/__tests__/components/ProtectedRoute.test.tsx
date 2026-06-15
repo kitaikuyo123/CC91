@@ -7,7 +7,7 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
   const queryClient = new QueryClient({
@@ -38,16 +38,12 @@ describe('ProtectedRoute', () => {
   });
 
   it('should render children when authenticated', () => {
-    // 设置 localStorage 以模拟已登录状态
-    localStorage.setItem('access_token', 'test-token');
-    localStorage.setItem('user', JSON.stringify({ username: 'testuser', email: '' }));
+    sessionStorage.setItem('access_token', 'test-token');
+    sessionStorage.setItem('user', JSON.stringify({ username: 'testuser', email: '' }));
 
     render(<div>Protected Content</div>, { wrapper });
 
-    // 注意：AuthProvider 使用 useEffect 从 localStorage 读取
-    // 在测试环境中，由于 render 是同步的，useEffect 可能还未执行
-    // 所以这个测试主要验证了未认证情况下的重定向功能
-    // 已认证的测试需要更复杂的设置或使用真实的登录流程
-    expect(screen.queryByText('Login Page')).toBeInTheDocument();
+    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
   });
 });

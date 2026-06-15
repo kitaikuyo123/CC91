@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from '../../context/AuthContext';
 
 describe('AuthContext', () => {
   beforeEach(() => {
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('should provide initial auth state', () => {
@@ -28,7 +28,7 @@ describe('AuthContext', () => {
     await waitFor(() => {
       expect(result.current.isAuthenticated).toBe(true);
       expect(result.current.user).toEqual({ username: 'testuser', email: '', role: 'USER' });
-      expect(localStorage.getItem('access_token')).toBe('fake-token');
+      expect(sessionStorage.getItem('access_token')).toBe('fake-token');
     });
   });
 
@@ -50,13 +50,13 @@ describe('AuthContext', () => {
     await waitFor(() => {
       expect(result.current.isAuthenticated).toBe(false);
       expect(result.current.user).toBeNull();
-      expect(localStorage.getItem('access_token')).toBeNull();
+      expect(sessionStorage.getItem('access_token')).toBeNull();
     });
   });
 
-  it('should restore auth state from localStorage', async () => {
-    localStorage.setItem('access_token', 'stored-token');
-    localStorage.setItem('user', JSON.stringify({ username: 'storeduser', email: '' }));
+  it('should restore auth state from sessionStorage', async () => {
+    sessionStorage.setItem('access_token', 'stored-token');
+    sessionStorage.setItem('user', JSON.stringify({ username: 'storeduser', email: '' }));
 
     const { result } = renderHook(() => useAuth(), {
       wrapper: AuthProvider,

@@ -18,27 +18,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+interface InitialAuth {
+  user: User | null;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+}
 
-  useEffect(() => {
-    const token = sessionStorage.getItem('access_token');
-    const storedUser = sessionStorage.getItem('user');
+function loadInitialAuth(): InitialAuth {
+  const token = sessionStorage.getItem('access_token');
+  const storedUser = sessionStorage.getItem('user');
 
-    if (token && storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        setUser(userData);
-        setIsAuthenticated(true);
-        setIsAdmin(userData.role === 'ADMIN');
-      } catch {
-        sessionStorage.removeItem('user');
-        sessionStorage.removeItem('access_token');
-      }
+  if (token && storedUser) {
+    try {
+      const userData = JSON.parse(storedUser) as User;
+      return {
+        user: userData,
+        isAuthenticated: true,
+        isAdmin: userData.role === 'ADMIN',
+      };
+    } catch {
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('access_token');
     }
-  }, []);
+  }
+
+  return { user: null, isAuthenticated: false, isAdmin: false };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(() => loadInitialAuth().user);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => loadInitialAuth().isAuthenticated);
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => loadInitialAuth().isAdmin);
 
   const login = (username: string, accessToken: string, role: string = 'USER', avatarUrl?: string | null) => {
     const userData: User = { username, email: '', role, avatarUrl };
