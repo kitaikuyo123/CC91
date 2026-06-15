@@ -3,6 +3,7 @@ package com.cc91.contentservice.service;
 import com.cc91.contentservice.client.UserInfoDTO;
 import com.cc91.contentservice.client.UserServiceClient;
 import com.cc91.contentservice.entity.Report;
+import com.cc91.contentservice.exception.BadRequestException;
 import com.cc91.contentservice.exception.ResourceNotFoundException;
 import com.cc91.contentservice.repository.ReportRepository;
 import org.slf4j.Logger;
@@ -95,12 +96,22 @@ public class ReportService {
      * @return 更新后的 Report 实体
      */
     @Transactional
-    public Report handleReport(Long id, String status) {
+    public Report handleReport(Long id, String status, String adminComment) {
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("举报不存在"));
 
-        report.setStatus(Report.ReportStatus.valueOf(status.toUpperCase()));
+        Report.ReportStatus targetStatus;
+        try {
+            targetStatus = Report.ReportStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("无效的处理状态: " + status);
+        }
+
+        report.setStatus(targetStatus);
         report.setReviewedAt(LocalDateTime.now());
+        if (adminComment != null) {
+            report.setAdminComment(adminComment);
+        }
         report = reportRepository.save(report);
 
         logger.info("举报处理完成: id={}, status={}", id, status);

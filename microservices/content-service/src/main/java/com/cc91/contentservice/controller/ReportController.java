@@ -73,14 +73,17 @@ public class ReportController {
         if (status == null || status.trim().isEmpty()) {
             throw new BadRequestException("处理状态不能为空");
         }
-        Report report = reportService.handleReport(id, status);
+        Report report = reportService.handleReport(id, status, request.getAdminComment());
         return ResponseEntity.ok(ApiResponse.success("举报已处理", report));
     }
 
     public static class HandleReportRequest {
         private String status;
+        private String adminComment;
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+        public String getAdminComment() { return adminComment; }
+        public void setAdminComment(String adminComment) { this.adminComment = adminComment; }
     }
 
     private String getCurrentUsername() {

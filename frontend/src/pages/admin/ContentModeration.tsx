@@ -93,8 +93,8 @@ export default function ContentModeration() {
 
   // 处理举报
   const handleReportMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: 'RESOLVED' | 'DISMISSED' }) =>
-      adminHandleReport(id, status),
+    mutationFn: ({ id, status, adminComment }: { id: number; status: 'RESOLVED' | 'DISMISSED'; adminComment?: string }) =>
+      adminHandleReport(id, status, adminComment),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
       setSuccess('举报处理成功');
@@ -105,6 +105,30 @@ export default function ContentModeration() {
   });
 
   const handleResolveReport = async (report: any) => {
+    // 检查目标内容是否已被作者删除
+    let targetAlreadyDeleted = false;
+    if (report.targetType === 'COMMENT') {
+      const targetComment = reportComments.find((c: any) => c.id === report.targetId);
+      if (!targetComment || targetComment.status === 'DELETED') {
+        targetAlreadyDeleted = true;
+      }
+    }
+
+    if (targetAlreadyDeleted) {
+      if (!confirm(`该评论已被作者自行删除，是否直接标记举报为已处理？`)) return;
+      try {
+        await handleReportMutation.mutateAsync({
+          id: report.id,
+          status: 'RESOLVED',
+          adminComment: '评论已被作者自行删除，举报直接归档'
+        });
+        setSuccess('举报已归档（内容已被作者删除）');
+      } catch (err: any) {
+        setError(err.response?.data?.message || '处理失败');
+      }
+      return;
+    }
+
     if (!confirm(`确定要处理此举报并删除该内容吗？此操作不可恢复。`)) return;
 
     try {

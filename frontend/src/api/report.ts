@@ -39,6 +39,10 @@ export async function adminGetReports(): Promise<Report[]> {
  * Handle a report status
  * PUT /api/admin/reports/{id}
  */
-export async function adminHandleReport(id: number, status: 'RESOLVED' | 'DISMISSED'): Promise<void> {
-  await client.put(`/admin/reports/${id}`, { status });
+export async function adminHandleReport(
+  id: number,
+  status: 'RESOLVED' | 'DISMISSED',
+  adminComment?: string
+): Promise<void> {
+  await client.put(`/admin/reports/${id}`, { status, ...(adminComment ? { adminComment } : {}) });
 }
