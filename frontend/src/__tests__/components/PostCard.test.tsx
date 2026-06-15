@@ -76,4 +76,12 @@ describe('PostCard', () => {
     expect(screen.queryByTitle('收藏此贴')).not.toBeInTheDocument();
     expect(screen.queryByTitle('从收藏夹中移除')).not.toBeInTheDocument();
   });
+
+  it('should render markdown images as img tags', () => {
+    renderPostCard({ content: 'Check this out: ![my-image](http://example.com/test.png)' });
+    
+    const img = screen.getByRole('img', { name: 'my-image' });
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute('src', 'http://example.com/test.png');
+  });
 });
