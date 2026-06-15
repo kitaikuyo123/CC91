@@ -79,6 +79,15 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     );
 
     /**
+     * 按评论数倒序分页查询（status 为空表示不过滤状态）
+     * 用相关子查询排序，避免 GROUP BY 与 ONLY_FULL_GROUP_BY 冲突
+     */
+    @Query("SELECT p FROM Post p " +
+           "WHERE (:status IS NULL OR p.status = :status) " +
+           "ORDER BY (SELECT COUNT(c) FROM Comment c WHERE c.postId = p.id) DESC, p.createdAt DESC")
+    Page<Post> findSortedByCommentCount(@Param("status") String status, Pageable pageable);
+
+    /**
      * 原子更新浏览量（避免并发竞态条件）
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)

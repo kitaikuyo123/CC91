@@ -290,10 +290,15 @@ public class PostService {
      */
     @Transactional(readOnly = true)
     public Page<PostResponse> getPostList(int page, int size, String status, String sort) {
-        Sort sorting;
         if ("comments".equalsIgnoreCase(sort)) {
-            sorting = Sort.by(Sort.Direction.DESC, "commentCount");
-        } else if ("hot".equalsIgnoreCase(sort)) {
+            String normalizedStatus = (status == null || status.trim().isEmpty()) ? null : status;
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Post> posts = postRepository.findSortedByCommentCount(normalizedStatus, pageable);
+            return toPostResponsePage(posts);
+        }
+
+        Sort sorting;
+        if ("hot".equalsIgnoreCase(sort)) {
             sorting = Sort.by(Sort.Direction.DESC, "viewCount");
         } else {
             sorting = Sort.by(Sort.Direction.DESC, "createdAt");
