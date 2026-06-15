@@ -112,9 +112,11 @@ export default function PostCard({
     });
 
     // 解析 Markdown 图片语法 ![alt](url)
+    // 用 class 而非 inline style：sanitize.ts 的 ALLOWED_ATTR 不含 style，
+    // inline 写法会被 DOMPurify 整个过滤掉导致图片撑破容器
     const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
     html = html.replace(imageRegex, (_, alt, url) => {
-      return `<img src="${url}" alt="${alt}" class="cc98-post-image" style="max-width: 100%; height: auto; display: block; margin: 0.5rem 0; border-radius: var(--cc98-radius);" />`;
+      return `<img src="${url}" alt="${alt}" class="cc98-post-image" />`;
     });
 
     return { __html: sanitizeHtml(html) };
@@ -450,6 +452,7 @@ export default function PostCard({
 
         .cc98-post-content-area {
           flex: 1;
+          min-width: 0;
           padding: 1.25rem 1.5rem;
           display: flex;
           flex-direction: column;
@@ -487,6 +490,7 @@ export default function PostCard({
 
         .cc98-post-body-container {
           flex: 1;
+          min-width: 0;
           display: flex;
           flex-direction: column;
         }
@@ -498,6 +502,14 @@ export default function PostCard({
           white-space: normal;
           word-break: break-all;
           margin-bottom: 1rem;
+        }
+
+        .cc98-post-image {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 0.5rem 0;
+          border-radius: var(--cc98-radius);
         }
 
         .cc98-post-signature-container {
