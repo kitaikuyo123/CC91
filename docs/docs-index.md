@@ -8,7 +8,7 @@
 
 | 入口 | 作用 | 链接 |
 |------|------|------|
-| 提交包总览 | 6 大类交付材料的目录结构与复现步骤 | [deliverables/README.md](deliverables/README.md) |
+| 提交包总览 | 5 大类交付材料的目录结构与复现步骤 | [deliverables/README.md](deliverables/README.md) |
 | 提交包压缩包 | 单文件 zip，便于上传 | [CC91-deliverables.zip](CC91-deliverables.zip) |
 
 ---
