@@ -85,6 +85,23 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse<>(ex.getMessage()));
     }
 
+    /**
+     * Explicit AccessDeniedException → 403 handler.
+     * Spring Security's @PreAuthorize("hasRole('ADMIN')") denials throw
+     * org.springframework.security.access.AccessDeniedException, which extends
+     * RuntimeException. Without this handler the generic RuntimeException
+     * branch below would translate the 403 into a 400, leaking authorization
+     * semantics (OWASP A01 Broken Access Control). Must be declared BEFORE the
+     * RuntimeException handler so Spring picks the most specific match.
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<String>> handleAccessDeniedException(
+            org.springframework.security.access.AccessDeniedException ex) {
+        logger.warn("Access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>("Access denied"));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
         logger.error("Runtime exception: {}", ex.getMessage());

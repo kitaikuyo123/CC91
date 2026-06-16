@@ -77,7 +77,9 @@ public class JwtUtil {
                 .build()
                 .parseSignedClaims(token);
             return true;
-        } catch (SecurityException ex) {
+        } catch (io.jsonwebtoken.security.SecurityException ex) {
+            // jjwt's SecurityException (signature mismatch / weak key) does NOT extend
+            // java.lang.SecurityException — must be caught explicitly to avoid leaking.
             logger.error("Invalid JWT signature: {}", ex.getMessage());
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token: {}", ex.getMessage());
@@ -93,8 +95,17 @@ public class JwtUtil {
 
     /**
      * 从令牌中获取 Claims
+     *
+     * 将 null/empty 输入统一转换为 {@link MalformedJwtException}（JwtException 的子类），
+     * 避免 jjwt 的 parseSignedClaims 在空输入时抛出 IllegalArgumentException
+     * 泄露到上层调用方。validateToken 已经显式吞掉 IllegalArgumentException，
+     * 但 getClaimsFromToken 直接调用 parser，需要同样的防御。
+     * （暴露于 fuzz 测试 JwtUtilFuzzTest.invalidTokenThrowsJwtExceptionOnly）
      */
     private Claims getClaimsFromToken(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            throw new MalformedJwtException("JWT claims string is empty");
+        }
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()

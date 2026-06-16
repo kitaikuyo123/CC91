@@ -88,6 +88,13 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         // Internal API for inter-service calls (no JWT required)
                         .requestMatchers("/api/users/internal/**").permitAll()
+                        // /api/users/me and /api/users/me/* require authentication — must be
+                        // declared BEFORE the /api/users/{username} wildcard, otherwise the
+                        // wildcard would treat "me" as a public username and leak to anonymous
+                        // access (covered by UserControllerTest).
+                        .requestMatchers("GET", "/api/users/me").authenticated()
+                        .requestMatchers("PUT", "/api/users/me/profile").authenticated()
+                        .requestMatchers("PUT", "/api/users/me/password").authenticated()
                         // Public user profile viewing
                         .requestMatchers("GET", "/api/users/{username}").permitAll()
                         // Actuator endpoints for Prometheus scraping

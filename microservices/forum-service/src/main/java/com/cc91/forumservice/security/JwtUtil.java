@@ -77,6 +77,12 @@ public class JwtUtil {
             return true;
         } catch (SecurityException ex) {
             logger.error("Invalid JWT signature: {}", ex.getMessage());
+        } catch (io.jsonwebtoken.security.SignatureException ex) {
+            // JJWT 0.12+ throws io.jsonwebtoken.security.SignatureException for signature
+            // mismatches; this is NOT caught by the SecurityException branch above (which
+            // refers to io.jsonwebtoken.SecurityException). Without this catch the exception
+            // bubbles up and crashes the filter chain instead of returning 401.
+            logger.error("Invalid JWT signature: {}", ex.getMessage());
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token: {}", ex.getMessage());
         } catch (ExpiredJwtException ex) {

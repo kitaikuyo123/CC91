@@ -64,6 +64,21 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理 Spring Security 访问拒绝异常（403）
+     * <p>
+     * Method-security @PreAuthorize 拒绝抛出的 AccessDeniedException 会被
+     * @RestControllerAdvice 截获（在 ExceptionTranslationFilter 之前），
+     * 必须显式返回 403，否则会被下面的 RuntimeException 处理器误转为 400。
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<String>> handleAccessDeniedException(
+            org.springframework.security.access.AccessDeniedException ex) {
+        logger.warn("Access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>("Access denied"));
+    }
+
+    /**
      * 处理请求参数错误异常（400）
      */
     @ExceptionHandler(BadRequestException.class)

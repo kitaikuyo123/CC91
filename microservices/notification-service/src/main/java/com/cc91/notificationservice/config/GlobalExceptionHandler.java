@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -59,6 +60,19 @@ public class GlobalExceptionHandler {
         logger.warn("Bad request: {}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(new ApiResponse<>(ex.getMessage()));
+    }
+
+    /**
+     * 处理 Spring Security 的 AccessDeniedException（403）
+     * 必须在 RuntimeException 之前显式捕获，否则会被下面的
+     * handleRuntimeException 当成普通 400 处理。当前本服务虽未使用 @PreAuthorize，
+     * 但为防御未来引入的鉴权逻辑、避免 OWASP A01 鉴权混淆，显式声明。
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<String>> handleAccessDeniedException(AccessDeniedException ex) {
+        logger.warn("Access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>("Access denied"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -26,7 +26,7 @@ public class InternalApiAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String path = request.getRequestURI();
-        if (path.contains("/internal/")) {
+        if (path.contains("/internal")) {
             String token = request.getHeader("X-Internal-Token");
             if (internalToken.isEmpty() || !internalToken.equals(token)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
