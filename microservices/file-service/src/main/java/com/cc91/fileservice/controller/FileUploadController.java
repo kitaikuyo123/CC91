@@ -81,9 +81,17 @@ public class FileUploadController {
         // Call User Service to update avatar URL
         Long userId = getCurrentUserId();
         if (userId != null) {
+            // Fetch current avatarUrl BEFORE updateAvatar so we can clean up
+            // the previous file once DB has been switched to the new URL.
+            String previousAvatarUrl = fetchCurrentAvatarUrl(username);
+
             try {
                 userServiceClient.updateAvatar(userId, new UpdateAvatarRequest(avatarUrl));
                 logger.info("Avatar updated for user {} (userId={})", username, userId);
+                // DB now points to the new URL — safe to delete the old file.
+                // updateAvatar-failure path below intentionally skips this:
+                // DB still references the old URL, deleting would orphan the user.
+                deletePreviousAvatar(previousAvatarUrl, avatarUrl);
             } catch (Exception ex) {
                 logger.error("Failed to update avatar in User Service for userId={}: {}", userId, ex.getMessage());
                 // File is saved, but User Service update failed
@@ -191,6 +199,66 @@ public class FileUploadController {
             logger.warn("Failed to persist upload_record (purpose={}, filename={}, user={}): {}",
                     purpose, storedFilename, username, ex.getMessage());
         }
+    }
+
+    /**
+     * Queries user-service for the caller's current avatarUrl.
+     * Used after a successful avatar upload to decide whether to delete
+     * the previous file. Any failure returns null (= nothing to clean),
+     * never blocks the upload flow.
+     */
+    private String fetchCurrentAvatarUrl(String username) {
+        try {
+            UserInfoDTO userInfo = userServiceClient.getUserByUsername(username);
+            return userInfo != null ? userInfo.getAvatarUrl() : null;
+        } catch (Exception ex) {
+            logger.warn("Could not fetch current avatar URL for cleanup (user={}): {}",
+                    username, ex.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Best-effort deletion of the user's previous avatar file.
+     * Only /uploads/avatars/<filename> URLs are accepted, and the filename
+     * must match UUID + whitelisted image extension — guards against path
+     * traversal (e.g. "../../etc/passwd") and against deleting arbitrary files.
+     * Equal to newUrl → skip (don't delete the just-uploaded file).
+     * Any exception is swallowed; cleanup is never load-bearing for the upload.
+     */
+    private void deletePreviousAvatar(String previousUrl, String newUrl) {
+        if (previousUrl == null || previousUrl.equals(newUrl)) return;
+
+        String filename = extractAvatarFilename(previousUrl);
+        if (filename == null) {
+            logger.warn("Skip avatar cleanup: URL not a safe avatar path : {}", previousUrl);
+            return;
+        }
+
+        try {
+            Path oldFile = UPLOAD_ROOT.resolve("avatars").resolve(filename);
+            boolean deleted = Files.deleteIfExists(oldFile);
+            if (deleted) {
+                logger.info("Deleted previous avatar: {}", filename);
+            }
+        } catch (Exception ex) {
+            logger.warn("Failed to delete previous avatar ({}): {}", previousUrl, ex.getMessage());
+        }
+    }
+
+    /**
+     * Returns the bare filename if {@code url} is a safe /uploads/avatars/
+     * URL with a UUID-style + whitelisted image extension, otherwise null.
+     * Extracted as a package-visible static so the path-traversal guard can
+     * be unit-tested without spinning up the filesystem.
+     */
+    static String extractAvatarFilename(String url) {
+        if (url == null) return null;
+        String prefix = "/uploads/avatars/";
+        if (!url.startsWith(prefix)) return null;
+        String filename = url.substring(prefix.length());
+        if (!filename.matches("[\\w-]+\\.(jpg|png|gif|webp)")) return null;
+        return filename;
     }
 
     /**
