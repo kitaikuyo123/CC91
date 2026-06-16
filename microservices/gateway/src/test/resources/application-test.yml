@@ -1,0 +1,18 @@
+# Test profile for the gateway.
+# Disable Eureka service registration and registry fetching so that
+# @SpringBootTest contextLoads does not require a running Eureka.
+spring:
+  cloud:
+    discovery:
+      enabled: false
+    loadbalancer:
+      ribbon:
+        enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://localhost:8761/eureka/

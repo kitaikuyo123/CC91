@@ -1,0 +1,14 @@
+# Test profile for eureka-server.
+# Disable peer-replication related behaviour so the @SpringBootTest contextLoads
+# does not require a peer Eureka node or attempt outbound HTTP during startup.
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  server:
+    enable-self-preservation: false
+    eviction-interval-timer-in-ms: 60000

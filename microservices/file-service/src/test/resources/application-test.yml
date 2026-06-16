@@ -1,0 +1,45 @@
+spring:
+  profiles:
+    active: test
+  datasource:
+    url: jdbc:h2:mem:cc91_file_service;DB_CLOSE_DELAY=-1;MODE=MySQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: false
+  cloud:
+    circuitbreaker:
+      resilience4j:
+        enabled: false
+    openfeign:
+      circuitbreaker:
+        enabled: false
+
+jwt:
+  secret: test-jwt-secret-key-for-cc91-unit-tests-do-not-use-in-production-at-least-256-bits-long
+  expiration: 3600000
+  refresh-expiration: 604800000
+
+internal:
+  token: test-internal-token-cc91
+
+app:
+  mail:
+    console-log-only: true
+
+account:
+  lock:
+    max-attempts: 5
+    duration-seconds: 30
+
+file:
+  upload:
+    dir: target/test-uploads

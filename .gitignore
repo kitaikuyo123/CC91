@@ -106,3 +106,6 @@ __pycache__/
 
 # Stress test output
 stress_test_result.json
+
+# jqwik property-based test database (per-developer local cache)
+.jqwik-database
