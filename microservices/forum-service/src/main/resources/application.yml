@@ -1,5 +1,12 @@
 server:
   port: 8082
+  tomcat:
+    threads:
+      max: 500
+      min-spare: 50
+    accept-count: 200
+    max-connections: 10000
+
 spring:
   application:
     name: forum-service
@@ -7,6 +14,10 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3306/cc91_db?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&sessionVariables=character_set_client=utf8mb4,character_set_connection=utf8mb4,character_set_results=utf8mb4}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 200
+      minimum-idle: 50
+      connection-timeout: 10000
   jpa:
     hibernate:
       ddl-auto: update

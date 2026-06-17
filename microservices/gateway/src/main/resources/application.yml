@@ -9,6 +9,12 @@ spring:
       retry:
         enabled: true
     gateway:
+      httpclient:
+        pool:
+          max-connections: 500
+          acquire-timeout: 10000
+        connect-timeout: 5000
+        response-timeout: 30s
       routes:
         - id: user-content-service
           uri: lb://forum-service
