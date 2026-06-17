@@ -6,11 +6,11 @@
 > **测试工具**：k6 v0.56.0（Go 实现，constant-arrival-rate 限速模式）
 > **测试环境**：Windows 11 Home China + Docker Desktop 28.5.1 + OpenJDK 17 + MySQL 8.0.36
 > **相关文件**：
-> - 脚本：`docs/deliverables/05-测试报告/stress-test/k6/`
-> - 种子：`docs/deliverables/05-测试报告/stress-test/seed_data.sql`
-> - 原始数据：`docs/deliverables/05-测试报告/stress-test/k6/results/scenario-*.json`
-> - 汇总 JSON：`docs/deliverables/05-测试报告/stress-test/k6/stress_test_result_500.json`
-> - 问题与优化：`docs/deliverables/05-测试报告/stress-test/stress-test-issues-and-optimization.md`
+> - 脚本：`docs/stress-test/k6/`
+> - 种子：`docs/stress-test/seed_data.sql`
+> - 原始数据：`docs/stress-test/k6/results/scenario-*.json`
+> - 汇总 JSON：`docs/stress-test/k6/stress_test_result_500.json`
+> - 问题与优化：`docs/stress-test/stress-test-issues-and-optimization.md`
 
 ---
 
@@ -300,7 +300,7 @@ forum-service 启用 Flyway，新增 `V3__add_composite_indexes.sql`：
 
 ### 8.6 测试基础设施（commit `83cbb06`）
 
-- 新建 `docs/deliverables/05-测试报告/stress-test/k6/` 目录，11 个文件（common.js / 7 scenario / run-all.sh / parse-results.js / README.md）
+- 新建 `docs/stress-test/k6/` 目录，11 个文件（common.js / 7 scenario / run-all.sh / parse-results.js / README.md）
 - 修复 `seed_data.sql` 两处 bug：comments 外键引用（`FLOOR(1+RAND()*10000)` → `SELECT id FROM posts`）、testuser1-10 密码 hash 与注释不一致（改用 admin 同源 hash）
 - `parse-results.js` 修 metric 字段位置 bug（顶层 obj.metric 而非 obj.data.metric）
 - `run-all.sh` 默认用户改 `testuser1`（避免 admin 锁定），PATH 自动 fallback `~/bin/k6.exe`
@@ -363,10 +363,10 @@ docker compose ps  # 全部 healthy
 
 # 2. 灌种子数据（首次）
 docker exec -i cc91-mysql mysql -uroot -p${DB_PASSWORD} cc91_db \
-  < docs/deliverables/05-测试报告/stress-test/seed_data.sql
+  < docs/stress-test/seed_data.sql
 
 # 3. 跑全量 500 RPS 压测
-cd docs/deliverables/05-测试报告/stress-test/k6
+cd docs/stress-test/k6
 export USERNAME=testuser1 PASSWORD=admin123
 ./run-all.sh
 

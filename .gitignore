@@ -104,8 +104,11 @@ plan/
 # Python cache
 __pycache__/
 
-# Stress test output
-stress_test_result.json
+# Stress test output（仅本机临时产物；docs/stress-test/ 下的基线数据需入库）
+/stress_test_result.json
+/**/stress_test_result.json
+!/docs/stress-test/stress_test_result.json
+!/docs/stress-test/k6/stress_test_result_500.json
 
 # jqwik property-based test database (per-developer local cache)
 .jqwik-database

@@ -27,10 +27,12 @@ docs/deliverables/
 │   ├── rules-overview.md           # 三类规则文件要点总览
 │   └── skills/                     # 5 个 SKILL.md
 ├── 04-对话记录/                    # Claude Code 对话历史（37 份 .jsonl）
-└── 05-测试报告/                    # 测试体系全部产出
+└── 05-测试报告/                    # 测试报告（脚本/数据在 docs/stress-test/）
     ├── unit-test-report.md
     ├── integration-test-report.md
-    └── stress-test/                # 压测脚本 + 报告 + 种子
+    ├── security-test-report.md
+    └── stress-test/
+        └── stress-test-report.md
 
 # 设计与部署文档（在 docs/ 根目录维护，不在 deliverables 内重复）
 docs/
@@ -52,7 +54,7 @@ docs/
 1. **`01-最终报告/CC91-项目总结报告.pdf`** — 项目全貌，覆盖功能、技术、流程、5 维度分析
 2. **`../microservices-design.md`** — 微服务拆分策略与收益
 3. **`../security-audit.md`** — OWASP Top 10 全覆盖
-4. **`05-测试报告/stress-test/stress-test-report.md`** — 万级数据下 8 场景压测
+4. **`05-测试报告/stress-test/stress-test-report.md`** — 500 RPS 限速下 7 场景压测
 5. **`02-智能体配置/CLAUDE.md`** — AI 协作协议（5 阶段工作流）
 
 ---
