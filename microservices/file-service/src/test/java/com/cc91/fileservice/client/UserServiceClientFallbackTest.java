@@ -14,9 +14,11 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * UserServiceClientFallback unit tests for file-service.
  *
- * Verifies the fallback returns safe defaults (never null, never throws) so that
- * file upload does not crash when User Service is unreachable. Resilience4j
+ * Verifies the fallback behavior when User Service is unreachable. Resilience4j
  * invokes this fallback when the Feign call fails / circuit is open.
+ *
+ * Note: getUserByUsername intentionally returns null (file-service writes use
+ * JWT userId, never the fallback id), so callers treat the user as not found.
  */
 class UserServiceClientFallbackTest {
 
@@ -32,23 +34,17 @@ class UserServiceClientFallbackTest {
     class GetUserByUsername {
 
         @Test
-        @DisplayName("should return fallback UserInfoDTO with preserved username")
-        void shouldReturnFallbackForUsername() {
+        @DisplayName("should return null when User Service is down (never synthesize a placeholder)")
+        void shouldReturnNullForUsername() {
             UserInfoDTO result = fallback.getUserByUsername("alice");
-            assertNotNull(result);
-            assertEquals("alice", result.getUsername());
-            assertEquals("USER", result.getRole());
-            assertNull(result.getId());
-            assertNull(result.getAvatarUrl());
+            assertNull(result);
         }
 
         @Test
-        @DisplayName("should handle null username gracefully (preserve null, not throw)")
-        void shouldHandleNullUsername() {
+        @DisplayName("should return null for null username as well")
+        void shouldReturnNullForNullUsername() {
             UserInfoDTO result = fallback.getUserByUsername(null);
-            assertNotNull(result);
-            assertNull(result.getUsername());
-            assertEquals("USER", result.getRole());
+            assertNull(result);
         }
     }
 

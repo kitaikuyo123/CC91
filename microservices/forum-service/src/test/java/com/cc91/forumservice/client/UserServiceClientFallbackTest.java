@@ -12,7 +12,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * UserServiceClientFallback unit tests.
- * Verifies safe defaults are returned (never null, never throws).
+ *
+ * 契约：
+ *  - getUserById / getUsersByIds：使用 fallback 占位对象（保留 id），允许下游展示用
+ *  - getUserByUsername：必须返回 null，让上游抛 ResourceNotFoundException
+ *      （避免 id=null 占位导致 INSERT 失败 400，详见 issues.md scenario-4 修复）
+ *  - isUserLocked：默认 false（保守地允许请求继续，由 JWT 状态保障安全）
  */
 class UserServiceClientFallbackTest {
 
@@ -51,22 +56,30 @@ class UserServiceClientFallbackTest {
     @DisplayName("getUserByUsername")
     class GetUserByUsername {
 
+        /**
+         * 契约：User Service 不可用时必须返回 null，而不是 id=null 的占位对象。
+         *
+         * 否则调用方（PostService/CommentService）已有的
+         *   if (user == null) throw new ResourceNotFoundException("用户不存在")
+         * 校验会失效，导致流程继续走到 INSERT，最终 MySQL 拒绝 author_id=null
+         * 报 400 'Column author_id cannot be null'。
+         *
+         * 详见 docs/issues.md scenario-4 修复记录。
+         */
         @Test
-        @DisplayName("should return fallback with preserved username and null id")
-        void shouldReturnFallbackForUsername() {
+        @DisplayName("should return null so callers can throw ResourceNotFoundException (not a ghost user with null id)")
+        void shouldReturnNullForUsername() {
             UserInfoDTO result = fallback.getUserByUsername("alice");
-            assertNotNull(result);
-            assertEquals("alice", result.getUsername());
-            assertNull(result.getId());
-            assertEquals("USER", result.getRole());
+            assertNull(result,
+                    "fallback must return null when user-service is unavailable; "
+                            + "returning an id=null placeholder causes 'author_id cannot be null' at INSERT");
         }
 
         @Test
-        @DisplayName("should handle null username gracefully")
-        void shouldHandleNullUsername() {
+        @DisplayName("should also return null for null username")
+        void shouldReturnNullForNullUsername() {
             UserInfoDTO result = fallback.getUserByUsername(null);
-            assertNotNull(result);
-            assertNull(result.getUsername());
+            assertNull(result);
         }
     }
 

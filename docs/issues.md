@@ -12,15 +12,13 @@
 
 ## Bug
 
-### forum-service（压测 Task 3 第三轮 500 并发暴露）
+### forum-service
 
-- **PostController.createPost 在并发下偶发 `author_id` 为 null**
-  - 优先级：P1（500 RPS 限速压测中 308 / 1863 个 `POST /api/posts` 返回 400，错误体 `Column 'author_id' cannot be null`）
-  - 暴露于：`docs/deliverables/05-测试报告/stress-test/k6/scenario-4-mixed-read-write.js`
-  - 现象：单线程 smoke test 不复现；500 并发下偶发；推测 `JwtAuthenticationFilter` 在并发下 `SecurityContext` 设置存在线程安全竞争，导致 `getCurrentUsername()` 偶发返回 null
-  - 建议：检查 `PostController.getCurrentUsername()` 与 `JwtAuthenticationFilter` 的并发安全；考虑用 `RequestScope` 或 ThreadLocal 显式同步
+_历史 bug 已就地修复（含压测 Task 3 第三轮 scenario-4 的 author_id null 修复），详见本节历史与 git log。_
 
-_其他历史 bug 已就地修复，详见本节历史。_
+### content-service / file-service / notification-service
+
+_同类 `UserServiceClientFallback.getUserByUsername` fallback 契约问题已统一修复（三个服务均改为返回 null），详见 git log。_
 
 ---
 

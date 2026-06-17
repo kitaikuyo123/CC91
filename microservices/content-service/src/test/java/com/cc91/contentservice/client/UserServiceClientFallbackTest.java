@@ -13,7 +13,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * UserServiceClientFallback unit tests.
- * Verifies safe defaults are returned (never null, never throws).
+ * Verifies safe defaults are returned (never null, never throws) — except
+ * getUserByUsername, which intentionally returns null when User Service is down
+ * so callers cannot leak a placeholder user id into the DB.
  */
 class UserServiceClientFallbackTest {
 
@@ -53,21 +55,17 @@ class UserServiceClientFallbackTest {
     class GetUserByUsername {
 
         @Test
-        @DisplayName("should return fallback with preserved username and null id")
-        void shouldReturnFallbackForUsername() {
+        @DisplayName("should return null when User Service is down (never synthesize a placeholder)")
+        void shouldReturnNullForUsername() {
             UserInfoDTO result = fallback.getUserByUsername("alice");
-            assertNotNull(result);
-            assertEquals("alice", result.getUsername());
-            assertNull(result.getId());
-            assertEquals("USER", result.getRole());
+            assertNull(result);
         }
 
         @Test
-        @DisplayName("should handle null username gracefully")
-        void shouldHandleNullUsername() {
+        @DisplayName("should return null for null username as well")
+        void shouldReturnNullForNullUsername() {
             UserInfoDTO result = fallback.getUserByUsername(null);
-            assertNotNull(result);
-            assertNull(result.getUsername());
+            assertNull(result);
         }
     }
 

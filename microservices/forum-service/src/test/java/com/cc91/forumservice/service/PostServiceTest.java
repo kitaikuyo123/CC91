@@ -2,6 +2,7 @@ package com.cc91.forumservice.service;
 
 import com.cc91.forumservice.client.UserInfoDTO;
 import com.cc91.forumservice.client.UserServiceClient;
+import com.cc91.forumservice.client.UserServiceClientFallback;
 import com.cc91.forumservice.dto.CreatePostRequest;
 import com.cc91.forumservice.dto.PostResponse;
 import com.cc91.forumservice.dto.UpdatePostRequest;
@@ -91,6 +92,34 @@ class PostServiceTest {
             CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
             assertThrows(ResourceNotFoundException.class,
                     () -> postService.createPost(USERNAME, req));
+        }
+
+        /**
+         * Regression test for the 500-RPS stress test scenario-4 bug:
+         * 'Column author_id cannot be null' (400) on POST /api/posts.
+         *
+         * Root cause: {@code UserServiceClientFallback#getUserByUsername} used to
+         * return a ghost {@code UserInfoDTO(null, username, "USER", null)}, which
+         * defeated the existing {@code if (user == null) throw} guard. The fix
+         * requires the fallback to return {@code null}; this test wires the real
+         * fallback instance into the service to assert the end-to-end contract:
+         * user-service down -> fallback -> null -> ResourceNotFoundException,
+         * never a 400 from a NULL author_id INSERT.
+         */
+        @Test
+        @DisplayName("regression: real UserServiceClientFallback returns null -> ResourceNotFoundException, never ghost user")
+        void shouldThrowWhenRealFallbackReturnsNullForUsername() {
+            UserServiceClient realFallback = new UserServiceClientFallback();
+            when(userServiceClient.getUserByUsername(USERNAME))
+                    .thenAnswer(inv -> realFallback.getUserByUsername(USERNAME));
+            CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
+
+            ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+                    () -> postService.createPost(USERNAME, req));
+
+            // 关键：fallback 不应让流程走到 save（即不会构造出 author_id=null 的 Post）
+            verify(postRepository, never()).save(any(Post.class));
+            assertNotNull(ex.getMessage());
         }
 
         @Test

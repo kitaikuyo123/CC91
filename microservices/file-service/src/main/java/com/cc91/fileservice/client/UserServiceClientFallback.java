@@ -10,7 +10,9 @@ import java.util.Map;
 
 /**
  * Fallback for UserServiceClient when User Service is unavailable.
- * Returns safe defaults so file operations can report meaningful errors.
+ * getUserByUsername returns null (caller treats as "user not found") rather than
+ * synthesizing a placeholder — file-service writes use JWT userId, never the
+ * fallback id, so null is safe.
  */
 @Component
 public class UserServiceClientFallback implements UserServiceClient {
@@ -19,8 +21,8 @@ public class UserServiceClientFallback implements UserServiceClient {
 
     @Override
     public UserInfoDTO getUserByUsername(String username) {
-        logger.warn("User Service unavailable, returning fallback for username={}", username);
-        return new UserInfoDTO(null, username, "USER", null);
+        logger.warn("User Service unavailable, returning null for username={} (caller should handle as 'user not found')", username);
+        return null;
     }
 
     @Override

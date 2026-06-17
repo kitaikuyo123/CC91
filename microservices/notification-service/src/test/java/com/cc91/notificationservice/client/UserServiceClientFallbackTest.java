@@ -11,11 +11,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * UserServiceClientFallback unit tests for notification-service.
- * Verifies safe defaults are returned (never null, never throws).
  *
- * Note: notification-service's fallback is intentionally different from
- * content-service: it returns id=-1 for getUserByUsername (sentinel) and
- * "unknown" username for getUserById.
+ * getUserByUsername returns null when User Service is down — callers must treat
+ * the user as not found (an earlier version returned a sentinel id=-1, which
+ * risked routing notifications to a non-existent user).
+ * Other methods return safe defaults as before.
  */
 class UserServiceClientFallbackTest {
 
@@ -31,23 +31,17 @@ class UserServiceClientFallbackTest {
     class GetUserByUsername {
 
         @Test
-        @DisplayName("should return fallback with preserved username, sentinel id=-1, role=UNKNOWN")
-        void shouldReturnFallbackForUsername() {
+        @DisplayName("should return null when User Service is down (never synthesize a sentinel user)")
+        void shouldReturnNullForUsername() {
             UserInfoDTO result = fallback.getUserByUsername("alice");
-            assertNotNull(result);
-            assertEquals("alice", result.getUsername());
-            assertEquals(-1L, result.getId());
-            assertEquals("UNKNOWN", result.getRole());
-            assertNull(result.getAvatarUrl());
+            assertNull(result);
         }
 
         @Test
-        @DisplayName("should handle null username gracefully")
-        void shouldHandleNullUsername() {
+        @DisplayName("should return null for null username as well")
+        void shouldReturnNullForNullUsername() {
             UserInfoDTO result = fallback.getUserByUsername(null);
-            assertNotNull(result);
-            assertNull(result.getUsername());
-            assertEquals(-1L, result.getId());
+            assertNull(result);
         }
     }
 

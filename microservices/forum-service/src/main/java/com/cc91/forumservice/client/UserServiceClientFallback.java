@@ -25,8 +25,14 @@ public class UserServiceClientFallback implements UserServiceClient {
 
     @Override
     public UserInfoDTO getUserByUsername(String username) {
-        logger.warn("User Service unavailable, returning fallback for username={}", username);
-        return new UserInfoDTO(null, username, "USER", null);
+        // IMPORTANT: 必须返回 null，不能返回 id=null 的"虚假用户"。
+        // 调用方（PostService / CommentService）依赖此契约：
+        //   null => 用户不存在 => 抛 ResourceNotFoundException => 客户端拿到 404 + 清晰错误
+        // 若返回 id=null 的占位对象，会让流程继续走到 INSERT，最终 MySQL
+        // 因 author_id=null 拒绝写入，返回 400 'Column author_id cannot be null'。
+        // （压测 Task 3 scenario-4 暴露的 P1 bug）
+        logger.warn("User Service unavailable, returning null for username={} (caller should handle as 'user not found')", username);
+        return null;
     }
 
     @Override

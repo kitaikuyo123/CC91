@@ -13,8 +13,8 @@ public class UserServiceClientFallback implements UserServiceClient {
 
     @Override
     public UserInfoDTO getUserByUsername(String username) {
-        log.warn("Fallback: getUserByUsername({}) — user-service unavailable", username);
-        return new UserInfoDTO(-1L, username, "UNKNOWN", null);
+        log.warn("User Service unavailable, returning null for username={} (caller should handle as 'user not found')", username);
+        return null;
     }
 
     @Override
