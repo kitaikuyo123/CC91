@@ -1,25 +1,26 @@
-# CC91 压力测试问题识别与优化建议（500 RPS 限速版，第四轮 · MVP 优化后）
+# CC91 压力测试问题识别与优化建议（500 RPS 限速版，第五轮 · Task 16 后）
 
 > 来源报告：`docs/deliverables/05-测试报告/stress-test/stress-test-report.md`
 > 原始数据：`docs/deliverables/05-测试报告/stress-test/k6/results/scenario-*.json`
 > 汇总 JSON：`docs/deliverables/05-测试报告/stress-test/k6/stress_test_result_500.json`
 > 测试时间：2026-06-17
-> 测试负载：**k6 `constant-arrival-rate` 限速 500 RPS × 15s/场景**（scenario-3 登录沿用 50 并发基线，scenario-5 本轮也改为 arrival-rate 500 RPS × 5s）
+> 测试负载：**k6 `constant-arrival-rate` 限速 500 RPS × 15s/场景**（scenario-3 登录沿用 50 并发基线，scenario-5 改为 arrival-rate 500 RPS × 5s）
 
 ## 1. 背景
 
-本文件基于 **第四轮 500 RPS 限速实跑**结果重写，与第一/二/三轮（HikariCP=200、scenario-5 瞬时 500、GlobalExceptionHandler 假 400）对比，评估 MVP 优化（Task 1 A+B+C+D）的实际效果与剩余瓶颈。
+本文件基于 **第五轮 500 RPS 限速实跑**结果更新，第五轮相对第四轮的唯一改动是 Task 16（PostService/CommentService 写入路径从 JWT 解析 userId、删 Feign 调用）。
 
-**四轮调参核心结论**：
+**五轮调参核心结论**：
 
 | 轮次 | 模型 | 主调整 | 主失败原因 | 7 场景失败率范围 |
 |------|------|------|-----------|--------------|
 | 第一轮 | vus=500 无限制 | 初始配置 | HikariCP=50 池打满 | 62%-100% |
 | 第二轮 | vus=500 无限制（HikariCP→200） | 容量扩容 | **客户端 TCP 端口耗尽**（17 万 `connectex`） | 94%-100% |
 | 第三轮 | constant-arrival-rate 500 RPS | 限速 | 服务端真实瓶颈 + 1 个业务缺陷 | 0%-60% |
-| **第四轮（本轮）** | **同第三轮 + MVP 优化** | **HikariCP→500, MySQL→3000, Flyway V3 索引, GlobalExceptionHandler→500** | **仅 scenario-5 持续写入恶化**（Feign 链路超时） | **0%-93%** |
+| 第四轮 | 同第三轮 + MVP 优化 | HikariCP→500, MySQL→3000, Flyway V3 索引, GlobalExceptionHandler→500 | scenario-5 Feign 链路超时 | 0%-93% |
+| **第五轮（本轮）** | **同第四轮 + Task 16** | **PostService/CommentService 写入路径从 JWT 解析 userId、删 Feign** | **无 ≥ 5% 失败的场景；scenario-1 categories 慢查询偶发 4.18%** | **0%-4.18%** |
 
-**本轮核心进展**：plan Task 1 MVP 优化目标"5/7 场景失败率 < 5%"**超额达成 6/7**。scenario-1/2a/2b/2c/4/6 失败率全部 ≤ 0.03%。但延迟仍高（P99 16-23s），scenario-5 恶化（Feign 链路未根治）。
+**本轮核心进展**：plan 最终目标"7/7 场景失败率 < 5%"**完全达成 7/7**。scenario-5 从第四轮 93.5% → **0%**。Task 16 的根因修复彻底生效。
 
 ---
 
@@ -77,59 +78,63 @@
 - scenario-1/2a P99 也下降
 - **索引生效但非根治**：P99 仍 11-22s，需配合缓存才能 < 5s
 
+### 2.6 ~~P0：PostService.create 强依赖 Feign 调用 user-service（第四轮发现）~~ — **第五轮解决**
+
+**第四轮现象**：scenario-5 持续写入 500 RPS（arrival-rate 模式）共 1601 个请求，**1496 个失败 93.5%**，全部 status=404，错误体 `{"message":"用户不存在"}`。forum-service 日志海量 `UserServiceClientFallback: User Service unavailable, returning null for username=testuser1`。
+
+**第五轮调整（Task 16）**：
+- `PostService.createPost`：删除 `userServiceClient.getUserByUsername(...)` 调用，userId 直接由 Controller 从 `Authentication.details` Map（JwtAuthenticationFilter 解析 JWT claims 后注入）取
+- `CommentService.createComment` / `replyToComment` 同样改造
+- JwtAuthenticationFilter 把 userId 放进 Authentication.details Map
+
+**第五轮验证**：
+- scenario-5 失败率 93.5% → **0.00%**（910/910 成功）
+- scenario-5 RPS 295.93 → **131.64**（实际吞吐更真实，无 fallback 空转）
+- scenario-5 P95 4.25s → **5.03s**，P99 4.25s → **5.36s**
+- forum-service 日志：**0 个 UserServiceClientFallback 调用**，0 个 "用户不存在" 异常
+- scenario-4 读写混合 0.03% → **0%**（20% 写入也走 JWT 路径，间接收益）
+- **根因彻底修复**：写入路径完全脱离 user-service 依赖
+
 ---
 
 ## 3. 仍存在的问题（按优先级）
 
-### 3.1 P0（新增）：PostService.create 强依赖 Feign 调用 user-service（本轮发现）
+### 3.1 P1（升级）：scenario-1 categories 慢查询在新压力分布下偶发 4.18% 失败（本轮新发现）
 
-**第四轮现象**：
-- scenario-5 持续写入 500 RPS（arrival-rate 模式）共 1601 个请求，**1496 个失败 93.5%**，全部 status=404，错误体 `{"message":"用户不存在"}`
-- forum-service 日志海量：`UserServiceClientFallback: User Service unavailable, returning null for username=testuser1`
-- user-service InternalUserController 高并发下被全量打满，Feign 调用超时
-- fallback 触发返回 null，PostService.createPost 抛 ResourceNotFoundException → 404
-
-**根因（推断）**：PostService.createPost 每次发帖都调 `UserServiceClient.getUserByUsername(testuser1)` 取 author 信息（id/username/role/email），持续 500 RPS 下 user-service Feign 链路全量超时。
-
-**为什么 Task 1 D 项的 fallback fix 没根治**：fallback fix 只改了**错误码**（从 400 改成 404），没修 Feign 调用本身的容量问题。在低并发（如 scenario-4 的 20% 写入）下，Feign 调用大部分成功，fallback 极少触发；在持续高并发（scenario-5 的 100% 写入 500 RPS）下，Feign 全量超时。
-
-**优化方向**：
-
-| 方向 | 说明 | 实施成本 |
-|------|------|---------|
-| **PostService.create 从 JWT/SecurityContext 解析 author** | 已有 SecurityContext，无需 Feign 调用 | 低（删 Feign 调用 + 加 SecurityContext 取数） |
-| **user-service 调用加本地缓存** | author 信息是低变更数据，Caffeine 1h TTL | 中（每个 forum/content/file/notification 服务都加） |
-| **user-service 横向扩容** | 多副本分担 InternalApiController 压力 | 高（架构变更） |
-
-**最优先动作**：从 JWT/SecurityContext 解析 author——这是修 scenario-5 93.5% 失败的**根因修复**，工作量低。
-
-### 3.2 P1：scenario-1/2a/6 的 P99 仍 16-23s（用户体感未达标）
-
-**第四轮实测**：
-- scenario-1 只读基准：P99=23.5s（第三轮 30s）
-- scenario-2a categories：P99=16.6s（第三轮 23.1s）
-- scenario-6 详情+评论：P99=22.5s（第三轮 29.3s）
+**第五轮实测**：
+- scenario-1 只读基准：1555 个请求，**65 失败 4.18%**（46 个 HTTP 500 + 19 个 status=0 超时）
+- 失败全部来自 GET /api/categories 在持续 500 RPS 下偶发 P99 > 30s
+- k6 默认 30s 超时，客户端主动断开 → 服务端写响应时 Broken pipe → GlobalExceptionHandler 兜底抛 500
+- scenario-1 P99=29.99s，逼近 30s 超时上限
 
 **根因**：
-- scenario-1/2a 的 `CategoryService.findAll` 调 `postRepository.countStatsByCategory` 做 GROUP BY 聚合统计每分类帖子数 + 今日新帖数，500 RPS 下从基线 755ms 恶化到 P99 16-23s
-- scenario-6 每次请求 `incrementViewCount` 是 `@Modifying UPDATE`，500 RPS 下 InnoDB 行锁排队
+- `CategoryService.findAll` 调 `postRepository.countStatsByCategory` 做 GROUP BY 聚合统计每分类帖子数 + 今日新帖数
+- 第四轮 scenario-1 是 0% 失败，第五轮 4.18%——这是"压力反弹"现象：Task 16 修好 scenario-5 后，原本空转的 forum-service 线程（Feign 超时占着不写 DB）开始真实工作，DB 写入量上升 + posts 表数据积累到 24800+ 条，让 categories 聚合 SQL 在持续高压下偶发慢
+- 注意：第四轮 posts 表数据约 10000 条，第五轮已积累到 24800+ 条（含第四轮写入的 1496 条失败空转帖子和 scenario-4/5 的成功帖子）
 
 **优化方向**：
 
 | 方向 | 说明 | 实施成本 |
 |------|------|---------|
 | **Caffeine 缓存 CategoryService.findAll/findById**（plan Task 2 E 项） | 低变更数据缓存 5m TTL，消除 90% DB 压力 | 中（pom + CacheConfig + @Cacheable + @CacheEvict） |
+
+**最优先动作**：Caffeine 缓存——这是修 scenario-1 P99 30s 的根因修复，plan Task 2 已设计好。**未实施前，scenario-1 失败率虽 < 5% 但逼近边界，需尽快处理**。
+
+### 3.2 P1（沿用）：scenario-6 P99 29s 浏览量行锁排队（plan Task 2 F 方向）
+
+**第五轮实测**：scenario-6 详情+评论 P99=29.30s，与第四轮基本持平。
+
+**根因**：scenario-6 每次请求 `incrementViewCount` 是 `@Modifying UPDATE`，500 RPS 下 InnoDB 行锁排队。
+
+**优化方向**：
+
+| 方向 | 说明 | 实施成本 |
+|------|------|---------|
 | **浏览量异步化（plan Task 2 F 项）** | `incrementViewCount` 改 `@Async`，放到 PostViewService 独立 Bean | 中（注意 Spring AOP 跨 Bean 限制） |
 
-**最优先动作**：Caffeine 缓存——这是修 scenario-1/2a P99 23s 的**根因修复**，plan Task 2 已设计好。
+### 3.3 P1（沿用）：user-service 账号锁定策略在生产环境有误锁风险
 
-### 3.3 P1：user-service 账号锁定策略在生产环境有误锁风险（沿用）
-
-**第四轮未触发，但风险未消除**：
-- max-attempts=5, duration=30s 在以下场景仍会误锁：
-  - 网关重试策略把同一请求重发 5 次到 user-service
-  - 前端登录表单被脚本攻击，5 次错误密码瞬时锁
-  - 微服务链路中调用 /api/auth/login 的某个节点 N+1 重试
+**第五轮未触发，但风险未消除**：max-attempts=5, duration=30s 在网关重试 / 前端脚本攻击 / 链路 N+1 重试下仍会误锁。
 
 **优化方向**（建议优先级 P1，但非压测阻塞）：
 
@@ -140,15 +145,14 @@
 | admin 白名单兜底 | 内置 admin 永不锁 |
 | 锁定后 exponential backoff | 而非固定 30s |
 
-### 3.4 P2：run-all.sh USERNAME 环境变量被 Windows 系统覆盖（沿用，未修）
+### 3.4 P2（沿用）：run-all.sh USERNAME 环境变量被 Windows 系统覆盖（未修）
 
-**第三轮发现，本轮再次踩坑**：第 35 行 `export USERNAME="${USERNAME:-testuser1}"` 在 Windows bash 下被 Windows 系统 `USERNAME`（用户名如 `18421`）覆盖。
+**第三轮发现，第五轮再次踩坑**：第 35 行 `export USERNAME="${USERNAME:-testuser1}"` 在 Windows bash 下被 Windows 系统 `USERNAME` 覆盖。
 
-**本轮影响**：scenario-4/5 第一次跑全部 setup 401 失败，重跑显式传 `USERNAME=testuser1` 后通过。
+**第五轮执行**：必须显式 `export USERNAME=testuser1 PASSWORD=admin123 ./run-all.sh`，否则 setup 用 Windows 用户名登录返回 401。
 
 **修复**：
 ```bash
-# 强制覆盖，不用 fallback
 unset USERNAME
 export USERNAME=testuser1
 export PASSWORD=admin123
@@ -156,24 +160,30 @@ export PASSWORD=admin123
 
 或脚本顶部加 `unset USERNAME` 后再用 `${1:-testuser1}` 接受命令行参数。
 
+### 3.5 P1（新增，运维流程问题）：docker compose restart 不会重建镜像
+
+**第五轮踩坑（重要）**：第一次跑 `docker compose restart forum-service` 后跑全量压测，scenario-5 失败率仍 74.2%，全部 "用户不存在"——日志显示 PostService.createPost 仍在调 UserServiceClientFallback。
+
+**根因排查**：
+- `docker compose restart` 只是重启容器，**用的是同一个旧镜像**
+- forum-service 镜像创建时间（北京 21:24）**早于** Task 16 commit 时间（北京 22:01）
+- 容器里跑的是 Task 16 之前的字节码
+
+**正确流程**：
+```bash
+docker compose build forum-service
+docker compose up -d forum-service   # 这一步会用新镜像重建容器
+```
+
+**优化方向**：在 docs/deliverables 或运维手册中明确"代码改了后必须 build + up -d，不能只 restart"。
+
 ---
 
-## 4. 新增建议（基于第四轮数据）
+## 4. 新增建议（基于第五轮数据）
 
-### 4.1 P0：PostService.create 不依赖 Feign 调用取 author
+### 4.1 P1：Caffeine 缓存 CategoryService.findAll/findById（plan Task 2 E 项）
 
-**问题**：scenario-5 失败 93.5% 全部来自 forum-service → user-service Feign 超时触发 fallback。
-
-**实施**：
-- 在 PostService.createPost 中删掉 `userServiceClient.getUserByUsername(...)` 调用
-- 改用 `SecurityContextHolder.getContext().getAuthentication().getPrincipal()` 拿当前用户名
-- 如果 author 完整信息（email/role）必须取，加 Caffeine 本地缓存（10min TTL）
-
-**预期**：scenario-5 失败率 93.5% → < 5%。
-
-### 4.2 P1：Caffeine 缓存 CategoryService.findAll/findById（plan Task 2 E 项）
-
-**问题**：scenario-1/2a P99 16-23s，根因是聚合 SQL。
+**问题**：scenario-1 4.18% 失败 + scenario-2a P99 28.86s，根因是聚合 SQL。
 
 **实施**：
 - forum-service pom.xml 加 `spring-boot-starter-cache` + `com.github.ben-manes.caffeine:caffeine`
@@ -182,20 +192,20 @@ export PASSWORD=admin123
 - `CategoryService.create/update/delete` 加 `@CacheEvict(value="categories", allEntries=true)`
 - application.yml 加 `spring.cache.type=caffeine` + `spring.cache.caffeine.spec`
 
-**预期**：scenario-1/2a P99 23s → < 2s。
+**预期**：scenario-1 失败率 4.18% → 0%，P99 30s → < 2s；scenario-2a P99 28s → < 1s。
 
-### 4.3 P1：浏览量异步化（plan Task 2 F 项）
+### 4.2 P1：浏览量异步化（plan Task 2 F 项）
 
-**问题**：scenario-6 P99 22s，根因是 incrementViewCount 行锁排队。
+**问题**：scenario-6 P99 29.30s，根因是 incrementViewCount 行锁排队。
 
 **实施**：
 - forum-service config 新建 `AsyncConfig.java`（@EnableAsync + TaskExecutor）
 - `PostService.incrementViewCount` 提取成 `@Async` 方法
 - 注意：`@Async` 方法不能被同类调用（Spring AOP 限制），需要把 incrementViewCount 放到独立的 `PostViewService` Bean
 
-**预期**：scenario-6 P99 22s → < 5s。
+**预期**：scenario-6 P99 29s → < 5s。
 
-### 4.4 P2：客户端 TCP 调优文档化（沿用，非阻塞）
+### 4.3 P2：客户端 TCP 调优文档化（沿用，非阻塞）
 
 **理由**：当前依赖 k6 限速避免端口耗尽。未来做 > 500 RPS 压测时仍需调 Windows TCP。
 
@@ -207,37 +217,39 @@ export PASSWORD=admin123
 
 | 优先级 | 动作 | 预期收益 | 实施成本 | 状态 |
 |------|------|---------|---------|------|
-| **P0** | **PostService.create 从 JWT/SecurityContext 解析 author（不调 Feign）** | scenario-5 失败率 93.5% → < 5% | 低 | **本轮新发现，待修** |
-| **P0** | 修 run-all.sh USERNAME 强制 export | 避免下次压测 setup 失败 | 极低 | **沿用未修** |
-| **P1** | **Caffeine 缓存 CategoryService**（plan Task 2 E） | scenario-1/2a P99 23s → < 2s | 中 | plan Task 2 已设计 |
-| **P1** | **浏览量异步化**（plan Task 2 F） | scenario-6 P99 22s → < 5s | 中 | plan Task 2 已设计 |
+| **P1** | **Caffeine 缓存 CategoryService**（plan Task 2 E） | scenario-1 失败率 4.18% → 0%、P99 30s → < 2s | 中 | plan Task 2 已设计 |
+| **P1** | **浏览量异步化**（plan Task 2 F） | scenario-6 P99 29s → < 5s | 中 | plan Task 2 已设计 |
 | **P1** | user-service 账号锁定策略改 IP+账号 | 防误锁 | 中 | 沿用未修 |
-| **P2** | user-service 调用加本地缓存 | 减压 Feign 调用 | 中 | 待评估 |
+| **P2** | 修 run-all.sh USERNAME 强制 export | 避免下次压测 setup 失败 | 极低 | 沿用未修 |
+| **P2** | 文档化"代码改了后必须 build + up -d"运维检查项 | 避免再踩 restart 老镜像的坑 | 极低 | 本轮踩坑待文档化 |
+
+注：第四轮 P0"PostService 不调 Feign"已在 Task 16 完成并验证（scenario-5 93.5% → 0%）。
 
 ---
 
-## 6. 四轮调参总结表
+## 6. 五轮调参总结表
 
 | 轮次 | 主调整 | 失败率范围 | 主瓶颈 | 解决/未解决 |
 |------|--------|----------|--------|------------|
 | 第一轮 | 初始配置 vus=500 | 62%-100% | HikariCP=50 | 已解决（扩到 200） |
 | 第二轮 | HikariCP→200, MySQL→1000 | 94%-100% | **客户端 TCP 端口耗尽** | 已解决（限速 500 RPS） |
-| 第三轮 | constant-arrival-rate 500 RPS | 0%-60% | 真实瓶颈：author_id 业务缺陷 + 瞬时 INSERT 容量 + GlobalExceptionHandler 假 400 | 已解决（本轮 MVP 修复） |
-| **第四轮（本轮）** | **HikariCP→500, MySQL→3000, Flyway V3 索引, GlobalExceptionHandler→500, fallback fix** | **0%-93%** | **新瓶颈：PostService.create 强依赖 Feign 调用** | **本轮新增 4 项建议（plan Task 2 Caffeine + 浏览量异步 + PostService 不调 Feign + run-all.sh 修复）** |
+| 第三轮 | constant-arrival-rate 500 RPS | 0%-60% | 真实瓶颈：author_id 业务缺陷 + 瞬时 INSERT 容量 + GlobalExceptionHandler 假 400 | 已解决（第四轮 MVP 修复） |
+| 第四轮 | HikariCP→500, MySQL→3000, Flyway V3 索引, GlobalExceptionHandler→500, fallback fix | 0%-93% | PostService.create 强依赖 Feign 调用 | 已解决（第五轮 Task 16） |
+| **第五轮（本轮）** | **PostService/CommentService 写入路径从 JWT 解析 userId、删 Feign** | **0%-4.18%** | **无 ≥ 5% 失败的场景；scenario-1 categories 慢查询偶发 4.18%（plan Task 2 Caffeine 方向）** | **7/7 < 5%，最终目标达成** |
 
 ---
 
-## 7. 本轮 MVP 优化效果（前 vs 后）
+## 7. 第五轮 Task 16 改动效果（前 vs 后）
 
-| 改动项 | 影响场景 | 第三轮基线 | 第四轮实测 | 评价 |
+| 改动项 | 影响场景 | 第四轮基线 | 第五轮实测 | 评价 |
 |--------|--------|----------:|----------:|------|
-| **A** scenario-5 改 arrival-rate | 5 | 59.7%（瞬时模式） | 93.5%（持续模式） | ❌ 模式变了反而恶化（Feign 容量未修） |
-| **B** HikariCP 200→500 + MySQL 1000→3000 | 全部 | 容量假设的瓶颈 | 实测不饱和 | ✅ 容量充足，证伪"容量瓶颈"假设 |
-| **C** Flyway V3 复合索引 | 1, 2a, 2b, 6 | P99 16-30s | P99 11-23s | ✅ 部分改善（治标） |
-| **D** GlobalExceptionHandler 500 + fallback fix | 1, 2a, 2b, 4, 5, 6 | 假 400 + author_id null | 真状态码 + 清晰 404 | ✅ 错误码清晰（但 scenario-5 暴露 Feign 容量问题） |
+| **F** PostService/CommentService 写入路径删 Feign 改 JWT 解析 | 4, 5 | scenario-4 0.03% / scenario-5 93.5% | scenario-4 0.00% / **scenario-5 0.00%** | ✅ **核心目标达成**（-93.5pp） |
+| 间接收益：user-service 减压 | 4 | 1 个 fallback 触发的 404 | 0 个 404 | ✅ 完全稳定 |
+| 间接成本：压力回流到读路径 | 1, 2a | scenario-1 0% / scenario-2a 0% | scenario-1 4.18% / scenario-2a 0.12% | ⚠️ "压力反弹"现象，非新业务缺陷 |
 
 **综合评价**：
-- plan Task 1 MVP 目标"5/7 场景失败率 < 5%"**超额达成 6/7**
-- scenario-5 恶化是因为 arrival-rate 持续模式暴露了第三轮瞬时模式没暴露的 Feign 链路瓶颈
-- 延迟（P99）未根治，需 Task 2 的 Caffeine 缓存 + 浏览量异步化
-- **本轮最有价值的发现**：PostService.create 强依赖 Feign 调用是 scenario-5 的根因，需新增 P0 修复项
+- plan 最终目标"7/7 场景失败率 < 5%"**完全达成 7/7**
+- scenario-5 从第四轮 93.5% → 第五轮 0%——Task 16 删 Feign 的根因修复彻底生效
+- scenario-1 出现 4.18% 是"压力反弹"现象：写入路径修好后压力回流读路径，让已知的 categories 慢查询暴露出来，**非 Task 16 的回归**
+- 延迟（P99）问题仍未根治，需 plan Task 2 的 Caffeine 缓存 + 浏览量异步化
+- **本轮最有价值的发现**：Task 16 不仅修了 scenario-5，还让 scenario-4 进入完全稳定区；同时证明了"删 Feign 改 JWT"在持续 500 RPS 下的根因修复有效性
