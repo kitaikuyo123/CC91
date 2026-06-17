@@ -1,9 +1,13 @@
-// 场景 5：固定 500 次并发写入帖子
+// 场景 5：500 QPS 稳定写入帖子（arrival-rate）
 //
-// 例外配置：iterations: 500, vus: 500（每个 VU 跑 1 次即停），不加 duration。
-// 对应旧 stress_test.py scenario_concurrent_write。
+// 改动理由（Task 1 MVP）：
+//   原配置 iterations: 500 + vus: 500 是"一次性瞬时打满"，500 个 VU 同一时刻全部
+//   冲到 /api/posts，并发几乎不可控，无法稳定暴露后端在 500 QPS 持续负载下的
+//   表现（连接池排队、Tomcat 线程调度抖动都被瞬时压力掩盖）。
+//   改为 constant-arrival-rate，以恒定 500 req/s 持续 5s 打入，能更真实地
+//   反映"500 并发稳定写入"的目标场景，p(99) 与 failure rate 也更稳定可读。
 //
-// 注意：本场景会向数据库写入 500 篇"压测帖子"。
+// 注意：本场景会向数据库写入约 2500 篇"压测帖子"（500/s × 5s）。
 // 不在脚本内自动清理（避免 teardown 阶段再次撞 Tomcat 队列）。
 // 如需清理，单独跑：python ../stress_test.py --cleanup-only
 // 或手动 DELETE /api/posts/{id}。
@@ -13,9 +17,18 @@ import { check, group } from 'k6';
 import { BASE_URL, authHeaders, expectStatus, loginAndGetToken, pseudoUuid } from './common.js';
 
 export const options = {
-  // 固定 500 个 iteration，500 个 VU 每个跑 1 次
-  iterations: 500,
-  vus: 500,
+  // 以恒定 500 req/s 持续 5s 打入（共约 2500 次请求）
+  // preAllocatedVUs=100 预热避免冷启动毛刺；maxVUs=500 兜底防止排队丢请求
+  scenarios: {
+    concurrent_writes: {
+      executor: 'constant-arrival-rate',
+      rate: 500,
+      timeUnit: '1s',
+      duration: '5s',
+      preAllocatedVUs: 100,
+      maxVUs: 500,
+    },
+  },
   thresholds: {
     http_req_failed: ['rate<0.05'],
     http_req_duration: ['p(99)<5000'],

@@ -15,9 +15,9 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
     hikari:
-      maximum-pool-size: 200
-      minimum-idle: 50
-      connection-timeout: 10000
+      maximum-pool-size: 500
+      minimum-idle: 100
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: update

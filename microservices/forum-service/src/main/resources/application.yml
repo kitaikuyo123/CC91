@@ -15,12 +15,22 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
     hikari:
-      maximum-pool-size: 200
-      minimum-idle: 50
-      connection-timeout: 10000
+      maximum-pool-size: 500
+      minimum-idle: 100
+      connection-timeout: 30000
   jpa:
     hibernate:
-      ddl-auto: update
+      # ddl-auto=validate：schema 完全由 Flyway 接管，避免 Hibernate 与 Flyway 同时改表造成漂移。
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # 现有数据库已由 ddl-auto=update 或 content-service 的 V1 建表，
+    # 这里把 baseline 设为 2，让 Flyway 跳过 V1/V2（不存在也无妨），
+    # 只执行后续版本（V3 添加复合索引）。
+    baseline-on-migrate: true
+    baseline-version: 2
+    validate-on-migrate: false
   cloud:
     openfeign:
       circuitbreaker:
