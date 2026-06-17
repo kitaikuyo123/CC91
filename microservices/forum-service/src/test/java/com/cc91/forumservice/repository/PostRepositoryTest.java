@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,8 +22,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * PostRepository slice tests against H2.
  * Covers derived query methods AND @Query custom queries (findSortedByCommentCount,
  * incrementViewCount, countStatsByCategory, search).
+ *
+ * <p>显式激活 "test" profile，让 src/test/resources/application-test.yml 生效，
+ * 从而禁用 Flyway（避免 V3 复合索引迁移在 H2 上找不到 posts 表）。
  */
 @DataJpaTest
+@ActiveProfiles("test")
 class PostRepositoryTest {
 
     @Autowired

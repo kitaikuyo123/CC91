@@ -41,6 +41,15 @@
             <version>8.4.0</version>
             <scope>runtime</scope>
         </dependency>
+        <!-- Flyway 用于管理 schema 迁移（复合索引优化 scenario-1/2a/6 慢查询） -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>

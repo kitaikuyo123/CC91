@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
@@ -17,8 +18,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * CommentRepository slice tests against H2.
  * Covers derived methods and @Query (findAllWithPostByOrderByCreatedAtDesc
  * with JOIN FETCH, countByPostIdInAndStatus).
+ *
+ * <p>显式激活 "test" profile，让 src/test/resources/application-test.yml 生效，
+ * 从而禁用 Flyway（避免 V3 复合索引迁移在 H2 上找不到 posts/comments 表）。
  */
 @DataJpaTest
+@ActiveProfiles("test")
 class CommentRepositoryTest {
 
     @Autowired
