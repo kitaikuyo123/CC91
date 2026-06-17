@@ -49,7 +49,6 @@ CC91 论坛微服务架构（7 服务 + Gateway + Eureka + MySQL）在 **500 RPS
 - 5000+ 并发验证（超出校园论坛业务需求）
 - 端到端集群启动测试（docker-compose 全栈）
 - 疲劳测试（30 分钟以上 soak）
-- 渗透测试（OWASP ZAP 主动扫描）
 
 ---
 
