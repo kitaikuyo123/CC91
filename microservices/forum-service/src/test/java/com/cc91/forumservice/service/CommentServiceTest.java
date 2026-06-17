@@ -77,30 +77,20 @@ class CommentServiceTest {
     class CreateComment {
 
         @Test
-        @DisplayName("should throw ResourceNotFoundException when user not found")
-        void shouldThrowWhenUserMissing() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(null);
-            assertThrows(ResourceNotFoundException.class,
-                    () -> commentService.createComment(USERNAME, 10L, new CreateCommentRequest("hi")));
-        }
-
-        @Test
         @DisplayName("should throw ResourceNotFoundException when post not found")
         void shouldThrowWhenPostMissing() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             when(postRepository.findById(404L)).thenReturn(Optional.empty());
             assertThrows(ResourceNotFoundException.class,
-                    () -> commentService.createComment(USERNAME, 404L, new CreateCommentRequest("hi")));
+                    () -> commentService.createComment(USER_ID, USERNAME, 404L, new CreateCommentRequest("hi")));
         }
 
         @Test
         @DisplayName("should sanitize XSS in content")
         void shouldSanitizeXss() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             when(postRepository.findById(10L)).thenReturn(Optional.of(samplePost()));
             when(commentRepository.save(any(Comment.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            commentService.createComment(USERNAME, 10L,
+            commentService.createComment(USER_ID, USERNAME, 10L,
                     new CreateCommentRequest("<script>alert(1)</script>"));
 
             ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
@@ -111,7 +101,6 @@ class CommentServiceTest {
         @Test
         @DisplayName("should notify post author when commenter is not the author")
         void shouldNotifyWhenNotAuthor() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             Post post = new Post("标题", "正文", 999L); // different author
             post.setId(10L);
             when(postRepository.findById(10L)).thenReturn(Optional.of(post));
@@ -120,10 +109,8 @@ class CommentServiceTest {
                 c.setId(1L);
                 return c;
             });
-            when(userServiceClient.getUserById(999L))
-                    .thenReturn(new UserInfoDTO(999L, "bob", "USER", null));
 
-            commentService.createComment(USERNAME, 10L, new CreateCommentRequest("hi"));
+            commentService.createComment(USER_ID, USERNAME, 10L, new CreateCommentRequest("hi"));
 
             verify(notificationServiceClient).createNotification(any(CreateNotificationRequest.class));
         }
@@ -131,8 +118,7 @@ class CommentServiceTest {
         @Test
         @DisplayName("should NOT notify post author when commenter is the author (self-comment)")
         void shouldNotNotifyWhenSelfComment() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
-            // author == user.getId()
+            // author == USER_ID
             when(postRepository.findById(10L)).thenReturn(Optional.of(samplePost()));
             when(commentRepository.save(any(Comment.class))).thenAnswer(inv -> {
                 Comment c = inv.getArgument(0);
@@ -140,7 +126,7 @@ class CommentServiceTest {
                 return c;
             });
 
-            commentService.createComment(USERNAME, 10L, new CreateCommentRequest("hi"));
+            commentService.createComment(USER_ID, USERNAME, 10L, new CreateCommentRequest("hi"));
 
             verify(notificationServiceClient, never()).createNotification(any());
         }
@@ -148,7 +134,6 @@ class CommentServiceTest {
         @Test
         @DisplayName("should not throw if notification delivery fails (caught)")
         void shouldNotThrowOnNotificationFailure() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             Post post = new Post("标题", "正文", 999L);
             post.setId(10L);
             when(postRepository.findById(10L)).thenReturn(Optional.of(post));
@@ -157,14 +142,28 @@ class CommentServiceTest {
                 c.setId(1L);
                 return c;
             });
-            when(userServiceClient.getUserById(999L))
-                    .thenReturn(new UserInfoDTO(999L, "bob", "USER", null));
             doThrow(new RuntimeException("notification service down"))
                     .when(notificationServiceClient).createNotification(any());
 
             // Should NOT propagate
             assertDoesNotThrow(() ->
-                    commentService.createComment(USERNAME, 10L, new CreateCommentRequest("hi")));
+                    commentService.createComment(USER_ID, USERNAME, 10L, new CreateCommentRequest("hi")));
+        }
+
+        /**
+         * 关键回归：createComment 主路径不再调 UserServiceClient（userId 由
+         * Controller 从 JWT 传入）。即便通知失败也不应触发 user-service 调用。
+         */
+        @Test
+        @DisplayName("regression: createComment 成功且无 getUserByUsername 调用")
+        void shouldCreateWithoutUserServiceClientCall() {
+            when(postRepository.findById(10L)).thenReturn(Optional.of(samplePost()));
+            when(commentRepository.save(any(Comment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            commentService.createComment(USER_ID, USERNAME, 10L, new CreateCommentRequest("hi"));
+
+            verify(userServiceClient, never()).getUserByUsername(anyString());
+            verify(userServiceClient, never()).getUserById(anyLong());
         }
     }
 
@@ -175,16 +174,14 @@ class CommentServiceTest {
         @Test
         @DisplayName("should throw ResourceNotFoundException when parent comment not found")
         void shouldThrowWhenParentMissing() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             when(commentRepository.findById(404L)).thenReturn(Optional.empty());
             assertThrows(ResourceNotFoundException.class,
-                    () -> commentService.replyToComment(USERNAME, 404L, new CreateCommentRequest("reply")));
+                    () -> commentService.replyToComment(USER_ID, USERNAME, 404L, new CreateCommentRequest("reply")));
         }
 
         @Test
         @DisplayName("should set parentId on the reply and sanitize XSS")
         void shouldSetParentIdAndSanitize() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             Comment parent = comment(1L, 10L, 999L, null);
             when(commentRepository.findById(1L)).thenReturn(Optional.of(parent));
             when(commentRepository.save(any(Comment.class))).thenAnswer(inv -> {
@@ -193,7 +190,7 @@ class CommentServiceTest {
                 return c;
             });
 
-            commentService.replyToComment(USERNAME, 1L,
+            commentService.replyToComment(USER_ID, USERNAME, 1L,
                     new CreateCommentRequest("<b>reply</b>"));
 
             ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
@@ -207,7 +204,6 @@ class CommentServiceTest {
         @Test
         @DisplayName("should notify the parent comment author when replier is not the author")
         void shouldNotifyParentAuthor() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             Comment parent = comment(1L, 10L, 999L, null);
             when(commentRepository.findById(1L)).thenReturn(Optional.of(parent));
             when(postRepository.findById(10L)).thenReturn(Optional.of(samplePost()));
@@ -217,7 +213,7 @@ class CommentServiceTest {
                 return c;
             });
 
-            commentService.replyToComment(USERNAME, 1L, new CreateCommentRequest("reply"));
+            commentService.replyToComment(USER_ID, USERNAME, 1L, new CreateCommentRequest("reply"));
 
             verify(notificationServiceClient).createNotification(any(CreateNotificationRequest.class));
         }
@@ -225,7 +221,6 @@ class CommentServiceTest {
         @Test
         @DisplayName("should NOT notify when replying to own comment")
         void shouldNotNotifyWhenReplyingToSelf() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             Comment parent = comment(1L, 10L, USER_ID, null); // same author
             when(commentRepository.findById(1L)).thenReturn(Optional.of(parent));
             when(commentRepository.save(any(Comment.class))).thenAnswer(inv -> {
@@ -234,7 +229,7 @@ class CommentServiceTest {
                 return c;
             });
 
-            commentService.replyToComment(USERNAME, 1L, new CreateCommentRequest("reply"));
+            commentService.replyToComment(USER_ID, USERNAME, 1L, new CreateCommentRequest("reply"));
 
             verify(notificationServiceClient, never()).createNotification(any());
         }

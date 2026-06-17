@@ -1,7 +1,7 @@
 package com.cc91.forumservice.controller;
 
 import com.cc91.forumservice.base.BaseWebMvcTest;
-import com.cc91.forumservice.dto.ApiResponse;
+import com.cc91.forumservice.base.WithJwtUser;
 import com.cc91.forumservice.dto.CreatePostRequest;
 import com.cc91.forumservice.dto.PostResponse;
 import com.cc91.forumservice.dto.UpdatePostRequest;
@@ -72,9 +72,12 @@ class PostControllerTest extends BaseWebMvcTest {
         // the path-based rule is not consistently evaluated (slice test limitation,
         // also seen in user-service tests).
 
+        // createPost 路径调用 getCurrentUserId()，依赖 Authentication.details.userId，
+        // 因此本组所有方法使用 @WithJwtUser 而非 @WithMockUser。
+
         @Test
         @DisplayName("should return 400 when title is missing")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn400WhenTitleMissing() throws Exception {
             CreatePostRequest req = new CreatePostRequest();
             req.setContent("c");
@@ -87,7 +90,7 @@ class PostControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 400 when content is missing")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn400WhenContentMissing() throws Exception {
             CreatePostRequest req = new CreatePostRequest();
             req.setTitle("t");
@@ -100,7 +103,7 @@ class PostControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 400 when categoryId is missing")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn400WhenCategoryIdMissing() throws Exception {
             CreatePostRequest req = new CreatePostRequest();
             req.setTitle("t");
@@ -113,7 +116,7 @@ class PostControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 400 when status is invalid (not PUBLISHED/DRAFT)")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn400WhenStatusInvalid() throws Exception {
             CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
             req.setStatus("ARCHIVED");
@@ -125,9 +128,9 @@ class PostControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 200 + ApiResponse on successful create")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn200OnSuccess() throws Exception {
-            when(postService.createPost(eq("alice"), any())).thenReturn(sampleResponse());
+            when(postService.createPost(anyLong(), eq("alice"), any())).thenReturn(sampleResponse());
             CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
             mockMvc.perform(post("/api/posts")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -139,9 +142,9 @@ class PostControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 404 when categoryId does not exist")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn404WhenCategoryMissing() throws Exception {
-            when(postService.createPost(anyString(), any()))
+            when(postService.createPost(anyLong(), anyString(), any()))
                     .thenThrow(new ResourceNotFoundException("版块不存在"));
             CreatePostRequest req = new CreatePostRequest("t", "c", 999L);
             mockMvc.perform(post("/api/posts")

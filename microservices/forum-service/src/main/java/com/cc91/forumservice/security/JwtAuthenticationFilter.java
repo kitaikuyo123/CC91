@@ -16,6 +16,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Reads the Bearer JWT from each request and fills Spring Security's context
@@ -48,6 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (StringUtils.hasText(jwt) && jwtUtil.validateToken(jwt)) {
                 String username = jwtUtil.getUsernameFromToken(jwt);
+                Long userId = jwtUtil.getUserIdFromToken(jwt);
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authentication =
@@ -56,10 +59,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 null,
                                 userDetails.getAuthorities()
                         );
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                // 将 JWT claims 中的 userId 透传给 Controller，避免高频写路径（如
+                // PostService.createPost）再调 Feign getUserByUsername 拉作者 id。
+                // 当 user-service 不可用时，Feign fallback 会返回 null 触发
+                // ResourceNotFoundException，导致写接口整体不可用。
+                Map<String, Object> details = new HashMap<>();
+                details.put("userId", userId);
+                authentication.setDetails(details);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                logger.debug("Set authentication for user: {}", username);
+                logger.debug("Set authentication for user: {} (userId={})", username, userId);
             }
         } catch (Exception ex) {
             logger.error("Could not set user authentication: {}", ex.getMessage());

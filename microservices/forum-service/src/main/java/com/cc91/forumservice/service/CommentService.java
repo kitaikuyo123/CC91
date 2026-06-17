@@ -48,35 +48,32 @@ public class CommentService {
 
     /**
      * 创建评论
+     *
+     * <p>userId 由 Controller 从 JWT claims 解析后传入，避免调用 Feign
+     * {@code getUserByUsername}（与 {@link PostService#createPost} 同理）。
+     * 通知路径上仍可能调 {@code getUserById} 拉作者信息，但通知 try/catch
+     * 吞异常，不影响评论主流程。
      */
     @Transactional
-    public CommentResponse createComment(String username, Long postId, CreateCommentRequest request) {
-        UserInfoDTO user = userServiceClient.getUserByUsername(username);
-        if (user == null) {
-            throw new ResourceNotFoundException("用户不存在");
-        }
-
+    public CommentResponse createComment(Long userId, String username, Long postId, CreateCommentRequest request) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("帖子不存在"));
 
-        Comment comment = new Comment(postId, user.getId(), HtmlSanitizer.sanitizeContent(request.getContent()), null);
+        Comment comment = new Comment(postId, userId, HtmlSanitizer.sanitizeContent(request.getContent()), null);
         comment = commentRepository.save(comment);
 
         // 如果评论的不是自己的帖子，通知帖子作者
-        if (!post.getAuthorId().equals(user.getId())) {
+        if (!post.getAuthorId().equals(userId)) {
             try {
-                UserInfoDTO postAuthor = userServiceClient.getUserById(post.getAuthorId());
-                if (postAuthor != null) {
-                    notificationServiceClient.createNotification(
-                            new CreateNotificationRequest(
-                                    post.getAuthorId(),
-                                    "REPLY",
-                                    "新评论通知",
-                                    user.getUsername() + " 评论了你的帖子: " + post.getTitle(),
-                                    post.getId()
-                            )
-                    );
-                }
+                notificationServiceClient.createNotification(
+                        new CreateNotificationRequest(
+                                post.getAuthorId(),
+                                "REPLY",
+                                "新评论通知",
+                                username + " 评论了你的帖子: " + post.getTitle(),
+                                post.getId()
+                        )
+                );
             } catch (Exception e) {
                 logger.warn("Failed to send notification for comment on post {}", postId, e);
             }
@@ -84,28 +81,24 @@ public class CommentService {
 
         logger.info("评论创建成功: id={}, postId={}, author={}", comment.getId(), postId, username);
 
-        return toCommentResponse(comment, user.getUsername(), user.getAvatarUrl());
+        // avatarUrl 在写入热路径不拉取，置 null
+        return toCommentResponse(comment, username, null);
     }
 
     /**
      * 回复评论
      */
     @Transactional
-    public CommentResponse replyToComment(String username, Long commentId, CreateCommentRequest request) {
-        UserInfoDTO user = userServiceClient.getUserByUsername(username);
-        if (user == null) {
-            throw new ResourceNotFoundException("用户不存在");
-        }
-
+    public CommentResponse replyToComment(Long userId, String username, Long commentId, CreateCommentRequest request) {
         Comment parentComment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ResourceNotFoundException("评论不存在"));
 
-        Comment reply = new Comment(parentComment.getPostId(), user.getId(),
+        Comment reply = new Comment(parentComment.getPostId(), userId,
                                     HtmlSanitizer.sanitizeContent(request.getContent()), commentId);
         reply = commentRepository.save(reply);
 
         // 通知被回复的评论作者（如果不是自己回复自己）
-        if (!parentComment.getAuthorId().equals(user.getId())) {
+        if (!parentComment.getAuthorId().equals(userId)) {
             try {
                 Post post = postRepository.findById(parentComment.getPostId()).orElse(null);
                 String postTitle = post != null ? post.getTitle() : "未知帖子";
@@ -114,7 +107,7 @@ public class CommentService {
                                 parentComment.getAuthorId(),
                                 "REPLY",
                                 "新回复通知",
-                                user.getUsername() + " 回复了你在「" + postTitle + "」中的评论",
+                                username + " 回复了你在「" + postTitle + "」中的评论",
                                 parentComment.getPostId()
                         )
                 );
@@ -125,7 +118,7 @@ public class CommentService {
 
         logger.info("回复评论成功: id={}, parentId={}, author={}", reply.getId(), commentId, username);
 
-        return toCommentResponse(reply, user.getUsername(), user.getAvatarUrl());
+        return toCommentResponse(reply, username, null);
     }
 
     /**

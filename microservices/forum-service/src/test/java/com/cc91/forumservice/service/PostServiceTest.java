@@ -2,7 +2,6 @@ package com.cc91.forumservice.service;
 
 import com.cc91.forumservice.client.UserInfoDTO;
 import com.cc91.forumservice.client.UserServiceClient;
-import com.cc91.forumservice.client.UserServiceClientFallback;
 import com.cc91.forumservice.dto.CreatePostRequest;
 import com.cc91.forumservice.dto.PostResponse;
 import com.cc91.forumservice.dto.UpdatePostRequest;
@@ -86,67 +85,60 @@ class PostServiceTest {
     class CreatePost {
 
         @Test
-        @DisplayName("should throw ResourceNotFoundException when user not found")
-        void shouldThrowWhenUserMissing() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(null);
-            CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
-            assertThrows(ResourceNotFoundException.class,
-                    () -> postService.createPost(USERNAME, req));
-        }
-
-        /**
-         * Regression test for the 500-RPS stress test scenario-4 bug:
-         * 'Column author_id cannot be null' (400) on POST /api/posts.
-         *
-         * Root cause: {@code UserServiceClientFallback#getUserByUsername} used to
-         * return a ghost {@code UserInfoDTO(null, username, "USER", null)}, which
-         * defeated the existing {@code if (user == null) throw} guard. The fix
-         * requires the fallback to return {@code null}; this test wires the real
-         * fallback instance into the service to assert the end-to-end contract:
-         * user-service down -> fallback -> null -> ResourceNotFoundException,
-         * never a 400 from a NULL author_id INSERT.
-         */
-        @Test
-        @DisplayName("regression: real UserServiceClientFallback returns null -> ResourceNotFoundException, never ghost user")
-        void shouldThrowWhenRealFallbackReturnsNullForUsername() {
-            UserServiceClient realFallback = new UserServiceClientFallback();
-            when(userServiceClient.getUserByUsername(USERNAME))
-                    .thenAnswer(inv -> realFallback.getUserByUsername(USERNAME));
-            CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
-
-            ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
-                    () -> postService.createPost(USERNAME, req));
-
-            // 关键：fallback 不应让流程走到 save（即不会构造出 author_id=null 的 Post）
-            verify(postRepository, never()).save(any(Post.class));
-            assertNotNull(ex.getMessage());
-        }
-
-        @Test
         @DisplayName("should throw ResourceNotFoundException when categoryId not found")
         void shouldThrowWhenCategoryMissing() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             when(categoryRepository.existsById(1L)).thenReturn(false);
             CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
             assertThrows(ResourceNotFoundException.class,
-                    () -> postService.createPost(USERNAME, req));
+                    () -> postService.createPost(USER_ID, USERNAME, req));
         }
 
+        /**
+         * 关键回归：createPost 不再依赖 user-service 可用性。
+         *
+         * <p>500 RPS 压测 scenario-5 显示：原实现每次发帖都调 Feign
+         * {@code getUserByUsername}，user-service 链路全量超时后 fallback
+         * 返回 null，导致 ResourceNotFoundException(404) 在 93.5% 的请求上
+         * 发生。改为从 JWT 直接拿 userId 后，createPost 路径完全不再调
+         * UserServiceClient —— 本测试验证该不变式：即便 UserServiceClient
+         * 从未被 mock（即任何调用都会 NPE），createPost 也能成功。
+         */
         @Test
-        @DisplayName("should sanitize XSS in title and content on successful create")
-        void shouldSanitizeXssOnCreate() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
+        @DisplayName("regression: createPost 成功且无任何 UserServiceClient 调用（JWT 直取 userId）")
+        void shouldCreateWithoutUserServiceClientCall() {
             when(categoryRepository.existsById(1L)).thenReturn(true);
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
                 Post p = inv.getArgument(0);
                 p.setId(99L);
                 return p;
             });
+            when(commentRepository.countByPostIdAndStatus(anyLong(), anyString())).thenReturn(0L);
+
+            CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
+            PostResponse resp = postService.createPost(USER_ID, USERNAME, req);
+
+            assertEquals(99L, resp.getId());
+            assertEquals(USER_ID, resp.getAuthorId());
+            assertEquals(USERNAME, resp.getAuthorUsername());
+            // 关键：未与 user-service 发生任何交互
+            verifyNoInteractions(userServiceClient);
+        }
+
+        @Test
+        @DisplayName("should sanitize XSS in title and content on successful create")
+        void shouldSanitizeXssOnCreate() {
+            when(categoryRepository.existsById(1L)).thenReturn(true);
+            when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+                Post p = inv.getArgument(0);
+                p.setId(99L);
+                return p;
+            });
+            when(commentRepository.countByPostIdAndStatus(anyLong(), anyString())).thenReturn(0L);
 
             String xssTitle = "<script>alert(1)</script>";
             String xssContent = "<img src=x onerror=alert(2)>";
             CreatePostRequest req = new CreatePostRequest(xssTitle, xssContent, 1L);
-            PostResponse resp = postService.createPost(USERNAME, req);
+            PostResponse resp = postService.createPost(USER_ID, USERNAME, req);
 
             ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
             verify(postRepository).save(captor.capture());
@@ -162,16 +154,16 @@ class PostServiceTest {
         @Test
         @DisplayName("should default status to PUBLISHED when request.status is null")
         void shouldDefaultStatusToPublished() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             when(categoryRepository.existsById(1L)).thenReturn(true);
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
                 Post p = inv.getArgument(0);
                 p.setId(99L);
                 return p;
             });
+            when(commentRepository.countByPostIdAndStatus(anyLong(), anyString())).thenReturn(0L);
 
             CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
-            postService.createPost(USERNAME, req);
+            postService.createPost(USER_ID, USERNAME, req);
 
             ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
             verify(postRepository).save(captor.capture());
@@ -181,17 +173,17 @@ class PostServiceTest {
         @Test
         @DisplayName("should respect DRAFT status when provided")
         void shouldRespectDraftStatus() {
-            when(userServiceClient.getUserByUsername(USERNAME)).thenReturn(user());
             when(categoryRepository.existsById(1L)).thenReturn(true);
             when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
                 Post p = inv.getArgument(0);
                 p.setId(99L);
                 return p;
             });
+            when(commentRepository.countByPostIdAndStatus(anyLong(), anyString())).thenReturn(0L);
 
             CreatePostRequest req = new CreatePostRequest("t", "c", 1L);
             req.setStatus("DRAFT");
-            postService.createPost(USERNAME, req);
+            postService.createPost(USER_ID, USERNAME, req);
 
             ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
             verify(postRepository).save(captor.capture());

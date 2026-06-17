@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 评论控制器
@@ -37,7 +38,8 @@ public class CommentController {
             @Valid @RequestBody CreateCommentRequest request
     ) {
         String username = getCurrentUsername();
-        CommentResponse comment = commentService.createComment(username, postId, request);
+        Long userId = getCurrentUserId();
+        CommentResponse comment = commentService.createComment(userId, username, postId, request);
         return ResponseEntity.ok(ApiResponse.success("评论创建成功", comment));
     }
 
@@ -51,7 +53,8 @@ public class CommentController {
             @Valid @RequestBody CreateCommentRequest request
     ) {
         String username = getCurrentUsername();
-        CommentResponse comment = commentService.replyToComment(username, id, request);
+        Long userId = getCurrentUserId();
+        CommentResponse comment = commentService.replyToComment(userId, username, id, request);
         return ResponseEntity.ok(ApiResponse.success("回复成功", comment));
     }
 
@@ -98,5 +101,27 @@ public class CommentController {
             return authentication.getName();
         }
         throw new UnauthorizedException("用户未登录");
+    }
+
+    /**
+     * 从 SecurityContext.details 中解析 userId（由 JwtAuthenticationFilter 写入），
+     * 避免 createComment / replyToComment 走 Feign getUserByUsername。
+     */
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UnauthorizedException("用户未登录");
+        }
+        Object details = authentication.getDetails();
+        if (details instanceof Map<?, ?> map) {
+            Object id = map.get("userId");
+            if (id instanceof Long l) {
+                return l;
+            }
+            if (id instanceof Number n) {
+                return n.longValue();
+            }
+        }
+        throw new IllegalStateException("无法从 SecurityContext 解析 userId");
     }
 }

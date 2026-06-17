@@ -1,6 +1,7 @@
 package com.cc91.forumservice.controller;
 
 import com.cc91.forumservice.base.BaseWebMvcTest;
+import com.cc91.forumservice.base.WithJwtUser;
 import com.cc91.forumservice.dto.CommentResponse;
 import com.cc91.forumservice.dto.CreateCommentRequest;
 import com.cc91.forumservice.exception.ResourceNotFoundException;
@@ -19,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -60,9 +60,11 @@ class CommentControllerTest extends BaseWebMvcTest {
         // Note: anonymous access (401) is enforced by SecurityConfig and verified
         // at integration level; not reliably reproducible in @WebMvcTest slice.
 
+        // createComment 路径调用 getCurrentUserId()，本组所有方法用 @WithJwtUser。
+
         @Test
         @DisplayName("should return 400 when content is blank")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn400WhenContentBlank() throws Exception {
             CreateCommentRequest req = new CreateCommentRequest();
             mockMvc.perform(post("/api/posts/10/comments")
@@ -73,7 +75,7 @@ class CommentControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 400 when content too long (>2000 chars)")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn400WhenContentTooLong() throws Exception {
             CreateCommentRequest req = new CreateCommentRequest("x".repeat(2001));
             mockMvc.perform(post("/api/posts/10/comments")
@@ -84,9 +86,9 @@ class CommentControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 200 on success")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn200OnSuccess() throws Exception {
-            when(commentService.createComment(anyString(), eq(10L), any())).thenReturn(sample());
+            when(commentService.createComment(anyLong(), anyString(), eq(10L), any())).thenReturn(sample());
             mockMvc.perform(post("/api/posts/10/comments")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(new CreateCommentRequest("hi"))))
@@ -96,9 +98,9 @@ class CommentControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 404 when post not found")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn404WhenPostMissing() throws Exception {
-            when(commentService.createComment(anyString(), eq(404L), any()))
+            when(commentService.createComment(anyLong(), anyString(), eq(404L), any()))
                     .thenThrow(new ResourceNotFoundException("帖子不存在"));
             mockMvc.perform(post("/api/posts/404/comments")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -116,9 +118,9 @@ class CommentControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 200 on success")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn200OnSuccess() throws Exception {
-            when(commentService.replyToComment(anyString(), eq(1L), any())).thenReturn(sample());
+            when(commentService.replyToComment(anyLong(), anyString(), eq(1L), any())).thenReturn(sample());
             mockMvc.perform(post("/api/comments/1/reply")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(new CreateCommentRequest("reply"))))
@@ -127,9 +129,9 @@ class CommentControllerTest extends BaseWebMvcTest {
 
         @Test
         @DisplayName("should return 404 when parent comment not found")
-        @WithMockUser(username = "alice", roles = "USER")
+        @WithJwtUser(username = "alice", userId = 1L)
         void shouldReturn404WhenParentMissing() throws Exception {
-            when(commentService.replyToComment(anyString(), eq(404L), any()))
+            when(commentService.replyToComment(anyLong(), anyString(), eq(404L), any()))
                     .thenThrow(new ResourceNotFoundException("评论不存在"));
             mockMvc.perform(post("/api/comments/404/reply")
                             .contentType(MediaType.APPLICATION_JSON)

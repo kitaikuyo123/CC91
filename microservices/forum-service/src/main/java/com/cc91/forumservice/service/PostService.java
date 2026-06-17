@@ -61,14 +61,18 @@ public class PostService {
 
     /**
      * 创建帖子
+     *
+     * <p>userId 由 Controller 从 JWT claims 解析后传入，避免在此处调用 Feign
+     * {@code getUserByUsername}。500 RPS 压测（scenario-5）显示，user-service
+     * 链路在持续高负载下会触发 Feign 超时并 fallback 返回 null，导致本方法抛
+     * ResourceNotFoundException(404)，使帖子创建整体不可用。从 JWT 直接拿
+     * userId 可彻底绕开 user-service 依赖。
+     *
+     * <p>avatarUrl 留空（null），客户端如需展示作者头像，可在后续 GET 请求中
+     * 通过 {@code getPostById} 拉取，避免在写入热路径上引入额外 Feign 调用。
      */
     @Transactional
-    public PostResponse createPost(String username, CreatePostRequest request) {
-        UserInfoDTO user = userServiceClient.getUserByUsername(username);
-        if (user == null) {
-            throw new ResourceNotFoundException("用户不存在");
-        }
-
+    public PostResponse createPost(Long userId, String username, CreatePostRequest request) {
         if (!categoryRepository.existsById(request.getCategoryId())) {
             throw new ResourceNotFoundException("版块不存在");
         }
@@ -76,7 +80,7 @@ public class PostService {
         Post post = new Post(
                 HtmlSanitizer.sanitizeContent(request.getTitle()),
                 HtmlSanitizer.sanitizeContent(request.getContent()),
-                user.getId()
+                userId
         );
         post.setCategoryId(request.getCategoryId());
         if (request.getStatus() != null) {
@@ -84,9 +88,10 @@ public class PostService {
         }
         post = postRepository.save(post);
 
-        logger.info("帖子创建成功: id={}, author={}", post.getId(), username);
+        logger.info("帖子创建成功: id={}, author={}, userId={}", post.getId(), username, userId);
 
-        return toPostResponse(post, user.getUsername(), user.getAvatarUrl());
+        // avatarUrl 在写入热路径不拉取，置 null；客户端可通过 GET /api/posts/{id} 拿到
+        return toPostResponse(post, username, null);
     }
 
     /**

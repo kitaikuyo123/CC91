@@ -38,7 +38,8 @@ public class PostController {
             @Valid @RequestBody CreatePostRequest request
     ) {
         String username = getCurrentUsername();
-        PostResponse post = postService.createPost(username, request);
+        Long userId = getCurrentUserId();
+        PostResponse post = postService.createPost(userId, username, request);
         return ResponseEntity.ok(ApiResponse.success("帖子创建成功", post));
     }
 
@@ -161,5 +162,31 @@ public class PostController {
             return authentication.getName();
         }
         throw new UnauthorizedException("用户未登录");
+    }
+
+    /**
+     * 从 SecurityContext.details 中解析 userId。
+     *
+     * userId 由 {@code JwtAuthenticationFilter} 从 JWT 中提取并写入
+     * {@code authentication.setDetails(Map)}，目的是让高频写路径
+     * （如 createPost）绕过 Feign getUserByUsername 调用，
+     * 避免 user-service 链路故障级联到 forum-service 的写入接口。
+     */
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UnauthorizedException("用户未登录");
+        }
+        Object details = authentication.getDetails();
+        if (details instanceof Map<?, ?> map) {
+            Object id = map.get("userId");
+            if (id instanceof Long l) {
+                return l;
+            }
+            if (id instanceof Number n) {
+                return n.longValue();
+            }
+        }
+        throw new IllegalStateException("无法从 SecurityContext 解析 userId");
     }
 }
