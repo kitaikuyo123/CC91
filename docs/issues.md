@@ -12,7 +12,15 @@
 
 ## Bug
 
-_当前无未修复项。Task 2/3/4/5/7 测试期间共发现 11 个 bug（user-service 3、forum-service 2、content-service 2、notification-service 4），含 JwtUtil SignatureException 漏捕（多服务）、GlobalExceptionHandler AccessDenied→403（多服务）、SecurityConfig /me 越权、ApiResponse isSuccess getter 缺失、InternalApiAuthFilter 路径不一致，均已就地修复。_
+### forum-service（压测 Task 3 第三轮 500 并发暴露）
+
+- **PostController.createPost 在并发下偶发 `author_id` 为 null**
+  - 优先级：P1（500 RPS 限速压测中 308 / 1863 个 `POST /api/posts` 返回 400，错误体 `Column 'author_id' cannot be null`）
+  - 暴露于：`docs/deliverables/05-测试报告/stress-test/k6/scenario-4-mixed-read-write.js`
+  - 现象：单线程 smoke test 不复现；500 并发下偶发；推测 `JwtAuthenticationFilter` 在并发下 `SecurityContext` 设置存在线程安全竞争，导致 `getCurrentUsername()` 偶发返回 null
+  - 建议：检查 `PostController.getCurrentUsername()` 与 `JwtAuthenticationFilter` 的并发安全；考虑用 `RequestScope` 或 ThreadLocal 显式同步
+
+_其他历史 bug 已就地修复，详见本节历史。_
 
 ---
 

@@ -4,18 +4,18 @@
 -- 用法: mysql -u root -p cc91_db < seed_data.sql
 -- ============================================================
 
--- ===== 1. 创建 10 个测试用户（密码均为 test123，BCrypt 哈希）=====
+-- ===== 1. 创建 10 个测试用户（密码均为 admin123，BCrypt 哈希，与 admin 同源）=====
 INSERT IGNORE INTO users (username, email, password_hash, role) VALUES
-('testuser1',  'test1@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser2',  'test2@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser3',  'test3@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser4',  'test4@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser5',  'test5@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser6',  'test6@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser7',  'test7@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser8',  'test8@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser9',  'test9@test.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER'),
-('testuser10', 'test10@test.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'USER');
+('testuser1',  'test1@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser2',  'test2@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser3',  'test3@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser4',  'test4@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser5',  'test5@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser6',  'test6@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser7',  'test7@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser8',  'test8@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser9',  'test9@test.com',  '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER'),
+('testuser10', 'test10@test.com', '$2a$10$VihokXHwnY5Fi7AiHCabwOUPCxgj6JheKp9ywHz6u6YOdkOb1k2Ra', 'USER');
 
 -- 为测试用户创建 profile
 INSERT IGNORE INTO user_profiles (user_id, avatar_url, bio, created_at) 
@@ -64,6 +64,9 @@ CALL seed_posts(10000);
 DROP PROCEDURE seed_posts;
 
 -- ===== 3. 批量插入 3 万条评论 =====
+-- 注意：不能用 FLOOR(1 + RAND() * 10000) 作为 post_id —— posts 表的
+-- 自增 ID 起点可能不是 1（取决于先前插入顺序），会导致外键约束失败。
+-- 改用 SELECT id FROM posts 取真实 ID。
 DROP PROCEDURE IF EXISTS seed_comments;
 DELIMITER //
 CREATE PROCEDURE seed_comments(IN num INT)
@@ -72,12 +75,13 @@ BEGIN
   DECLARE pid BIGINT;
   DECLARE uid BIGINT;
   DECLARE rand_days INT;
-  
+
   WHILE i <= num DO
-    SET pid = FLOOR(1 + RAND() * 10000);
+    -- 从 posts 表随机取一条真实 ID（覆盖自增起点不为 1 的情况）
+    SELECT id INTO pid FROM posts ORDER BY RAND() LIMIT 1;
     SET uid = FLOOR(1 + RAND() * 10);
     SET rand_days = FLOOR(RAND() * 365);
-    
+
     INSERT INTO comments (post_id, author_id, content, parent_id, status, created_at, updated_at)
     VALUES (
       pid,
