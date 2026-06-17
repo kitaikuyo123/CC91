@@ -13,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -82,10 +83,30 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse<>(ex.getMessage()));
     }
 
+    /**
+     * 处理 Spring 6 方法级参数校验失败（400）
+     * <p>
+     * Controller 上 @Validated + @RequestParam 校验失败（如 NotificationController
+     * 的 page/size 参数边界校验）会抛此异常。该异常并非服务器 bug，而是客户端
+     * 输入错误，必须返回 400，否则会被 RuntimeException 兜底误判为 500。
+     * 必须声明在 RuntimeException 之前以保证优先匹配。
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<String>> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex) {
+        logger.warn("Method validation failed: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(ex.getMessage()));
+    }
+
+    /**
+     * 处理运行时异常（500 兜底）
+     * 未预期的 RuntimeException 应返回 500 而非 400，避免把服务端 bug 伪装成客户端错误。
+     */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
-        logger.error("Runtime exception: {}", ex.getMessage());
-        return ResponseEntity.badRequest()
+        logger.error("Unexpected error: ", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiResponse<>(ex.getMessage()));
     }
 

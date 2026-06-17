@@ -88,12 +88,13 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理运行时异常
+     * 处理运行时异常（500 兜底）
+     * 未预期的 RuntimeException 应返回 500 而非 400，避免把服务端 bug 伪装成客户端错误。
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
-        logger.error("Runtime exception: {}", ex.getMessage());
-        return ResponseEntity.badRequest()
+        logger.error("Unexpected error: ", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiResponse<>(ex.getMessage()));
     }
 

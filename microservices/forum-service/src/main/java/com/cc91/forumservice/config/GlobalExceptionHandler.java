@@ -88,12 +88,41 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理非法参数异常（400）
+     * <p>
+     * CategoryService 等用 IllegalArgumentException 表达业务校验失败
+     * （例如"版块名称已存在"），属于客户端可恢复的输入错误，应映射到 400，
+     * 而不是落入下面的 RuntimeException 兜底返回 500。
+     * 必须声明在 RuntimeException 之前以保证 Spring 优先匹配。
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        logger.warn("Illegal argument: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(ex.getMessage()));
+    }
+
+    /**
+     * 处理非法状态异常（400）
+     * <p>
+     * CategoryService 用 IllegalStateException 表达业务状态冲突
+     * （例如"该版块下还有帖子，无法删除"），属于客户端可理解的业务约束违反，
+     * 应映射到 400，而不是落入 RuntimeException 兜底返回 500。
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<String>> handleIllegalStateException(IllegalStateException ex) {
+        logger.warn("Illegal state: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(ex.getMessage()));
+    }
+
+    /**
      * 处理运行时异常
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
-        logger.error("Runtime exception: {}", ex.getMessage());
-        return ResponseEntity.badRequest()
+        logger.error("Unexpected error: ", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiResponse<>(ex.getMessage()));
     }
 

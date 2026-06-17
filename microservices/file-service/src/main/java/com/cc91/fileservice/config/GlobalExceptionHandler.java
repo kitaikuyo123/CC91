@@ -102,10 +102,15 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse<>("Access denied"));
     }
 
+    /**
+     * Generic RuntimeException fallback → 500.
+     * Unexpected RuntimeExceptions must surface as 500 (server bug), not 400 (client error),
+     * so observability tooling and clients see the failure category correctly.
+     */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
-        logger.error("Runtime exception: {}", ex.getMessage());
-        return ResponseEntity.badRequest()
+        logger.error("Unexpected error: ", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiResponse<>(ex.getMessage()));
     }
 

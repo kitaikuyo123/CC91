@@ -77,13 +77,14 @@ class UserControllerTest extends BaseWebMvcTest {
         }
 
         @Test
-        @DisplayName("should return 500/400 when user does not exist (service throws RuntimeException)")
+        @DisplayName("should return 500 when service throws RuntimeException (GlobalExceptionHandler fallback)")
         void shouldReturnErrorWhenUserMissing() throws Exception {
             // UserService throws plain RuntimeException("用户不存在") — falls into GlobalExceptionHandler
+            // RuntimeException handler changed from 400 to 500 (Task 1): uncaught RE = server bug.
             when(userService.getUserProfile("ghost"))
                     .thenThrow(new RuntimeException("用户不存在"));
             mockMvc.perform(get("/api/users/ghost"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isInternalServerError());
         }
     }
 
